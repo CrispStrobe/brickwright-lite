@@ -43,31 +43,42 @@ import {fetchRetry} from './lib-pin.mjs';
 
 /** The SOURCE commit of CrispStrobe/labwired-core the artifact was built from.
  *  Full 40 hex: an abbreviation is not a name anything can fetch by. */
-const PIN = 'de14721e4ae1d34a428f91d232e4520d50f1ceba';
+const PIN = 'fa992f357df88dbd50057a31f13dbcc0835a95cd';
 /** The release that carries the built artifact. */
-// The release lives on bw-board, not on the labwired fork: the fork stays a
-// clean mirror of upstream (it is synced, and a workflow of ours would diverge
-// it), while bw-board already owns the build script and is what lite vendors
-// from. Built and PUBLISHED by CI — two independent runners agreed byte for
-// byte before the asset was uploaded, so the sha256 below is a claim anyone can
-// re-derive rather than one machine's fingerprint.
-const TAG = 'labwired-wasm-de14721e';
+// BW owns the producer recipe and release; the owned LabWired fork supplies
+// the qualified source. Two independent hosted builds agreed on the asset
+// bytes. Their retained outputs were independently audited before publication;
+// the locked release and hashes below preserve that exact source/byte identity.
+const TAG = 'labwired-wasm-fa992f35';
 const REPO = 'CrispStrobe/bw-board';
 // The WEB glue, not the nodejs one. The published release carries both: the
 // nodejs glue require()s and reads the module off disk, which cannot survive a
 // browser bundle. Asset names carry their target because a release's assets are
 // one flat namespace.
 const EXPECT = {
-    'web-labwired_wasm.js': 'da193938531caf85924392dc3f02087d483f9ea67f094ef5a75f18f74c64a348',
-    'web-labwired_wasm_bg.wasm': 'c965f7691e6a4f4f607dfdf6c20e5ec9f85d4de4bc5f22fe5a632b5f813526ff'
+    'web-labwired_wasm.js': 'ff84640cceb4aa6557e95dd0c8df60ea01af5f0d3e8c3e4d7ff7343327cc94dc',
+    'web-labwired_wasm_bg.wasm': '0071c27197830e6d1fab2be32297c69ab450405cf893036f29977796aaa5648e',
+    'samd-no-asf-profile.json': '309164b378af908c5fa0db1e59e2215fee4377d17b546d9ce5da91d394cddc0f'
 };
 /** What each asset is called once it is ours. */
 const LOCAL = {
     'web-labwired_wasm.js': 'labwired_wasm.js',
-    'web-labwired_wasm_bg.wasm': 'labwired_wasm_bg.wasm'
+    'web-labwired_wasm_bg.wasm': 'labwired_wasm_bg.wasm',
+    'samd-no-asf-profile.json': 'samd-no-asf-profile.json'
 };
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+// The browser cannot import this Node synchronizer. Refuse a sync if its
+// browser-facing release identities drift from this authoritative declaration.
+const browserPins = await readFile(path.join(here, '..', 'overlay', 'scratch-gui', 'src',
+    'lib', 'bw-debug', 'samd-release-pins.js'), 'utf8');
+for (const [name, expected] of [['SAMD_ENGINE_SOURCE', PIN],
+    ['SAMD_PROFILE_SHA256', EXPECT['samd-no-asf-profile.json']]]) {
+    const matches = [...browserPins.matchAll(new RegExp(`^export const ${name} = '([0-9a-f]+)';$`, 'gm'))];
+    if (matches.length !== 1 || matches[0][1] !== expected) {
+        throw new Error(`browser ${name} differs from the LabWired release pin`);
+    }
+}
 // static/, not src/. Webpack copies `static -> static` wholesale, so the engine
 // is served as a plain asset and fetched at RUNTIME — which means a checkout
 // that never ran this script still BUILDS. Putting it under src/ and importing

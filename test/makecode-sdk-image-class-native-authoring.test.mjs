@@ -44,8 +44,10 @@ test('current Image role removals refuse before constructor allocation, includin
    const edited=await runArcadeSourceCode(baseline.creator.decompile(project),{frames:48});runs.push(edited);
    assert.ok(edited.errors.some(error=>/SDK class roles differ/.test(error)),mutation);
    const vars=edited.vm.runtime.targets.flatMap(target=>Object.values(target.variables));
-   if(mutation!=='callback')assert.equal(vars.find(variable=>variable.name==='same').value,false,mutation+' must not construct Picture');
-   else assert.equal(vars.find(variable=>variable.name==='height').value,0,'callback-only Holder roles must not construct a receiver');
+   // A missing Image receiver ends the main fiber at `copied.width` (PXT throws), before `same`, `width` and `height` are
+   // reassigned, so the refusal is observed on the variables that would hold the constructed objects themselves.
+   if(mutation!=='callback')assert.equal(vars.find(variable=>variable.name==='picture').value?.bwReference,undefined,mutation+' must not construct Picture');
+   else assert.equal(vars.find(variable=>variable.name==='holder').value?.bwReference,undefined,'callback-only Holder roles must not construct a receiver');
   }
  }finally{for(const run of runs){run.vm.stopAll();run.vm.quit();}clearStrayTimers();}
 });

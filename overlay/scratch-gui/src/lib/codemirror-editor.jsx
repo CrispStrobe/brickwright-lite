@@ -20,7 +20,7 @@ import {EditorView, keymap, lineNumbers, highlightActiveLine, highlightSpecialCh
     drawSelection, rectangularSelection} from '@codemirror/view';
 import {EditorState, Compartment} from '@codemirror/state';
 import {defaultKeymap, indentWithTab, history, historyKeymap, undo, redo, selectAll, undoDepth, redoDepth} from '@codemirror/commands';
-import {searchKeymap, openSearchPanel} from '@codemirror/search';
+import {searchKeymap, openSearchPanel, gotoLine} from '@codemirror/search';
 import {bracketMatching} from '@codemirror/language';
 import {closeBrackets, closeBracketsKeymap} from '@codemirror/autocomplete';
 import {indentOnInput, foldGutter, syntaxHighlighting, defaultHighlightStyle,
@@ -119,6 +119,7 @@ class CodeMirrorEditor extends React.Component {
         this._themeCompartment = new Compartment();
         this._readOnlyCompartment = new Compartment();
         this._onSettingsChange = this._onSettingsChange.bind(this);
+        this._onMenuCommand = this._onMenuCommand.bind(this);
         this._languageRequest = new LatestLanguageRequest({
             getImmediate: immediateCodeMirrorLanguage,
             loadDeferred: loadDeferredCodeMirrorLanguage,
@@ -213,6 +214,7 @@ class CodeMirrorEditor extends React.Component {
         }
 
         window.addEventListener('bw-settings-change', this._onSettingsChange);
+        window.addEventListener('bw-code-editor-command', this._onMenuCommand);
     }
 
     // History list names for CodeMirror's history events (typing merges into
@@ -276,12 +278,24 @@ class CodeMirrorEditor extends React.Component {
 
     componentWillUnmount () {
         window.removeEventListener('bw-settings-change', this._onSettingsChange);
+        window.removeEventListener('bw-code-editor-command', this._onMenuCommand);
         this._languageRequest.dispose();
         if (this._unregisterUndo) this._unregisterUndo();
         if (this._view) {
             this._view.destroy();
             this._view = null;
         }
+    }
+
+    _onMenuCommand (event) {
+        // Tabs stay mounted when hidden. Never edit or focus an inactive editor.
+        if (!this._view || !this.props.isVisible) return false;
+        const commands = {find: openSearchPanel, 'go-to-line': gotoLine, 'select-all': selectAll};
+        const command = event.detail && event.detail.command;
+        if (!Object.prototype.hasOwnProperty.call(commands, command)) return false;
+        // Focus before invoking: search and line panels must keep their own focus.
+        this._view.focus();
+        return commands[command](this._view);
     }
 
     _isDark () {

@@ -19,7 +19,7 @@
 //   and the braking flag into the quantum's average (TakeDriveAverage).
 //
 //   FIRMWARE: a re-implementation, with attribution, of Brickwright's NuttX
-//   hub program (CrispStrobe/brickwright-spike-prime-fw @ 68735cd,
+//   hub program (CrispStrobe/brickwright-spike-prime-fw @ 68735cd + #56,
 //   apps/hubprogram, BSD-3-Clause, Copyright (c) 2026 Brickwright
 //   contributors): motor.c `bw_motor_step` (reference ramp 2000/4000 °/s²,
 //   distance-capped positioning, duty = ref·10000/1110 + 3·err + ∫/1000, all
@@ -27,19 +27,20 @@
 //   estimate ((position − previous)/elapsed, m°/ms = °/s) and its
 //   brake/done rules, and program.c's interpreter for the firmware-program
 //   ABI ops 0 (end: brake owned, wait done), 1 (speed), 2 (wait ms), 4 (jump),
-//   6 (run for degrees, wait done). Its service loop runs every 10 ms of
+//   6 (run for degrees, wait done), and instruction ABI v2 (#56): 7 (op 6
+//   without waiting, so two motors start a move in the same tick) and 8 (wait
+//   until every port in a bitmask is done). Its service loop runs every 10 ms of
 //   virtual time (service.c): device tick, then program tick. The program
 //   starts at the first service tick after lockstep.begin (the deferred START
-//   of plan §2.6). FAKE-ONLY, not in the ABI: op 7 = op 6 without waiting,
-//   so two motors can start a move in the same tick as a SPIKE motor pair
-//   does (ABI v1 programs drive pairs with ops 1 + 2 instead).
+//   of plan §2.6). `instructionAbi: 1` models an older image: COMMIT refuses
+//   rows with ops 7/8 (−22) and keeps the previous program.
 //   Not modelled: sensor conditions (ops 3, 5: they fault here), the 120 s
 //   program limit, MicroPython, the IMU.
 //
 // Faults for tests: {skewAtStep: k, skewNs} reports a clock off by skewNs at
 // step k; {repeatSeqAtStep: k} repeats the previous seq at step k.
 
-const FULL_CAPABILITIES = ['arena-inputs/v1', 'arena-clock/v1', 'guest-motor-output/v1', 'state-sample/v1',
+export const FULL_CAPABILITIES = ['arena-inputs/v1', 'arena-clock/v1', 'guest-motor-output/v1', 'state-sample/v1',
     'nuttx-program/v1', 'lockstep/v1', 'motor-bridge-drive/v1', 'external-shaft/v1', 'nuttx-program-deferred-start/v1'];
 export const FAKE_IMAGE = 'f'.repeat(16) + '0123456789abcdef'.repeat(3);
 
@@ -134,7 +135,7 @@ class FakeFirmware {
             speed: 0, control: freshControl(), braking: false, deferred: false, delta: 0, velocity: 0}));
         this.program = program;
         this.p = {state: program ? 'ready' : 'empty', pc: 0, owned: 0, moving: -1, waiting: false, deadline: 0, ending: false,
-            started: 0, error: 0};
+            awaiting: 0, started: 0, error: 0};
         this.now = 0;
     }
 
@@ -231,7 +232,8 @@ class FakeFirmware {
     start () {
         if (this.p.state === 'running') return -16;
         if (!['ready', 'complete', 'stopped', 'fault'].includes(this.p.state)) return -22;
-        Object.assign(this.p, {state: 'running', pc: 0, owned: 0, moving: -1, waiting: false, ending: false, started: this.now, error: 0});
+        Object.assign(this.p, {state: 'running', pc: 0, owned: 0, moving: -1, waiting: false, ending: false, awaiting: 0,
+            started: this.now, error: 0});
         return 0;
     }
 
@@ -251,6 +253,14 @@ class FakeFirmware {
             if (rc < 0) { this._fault(rc); return; }
             if (!rc) return;
             p.moving = -1;
+        }
+        if (p.awaiting) {
+            for (let i = 0; i < 6; i++) if (p.awaiting & (1 << i)) {
+                const rc = this.done(i);
+                if (rc < 0) { this._fault(rc); return; }
+                if (!rc) return;
+            }
+            p.awaiting = 0;
         }
         if (p.ending) {
             for (let i = 0; i < 6; i++) if (p.owned & (1 << i)) {
@@ -293,6 +303,10 @@ class FakeFirmware {
                 p.pc++;
                 if (op === 6) { p.moving = a; return; }
                 break;
+            case 8:
+                p.awaiting = a;
+                p.pc++;
+                return;
             default:
                 this._fault(-71);
                 return;
@@ -327,15 +341,17 @@ export class FakeSpikeRenode {
     /**
      * @param {object} [options]
      * @param {'default'|'six-motors'} [options.topology]
-     * @param {number[][]} [options.program] firmware-program ABI instructions (+ fake op 7), uploaded before
+     * @param {number[][]} [options.program] firmware-program ABI instructions (v1 or v2), uploaded before
      *        begin and started by itself at the first service tick (R13d's tests). Without it, a program
      *        arrives by `program.packet` (BEGIN/CHUNK/COMMIT, guest running, outside lockstep) and runs on
      *        `program.control.submit` START, taken at the next service tick inside lockstep (§2.6).
      * @param {object} [options.faults] {skewAtStep, skewNs, repeatSeqAtStep}
      * @param {number} [options.latencyMs] each exchange resolves this much later (a real timer)
      * @param {string[]} [options.capabilities]
+     * @param {1|2} [options.instructionAbi] the image's g_bw_program_instruction_abi (1: no symbol, ops 0–6)
      */
-    constructor ({topology = 'default', program = null, faults = {}, latencyMs = 0, capabilities = FULL_CAPABILITIES} = {}) {
+    constructor ({topology = 'default', program = null, faults = {}, latencyMs = 0, capabilities = FULL_CAPABILITIES,
+        instructionAbi = 2} = {}) {
         const layout = TOPOLOGIES[topology];
         if (!layout) throw new Error(`fake topology '${topology}' is not modelled`);
         this.topology = topology;
@@ -350,6 +366,7 @@ export class FakeSpikeRenode {
         this.faults = faults;
         this.latencyMs = latencyMs;
         this.capabilities = capabilities;
+        this.instructionAbi = instructionAbi;
         // The supervisor's boot: RunFor 1.0 s.
         this.ms = 1000;
         this.seq = 0;
@@ -465,9 +482,14 @@ export class FakeSpikeRenode {
             this.upload.bytes.push(...bytes.subarray(10));
         } else if (op === 2 && this.upload?.id === id && this.upload.bytes.length === this.upload.count * 16) {
             const data = new DataView(Uint8Array.from(this.upload.bytes).buffer);
-            fw.program = Array.from({length: this.upload.count}, (_, i) => [0, 1, 2, 3].map(j => data.getInt32(i * 16 + j * 4, true)));
-            fw.programId = id;
-            fw.p.state = 'ready';
+            const rows = Array.from({length: this.upload.count}, (_, i) => [0, 1, 2, 3].map(j => data.getInt32(i * 16 + j * 4, true)));
+            // program.c bw_program_validate: a v1 image has no ops 7/8 and keeps its committed program.
+            if (this.instructionAbi < 2 && rows.some(([op]) => op === 7 || op === 8)) result = -22;
+            else {
+                fw.program = rows;
+                fw.programId = id;
+                fw.p.state = 'ready';
+            }
         } else result = -22;
         this.mailbox.reply = programReply(op, STATE_CODE[fw.p.state], id, {result, count: this.upload?.count ?? 0,
             received: this.upload?.bytes.length ?? 0});

@@ -42,7 +42,7 @@ test('steering and follow lifecycle match the actual original PXT method at cont
   ext.followSprite({ID:ids[0],TARGET:index===null?null:ids[index],SPEED:speed,TURN:turn});
  };
  const check=ms=>{
-  now=ms;ext._inst._globalElapsedMs=ms;callbacks.forEach(fn=>fn());ext._moveFollowingSprites();
+  now=ms;ext._state().elapsedMs=ms;callbacks.forEach(fn=>fn());ext._moveFollowingSprites();
   for(const key of ['x','y','vx','vy'])assert.equal(self[key],ref[key],`${key} at ${ms}`);
   assert.equal(ext._state().followingSprites.length,scene.followingSprites.length);
  };
@@ -107,7 +107,7 @@ test('following owns its scene and steers after controller input before physics'
  ext.unfollowSprite({ID:ids[0]});assert.equal(parent.followingSprites.length,1,'child cancellation does not change parent binding');
  ext.popScene();assert.equal(ext._state(),parent);
  ext.followSprite({ID:ids[0],TARGET:ids[1],SPEED:25,TURN:400});
- ext._inst._globalElapsedMs+=100;ext._moveFollowingSprites();
+ ext._state().elapsedMs=(ext._state().elapsedMs || 0)+100;ext._moveFollowingSprites();
  assert.equal(parent.followingSprites.length,1);
  ext.unfollowSprite({ID:ids[0]});assert.equal(self.vx,0);assert.equal(self.vy,0);
 });

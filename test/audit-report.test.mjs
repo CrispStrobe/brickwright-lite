@@ -34,3 +34,25 @@ test('public roundtrip summary keeps structural and compile categories and remov
         assert.match(text, /input 1 \| fail/);
     } finally { fs.rmSync(dir, {recursive: true, force: true}); }
 });
+
+test('a binary-asset hop with no differences is reported apart from a measured loss', async () => {
+    const {pathOutcome, structuralOutcome, BINARY_NOT_COMPARED} = await import('../scripts/lib/roundtrip-status.mjs');
+    const none = {missingTargets: [], lostOpcodes: [], missingAssets: []};
+    assert.equal(structuralOutcome({differences: none, binaryAssetsNotRepresented: true}), BINARY_NOT_COMPARED);
+    assert.equal(structuralOutcome({differences: {...none, missingAssets: ['art']}, binaryAssetsNotRepresented: true}), 'loss');
+    assert.equal(structuralOutcome({differences: none, binaryAssetsNotRepresented: true, exportUnsupported: ['x']}), 'partial');
+    assert.equal(structuralOutcome({differences: none}), 'preserved');
+    assert.equal(pathOutcome({differences: none, compile: {status: 'fail'}}), 'compile-failed');
+
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-public-audit-'));
+    try {
+        const input = path.join(dir, 'report.json'), output = path.join(dir, 'report.md');
+        fs.writeFileSync(input, JSON.stringify({generatedAt: 'fixture', rows: [{target: 'arcade', paths: [
+            {label: 'makecode -> bw -> sb3 -> bw -> project', differences: none, binaryAssetsNotRepresented: true}]}]}));
+        const run = spawnSync(process.execPath, ['scripts/report-roundtrips.mjs', input, output],
+            {cwd: path.resolve(import.meta.dirname, '..'), encoding: 'utf8'});
+        assert.equal(run.status, 0, run.stderr);
+        assert.match(fs.readFileSync(output, 'utf8'),
+            /Arcade TypeScript \| makecode -> bw -> sb3 -> bw -> project \| 0 \| 0 \| 0 \| 0 \| 0 \| 0 \| 1 \|/);
+    } finally { fs.rmSync(dir, {recursive: true, force: true}); }
+});

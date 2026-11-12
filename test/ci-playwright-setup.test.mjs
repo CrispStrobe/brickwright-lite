@@ -60,3 +60,17 @@ test('the actual runner mirror-list indirection preserves fallback priorities an
         }
     }finally{await rm(dir,{recursive:true,force:true});}
 });
+
+test('Tauri test prepares the official mirror from repository root before package installation',async()=>{
+    const workflow=await readFile(new URL('../.github/workflows/tauri.yml',import.meta.url),'utf8');
+    const job=/^  test:\n([\s\S]*?)(?=^  [a-zA-Z0-9_-]+:)/m.exec(workflow)?.[1];
+    assert.ok(job,'actual Tauri test job');
+    assert.match(job,/working-directory: apps\/tauri/,'the job default is not the helper root');
+    const preparation=/^      - name: Prepare official Ubuntu package mirror\n((?:        [^\n]*\n)+)/m.exec(job);
+    assert.ok(preparation,'mirror preparation must be an actual test-job step');
+    assert.match(preparation[1],/^        working-directory: \.\s*$/m,'the helper runs at repository root');
+    assert.match(preparation[1],/^        run: sudo env PATH="\$PATH" node scripts\/prepare-playwright-apt\.mjs\s*$/m);
+    const installation=job.indexOf('      - name: Install Tauri system dependencies\n');
+    assert.ok(installation>preparation.index,'prepare sources before apt update or install');
+    assert.ok(job.indexOf('sudo apt-get update')>installation);
+});

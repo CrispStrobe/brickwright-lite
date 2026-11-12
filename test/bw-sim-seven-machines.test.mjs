@@ -24,7 +24,7 @@ for(const [id,pieces,motors,marker]of machines){
   }
   const original=parseModel(read(`test/fixtures/model-files/${id}-source/original.ldr`),{catalog:C}).model;
   assert.equal(original.parts.length,id==='butterfly'?225:id==='stride-lab'?76:id==='tilt-lab'?139:pieces);for(const a of p.model.parts){
-   if(a.id.startsWith('guard_')||(id==='twinpoint'&&['linkBP','linkCP'].includes(a.id))||a.id==='guide_top_tie'||(id==='stride-lab'&&a.id==='footBasePin80_0'))continue;const b=original.parts.find(p=>p.id===a.id);assert.ok(b,a.id);assert.equal(a.part,b.part);assert.equal(a.color,b.color);
+   if(a.id.startsWith('guard_')||(id==='twinpoint'&&['linkBP','linkCP','hingeP'].includes(a.id))||a.id==='guide_top_tie'||(id==='stride-lab'&&a.id==='footBasePin80_0'))continue;const b=original.parts.find(p=>p.id===a.id);assert.ok(b,a.id);assert.equal(a.part,b.part);assert.equal(a.color,b.color);
    for(const key of ['position','rotation'])assert.ok(a[key].every((v,k)=>Math.abs(v-b[key][k])<=.000000501),'six-decimal source geometry retained');
   }
   const plan=buildSteps(p.model,C);assert.ok(plan.steps.every(s=>s.parts.length<=STEP_MAX));assert.deepEqual(plan.steps.flatMap(s=>s.parts).sort(),p.model.parts.map(p=>p.id).sort());

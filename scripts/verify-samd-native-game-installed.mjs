@@ -3,7 +3,10 @@
 // Actual source-bound custom-protocol app; no private SPIKE resource run.
 import {existsSync,writeFileSync,readFileSync,mkdirSync} from 'node:fs';
 import {createHash} from 'node:crypto';
-import {resolve,join} from 'node:path';
+import {execFileSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+import {resolve,join,dirname} from 'node:path';
+import {samdWebdriverRequest} from './lib/samd-webdriver-request.mjs';
 import {spawnOwnedDriver} from './lib/owned-driver.mjs';
 import {prepareSamdPacket,saveSamdResult,startSamdProcessMemory} from './verify-samd-native-game-browser.mjs';
 import {runSamdNativeGame} from './samd-native-game-browser.mjs';
@@ -22,13 +25,7 @@ need(driverBin,'pinned Tauri driver required');
 const {child:driver,stop}=spawnOwnedDriver(driverBin,['--port','4444','--native-driver',nativeDriver],{stdio:['ignore','pipe','pipe']});
 const driverLogs=[];driver.stdout.on('data',b=>driverLogs.push(String(b)));driver.stderr.on('data',b=>driverLogs.push(String(b)));
 const pause=ms=>new Promise(done=>setTimeout(done,ms));
-const call=async(method,route,body,timeout=10000)=>{
-    const options={method,headers:{'content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)};
-    if(timeout!==null)options.signal=AbortSignal.timeout(timeout);
-    const response=await fetch('http://127.0.0.1:4444'+route,options);
-    const value=await response.json();need(response.ok&&!value.value?.error,'actual WebDriver operation failed: '+route);
-    return value.value;
-};
+const call=(method,route,body,timeout=10000)=>samdWebdriverRequest(new URL('http://127.0.0.1:4444'+route),method,body,timeout);
 let session,finishMemory;
 try {
     let ready=false;let expired=false;
@@ -61,6 +58,9 @@ try {
     },4900000);
     need(result?.ok,result?.error||'actual installed guest failed');
     result.value.binary_sha256=receipt.binarySha256;result.value.consumer=receipt.consumer;result.value.ci_checkout=receipt.ciCheckout;
+    result.value.observer={commit:execFileSync('/usr/bin/git',['rev-parse','HEAD'],{cwd:dirname(fileURLToPath(import.meta.url)),encoding:'utf8'}).trim(),
+        scriptSha256:createHash('sha256').update(readFileSync(fileURLToPath(import.meta.url))).digest('hex'),
+        transportSha256:createHash('sha256').update(readFileSync(new URL('./lib/samd-webdriver-request.mjs',import.meta.url))).digest('hex')};
     result.value.process_memory=finishMemory();finishMemory=undefined;
     saveSamdResult(out,result.value,true);
     const screenshot=await call('GET',`/session/${session}/screenshot`,undefined,30000);

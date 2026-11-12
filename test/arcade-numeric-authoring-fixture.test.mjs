@@ -5,7 +5,7 @@ import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arc
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 
 test('owned numeric GUI fixture is supported source, with deterministic visible state and unseeded bounded entropy', async () => {
-    for (const options of [{}, {maximum: 12, operation: 'max', message: 'PLAY'}]) {
+    for (const options of [{}, {maximum: 12, operation: 'max', message: 'PLAY'}, {maximum: 12, operation: 'atan2', message: 'PLAY'}]) {
         const files = numericAuthoringFiles(options), imported = arcadeToPseudocode(files);
         assert.deepEqual(imported.unsupported, []);
         for (const word of ['arcade random fraction', 'arcade math', 'arcade percent chance', 'arcade clamp minimum', 'StringArray', 'arcade repeat while']) assert.ok(imported.code.includes(word), word);

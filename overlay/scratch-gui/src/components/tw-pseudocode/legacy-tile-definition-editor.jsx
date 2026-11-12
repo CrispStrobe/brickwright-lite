@@ -2,7 +2,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import {makeT, browserLocale} from '../../lib/bw-i18n.js';
-import {ARCADE_PALETTE} from '../../lib/bw-makecode/arcade-assets.js';
+import {drawTilemapImage, tilemapPixelColor} from '../../lib/bw-makecode/tilemap-palette.js';
 import {findLegacyTileDefinitions, writeLegacyTileDefinition} from '../../lib/bw-makecode/legacy-layout-editor.js';
 import {createHistory, commit, undo, redo} from '../../lib/bw-makecode/tilemap-editor.js';
 const t = makeT({en: {title: 'Legacy tile definitions', definition: 'Definition', wall: 'Wall for this colour',
@@ -30,10 +30,7 @@ class LegacyTileDefinitionEditor extends React.Component {
         const scale = Math.max(1, Math.min(24, Math.floor(192 / Math.max(data.width, data.height))));
         canvas.width = data.width * scale; canvas.height = data.height * scale;
         const ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, canvas.width, canvas.height);
-        for (let y = 0; y < data.height; y++) for (let x = 0; x < data.width; x++) {
-            ctx.fillStyle = ARCADE_PALETTE[data.pixels[y * data.width + x]] || '#e2e8f0';
-            ctx.fillRect(x * scale, y * scale, scale, scale);
-        }
+        drawTilemapImage(ctx, data, 0, 0, scale, this.props.palette);
     }
     select (index) {
         const refs = findLegacyTileDefinitions(this.props.vm), ref = refs[index];
@@ -73,9 +70,9 @@ class LegacyTileDefinitionEditor extends React.Component {
                             this.edit({...data, pixels});
                         }} />
                     <div style={{display: 'grid', gridTemplateColumns: 'repeat(8, 24px)', gap: 2}}>
-                        {ARCADE_PALETTE.map((hex, index) => <button key={index} type="button" data-testid={`bw-legacy-definition-colour-${index}`}
+                        {Array.from({length: 16}, (_, index) => <button key={index} type="button" data-testid={`bw-legacy-definition-colour-${index}`}
                             title={t(locale, 'colour', {n: index})} aria-pressed={colour === index}
-                            style={{width: 24, height: 24, background: hex || '#e2e8f0', border: colour === index ? '2px solid #4c97ff' : '1px solid #94a3b8'}}
+                            style={{width: 24, height: 24, background: tilemapPixelColor(this.props.palette, index) || '#e2e8f0', border: colour === index ? '2px solid #4c97ff' : '1px solid #94a3b8'}}
                             onClick={() => this.setState({colour: index})} />)}
                     </div>
                     <label><input type="checkbox" data-testid="bw-legacy-definition-wall" disabled={!refs[selected].wallEditable}
@@ -91,5 +88,5 @@ class LegacyTileDefinitionEditor extends React.Component {
         </section>;
     }
 }
-LegacyTileDefinitionEditor.propTypes = {vm: PropTypes.object.isRequired, locale: PropTypes.string};
+LegacyTileDefinitionEditor.propTypes = {vm: PropTypes.object.isRequired, locale: PropTypes.string, palette: PropTypes.object.isRequired};
 export default LegacyTileDefinitionEditor;

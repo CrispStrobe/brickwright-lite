@@ -7,6 +7,7 @@ import {dirname, extname, join, normalize, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
 import {isHostedCompilerRequest} from './lib/offline-compiler-policy.mjs';
+import {openCodeActions} from './lib-code-actions.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const build = join(root, 'packages/scratch-gui/build');
@@ -111,11 +112,8 @@ WHEN flag clicked:
     // exports the complete current listing. Validate that artifact rather than
     // mistaking the currently rendered viewport for the whole file.
     const downloadListing = async () => {
-        // <details> toggles on every summary click, so open it only if it is
-        // closed — a second click on an open menu closes it and the save
-        // button is gone before the download event can fire.
-        const menu = page.locator('[data-testid="bw-code-actions"]');
-        if (!(await menu.evaluate(el => el.open))) await menu.locator('summary').click();
+        // Use the actual menu trigger and leave an already-open popup open.
+        await openCodeActions(page);
         const [dl] = await Promise.all([
             page.waitForEvent('download'),
             page.locator('[data-testid="bw-save-file"]').click()

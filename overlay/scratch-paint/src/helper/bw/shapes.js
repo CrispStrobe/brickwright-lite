@@ -1,30 +1,22 @@
 import paper from '@scratch/paper';
 
-/**
- * Brickwright: geometry for the parametric shape tools (polygon and star).
- *
- * Both are built by hand rather than with paper.Path.RegularPolygon / paper.Path.Star, for two
- * reasons: those take a single radius, so they can only ever draw a shape that fits a SQUARE,
- * and they choose their own starting angle. Inscribing into the dragged rectangle instead makes
- * the tools behave like the rect and oval tools next to them — drag a box, get a shape that
- * fills it — and fixing the start angle at straight up keeps a triangle pointing where people
- * expect it to.
+/** Regular polygons and radially symmetric stars fitted inside the drag box.
+ * A single scale preserves equal polygon edges/angles, even for a wide or tall drag.
+ * Centre the resulting bounds so odd-sided shapes do not drift within the box.
  */
 
 // Straight up. paper's y axis points down, so this is negative.
 const START_ANGLE = -Math.PI / 2;
 
-/**
- * @param {!paper.Rectangle} rect Box to inscribe the shape in.
- * @param {!number} angle Angle in radians.
- * @param {!number} scale Fraction of the full radius (1 for outer points).
- * @return {!paper.Point} The point on the inscribed ellipse at that angle.
- */
-const pointOn = function (rect, angle, scale) {
-    return new paper.Point(
-        rect.center.x + (rect.width / 2 * scale * Math.cos(angle)),
-        rect.center.y + (rect.height / 2 * scale * Math.sin(angle))
-    );
+const fitPoints = (rect, points) => {
+    const xs = points.map(point => point[0]);
+    const ys = points.map(point => point[1]);
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const scale = Math.min(Math.abs(rect.width) / (maxX - minX), Math.abs(rect.height) / (maxY - minY));
+    const x = rect.center.x - ((minX + maxX) / 2 * scale);
+    const y = rect.center.y - ((minY + maxY) / 2 * scale);
+    return points.map(point => new paper.Point(x + point[0] * scale, y + point[1] * scale));
 };
 
 /**
@@ -34,11 +26,13 @@ const pointOn = function (rect, angle, scale) {
  * @return {!paper.Path} The closed path.
  */
 const makePolygon = function (rect, sides) {
-    const count = Math.max(3, Math.round(sides));
+    const count = Number.isFinite(Number(sides)) ? Math.max(3, Math.round(sides)) : 3;
     const path = new paper.Path();
-    for (let i = 0; i < count; i++) {
-        path.add(pointOn(rect, START_ANGLE + (i * 2 * Math.PI / count), 1));
-    }
+    const points = Array.from({length: count}, (_, i) => {
+        const angle = START_ANGLE + (i * 2 * Math.PI / count);
+        return [Math.cos(angle), Math.sin(angle)];
+    });
+    for (const point of fitPoints(rect, points)) path.add(point);
     path.closed = true;
     // Let the objects tree name it outright instead of inferring it back out of the segments.
     path.data.bwKind = `Polygon (${count} sides)`;
@@ -53,13 +47,16 @@ const makePolygon = function (rect, sides) {
  * @return {!paper.Path} The closed path.
  */
 const makeStar = function (rect, points, innerRatio) {
-    const count = Math.max(3, Math.round(points));
+    const count = Number.isFinite(Number(points)) ? Math.max(3, Math.round(points)) : 3;
     const inner = Math.min(0.95, Math.max(0.05, innerRatio));
     const path = new paper.Path();
     // Alternate outer and inner vertices, so a full turn takes 2 * count steps.
-    for (let i = 0; i < count * 2; i++) {
-        path.add(pointOn(rect, START_ANGLE + (i * Math.PI / count), i % 2 === 0 ? 1 : inner));
-    }
+    const vertices = Array.from({length: count * 2}, (_, i) => {
+        const angle = START_ANGLE + (i * Math.PI / count);
+        const radius = i % 2 === 0 ? 1 : inner;
+        return [Math.cos(angle) * radius, Math.sin(angle) * radius];
+    });
+    for (const point of fitPoints(rect, vertices)) path.add(point);
     path.closed = true;
     // Let the objects tree name it outright instead of inferring it back out of the segments.
     path.data.bwKind = `Star (${count} points)`;

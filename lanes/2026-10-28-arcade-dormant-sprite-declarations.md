@@ -1,6 +1,7 @@
 # Dormant Sprite local and return declaration fidelity
 
-Status: CLAIMED; implementation waits for canonical registration on main.
+Status: DONE — scoped source implementation and focused controls completed.
+External original-PXT/native and composed-head qualification remain pending.
 Owner: Arcade dormant-declaration repair in an isolated branch.
 Registration base: main `cb28becdb16`.
 Source continuation base: typed-bitwise checkpoint `2b50a37cffc` on the existing
@@ -84,3 +85,76 @@ shared server, duplicate dispatches or full-CI labels without an actual need.
 Deliver normal checkpoint pushes for integration-owner composition. Require all
 enabled final-head checks and reviewed/landed tree and parent verification before
 landing source. Registration itself is Markdown only, not runtime qualification.
+
+## Source checkpoint and remaining gates
+
+A separate declaration plan now checks the physical local/return/caller census
+against actual emitted lexical bindings. Locals require real null writes before
+every read under the canonical initialization analysis, including both branches
+and loop entry. Its private analysis excludes only the emitter-generated `any = 0`
+initializer. Accepted locals render as `Sprite = null`; original assignments and
+other effects remain. Result reconstruction requires null-only returns, current
+ordinary call identity, and a wholly dormant caller closure with exact flags
+consumers. The plan changes no live value graph or runtime service.
+
+The final selected source cohort has 28 passes (11 new plus 17 parameter
+controls); the external acceptance case was explicitly excluded from this probe.
+Removing local/result reconstruction causes four expected failures each; removing
+the physical initialization guard causes two. Exact helper bytes were restored
+and all 28 source controls passed again.
+
+The source cohort covers repeated direct/JSON reimport, Code rebuild, SB3 reopen,
+live callers, non-null writers/returns, extra consumers, branch initialization,
+reads before initialization, actual helper/loop name captures, multiple calls,
+side effects and edits after prior export. The parameter cohort is retained.
+Independent read-only review found no concrete counterexample; that is not
+runtime qualification.
+
+The same new test file contains an enabled-by-default original-PXT/native case.
+Its [first hosted attempt](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40758182799/job/123090494998)
+failed in the original simulator's startup-marker observation, before Lite ran:
+the single unused constant was absent from simulator globals. The corrected
+fixture executes `ready = 0; ready += 1` and requires exactly one published
+`ready`/`Game_ready` marker equal to 1 in each original route. Native startup,
+declaration, compilation and saved-project assertions remain required. The
+corrected case has no passing external verdict yet; retain the first failure.
+It compiles original and exported files in the pinned simulator, checks actual
+Lite startup through Code and reimport, and reopens a fresh VM from SB3. It does
+not execute the intentionally dormant null receiver bodies or assert hardware
+behavior. Run it on an external prepared Node 22 worker with locked/integrated
+GUI/VM dependencies, pinned synced Arcade runtime and Playwright Chromium:
+
+```sh
+node --import ./scripts/lib/register-gui-scope.mjs --test --test-concurrency=1 test/arcade-dormant-sprite-declarations.test.mjs test/arcade-typed-bitwise-reimport-fidelity.test.mjs test/makecode-arcade-typed-bitwise.test.mjs test/makecode-arcade-declared-references.test.mjs
+```
+
+Preserve the declared-reference test's existing TODO/runtime limitations; this
+repair does not resolve its independent Array/native-addition refusals. A bounded
+source-only probe can explicitly use `--test-skip-pattern='original PXT/native:'`;
+that excludes acceptance only for that probe and cannot qualify landing. Missing
+Playwright or other setup inputs remain an unavailable external qualification.
+No compiler/native/corpus success is inferred from the source cohort. The last
+raw census remains 147 translated / 36 partial / one parse failure out of 184.
+
+After actual acceptance passes, compose with current integration/main, retain
+first originals once, qualify every enabled exact-head check and verify landed
+tree/parents. Keep the separate original declared-reference failure and unrelated
+integration failures visible. General reference annotation authoring, initialized
+Sprite producer support and broader reference-return graphs remain separate work.
+
+### Primitive declaration conflicts
+
+A later edit can replace null with a Number, String or Boolean while retaining
+a Sprite flags getter. The actual emitted primitive declaration is now checked
+against physical flags uses and their emitted lexical binding. Export lists the
+incompatible local/result declaration and preserves its exact type and body;
+it neither silently returns invalid typed code nor coerces the value to Sprite.
+The expanded negative covers all three primitive types for locals and results.
+Removing only diagnostic publication produces two expected assertion failures;
+restoration retains the passing 28 selected source controls. Prior local/result/
+initialization mutation receipts remain associated with their earlier checkpoint.
+
+Source work is complete for this narrow contract. Publication and original
+intake stay with this candidate's author through external qualification. The
+DONE status does not assert original-PXT/native acceptance, corpus closure,
+landing or broader reference-graph support.

@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
 import {makeT, browserLocale} from '../../lib/bw-i18n.js';
 import React from 'react';
-import {paintArcadeDeviceFrame} from '../../lib/bw-arcade-device-frame.js';
+import {mirrorArcadeDeviceFrame, paintArcadeDeviceFrame} from '../../lib/bw-arcade-device-frame.js';
 import VM from 'scratch-vm';
 
 // Our component, so a local table rather than react-intl — see lib/bw-i18n.js.
@@ -154,17 +154,26 @@ const ArcadeDevicePane = ({vm}) => {
     }, [vm]);
 
     React.useEffect(() => {
+        // The renderer can be replaced across stage/project transitions; follow it,
+        // but only to re-attach. Pixels are copied right after renderer.draw()
+        // (see bw-arcade-device-frame.js), never from this loop.
         let frame;
-        const paint = () => {
-            const destination = canvasRef.current;
-            const source = vm.runtime.renderer && vm.runtime.renderer.canvas;
-            paintArcadeDeviceFrame(destination, source);
-            frame = requestAnimationFrame(paint);
+        let attached = null;
+        let release = null;
+        const follow = () => {
+            const renderer = vm.runtime.renderer || null;
+            if (renderer !== attached) {
+                if (release) release();
+                attached = renderer;
+                release = mirrorArcadeDeviceFrame(renderer, () => canvasRef.current);
+                if (!renderer) paintArcadeDeviceFrame(canvasRef.current, null);
+            }
+            frame = requestAnimationFrame(follow);
         };
-        frame = requestAnimationFrame(paint);
+        follow();
         return () => {
             cancelAnimationFrame(frame);
-
+            if (release) release();
         };
     }, [vm]);
 

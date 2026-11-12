@@ -1,0 +1,336 @@
+{
+  "revision": "prequalification-v6",
+  "sealedDate": "2026-10-27",
+  "model": "Tipline \u2014 matched loads, sliding versus tipping",
+  "baseline": "e4ad97aaa7c84f387ee7fe314d782844abcc9722",
+  "scope": "Frozen before fresh final native qualification of the174-part exported machine. Both172-part v5 native runs and their paired comparison passed and remain preserved; a subsequent physical construction review adds two canonical smooth bearing tiles under the narrow approach tiles. This construction improvement requires fresh native runs, not reuse of the prior PASS.",
+  "physicalQuestion": "With identical outer frames, support footprints, parts, total masses and materials, does moving the internal ballast upward change the first instability from sliding to tipping, and does exchanging ballast heights between lanes exchange those outcomes?",
+  "variants": {
+    "main": {
+      "file": "tipline.ldr",
+      "left": "low",
+      "right": "high"
+    },
+    "swapped": {
+      "file": "tipline-swapped.ldr",
+      "left": "high",
+      "right": "low"
+    }
+  },
+  "markers": {
+    "chassis": "hub",
+    "deck": "deck_tile_-80",
+    "deckOriginLocalLdu": [
+      0,
+      0,
+      80
+    ],
+    "deckAcrossPointLocalLdu": [
+      40,
+      0,
+      80
+    ],
+    "deckDownhillPointLocalLdu": [
+      0,
+      0,
+      120
+    ],
+    "deckNormalPointLocalLdu": [
+      0,
+      -40,
+      80
+    ],
+    "leftBase": "left_load_base",
+    "leftRoof": "left_load_roof",
+    "rightBase": "right_load_base",
+    "rightRoof": "right_load_roof",
+    "baseBottomLocalLdu": [
+      0,
+      8,
+      0
+    ],
+    "baseDownhillEdgeLocalLdu": [
+      0,
+      8,
+      40
+    ],
+    "baseUphillEdgeLocalLdu": [
+      0,
+      8,
+      -40
+    ],
+    "roofLocalLdu": [
+      0,
+      0,
+      0
+    ]
+  },
+  "geometry": {
+    "placedParts": 174,
+    "payloadPartsEach": 22,
+    "payloadCatalogueMassKg": 0.04646,
+    "payloadWidthAcrossMm": 48,
+    "payloadDepthDownhillMm": 32,
+    "payloadHeightIncludingStudsMm": 94.4,
+    "baseHalfWidthDownhillMm": 16,
+    "baseNativeCornerRadiusMm": 0.4,
+    "ballastHeightChangeLdu": 152,
+    "calculatedComHeightMm": {
+      "low": 32.30490866609926,
+      "high": 61.61872700445484
+    },
+    "deckSurfaceAcrossBoundsMm": [
+      -64,
+      64
+    ],
+    "deckSurfaceDownhillBoundsMm": [
+      -64,
+      24
+    ],
+    "retainingStructureDownhillBoundsMm": [
+      -64,
+      40
+    ],
+    "catchWallUphillFaceMm": 24,
+    "payloadInitialDownhillCenterMm": -44,
+    "payloadInitialAcrossCenterMm": {
+      "left": -28,
+      "right": 28
+    },
+    "supportConstruction": "One48288 tile at source Z=-120 LDU spans Z[-200,-40]. Six4162 approach tiles span Z[-40,20]. The observer datum is source Z=-40, so the continuous smooth approach is downhill[-64,24] mm. At each outer edge X=\u00b1150 LDU, one3460 main rail atZ=-120 and one3623 approach rail atZ=-10 support the tiles atY=-226 outside the load lanes. The approach rails end atsource Z=20 and meet the wall foundation without overlapping it. Three lower3027 plates remain atY=-218; their stud tops are4.8 mm below the tile face. A staggered ten-course full-height wall and4282 foundation occupy source Z[20,60] LDU, downhill[24,40] mm. The admitted retained region is the smooth approach plus wall footprint; lower structural overhangs[-80,64] mm are not payload runway. Two63864 smooth bearing tiles, approach_bearing_-70 and approach_bearing_70, lie at source X=\u00b170,Y=-226,Z=-10 LDU with the standard RY rotation. They clutch three lower-backing studs each and bear on the upper approach-tile rims. Their flat top is3.2 mm below the load surface, beyond the native2 mm speculative contact reach; they add physical support without changing the top contact surface or declared runway.",
+    "catchWallDownhillBoundsMm": [
+      24,
+      40
+    ],
+    "catchWallHeightAboveDeckMm": 92.8,
+    "catchWallHeightIncludingStudsMm": 94.4,
+    "completeLowerStructureDownhillBoundsMm": [
+      -80,
+      64
+    ],
+    "catchClearanceObservation": "The full-width wall extends continuously from below the tile face to92.8 mm above it, plus studs. The existing conservative catch clearance is24 mm minus the maximum downhill extent of every actual payload collider, in the observed deck frame. It does not use encoder angle, predicted tip geometry, or a raised-bar height exception. The existing2 mm free-clearance threshold remains unchanged.",
+    "approachBearingParts": [
+      "approach_bearing_-70",
+      "approach_bearing_70"
+    ],
+    "approachBearingTopBelowLoadSurfaceMm": 3.2
+  },
+  "topology": {
+    "hubs": 1,
+    "actuators": 1,
+    "motorPort": "A",
+    "dynamicAssemblies": 4,
+    "freePayloadAssemblies": 2,
+    "payloadMechanicalJoints": 0,
+    "payloadCouplings": 0,
+    "payloadPartsAllDeclaredLoad": true,
+    "payloadDeckCollisionEnabled": true,
+    "hiddenStaticPartsAllowed": false,
+    "allowedMechanicalHinges": "Only chassis-to-deck coaxial hinges; their actual count and physical closure are reported."
+  },
+  "predictions": {
+    "heightSource": "Actual admitted native COM relative to the base support face, checked against the independent catalogue calculation.",
+    "tipSharp": "theta = atan(b/h)",
+    "tipNativeRounded": "theta = atan((b-r)/(h-r)); r is the source-defined base box convex radius.",
+    "slide": "theta = atan(sqrt(mu_deck*mu_payload)); inspect the actual compiled body friction coefficients.",
+    "expectedBodyFriction": 0.4,
+    "expectedPairFriction": 0.4,
+    "expectedSlideDeg": 21.80140948635181,
+    "expectedRoundedTipDeg": {
+      "low": 26.056458762781627,
+      "high": 14.296082289315004
+    },
+    "limits": "Quasistatic first-instability references. The low tipping angle assumes sticking and does not predict that an already sliding load must tip there. No friction calibration, payload energy conservation or physical hardware accuracy is claimed."
+  },
+  "program": {
+    "stages": {
+      "startup": 0,
+      "outward": 1,
+      "topDwell": 2,
+      "return": 3,
+      "complete": 4
+    },
+    "physicalDeckTargetsDeg": [
+      0,
+      23.5,
+      0
+    ],
+    "outwardSpeedDps": 1,
+    "returnSpeedDps": 3,
+    "topDwellSeconds": 0.3,
+    "initialHoldSecondsMin": 0.5,
+    "finalHoldSecondsMin": 0.5,
+    "watchdogSecondsMax": 60,
+    "encoderSign": "Determine and record the actual native motor sign before qualification; positive physical slope means downhill toward increasing source LDraw Z. Magnitude and physical direction are fixed here.",
+    "completion": "Return motor A and the actual deck to the saved datum in hold. Free payloads need not return upright or to their starting positions; reset the scene before another run."
+  },
+  "nativeSampling": {
+    "fixedStepHz": 200,
+    "frameMs": 16.666666666666668,
+    "coldSeconds": 2,
+    "afterSeconds": 3,
+    "timeLimitSeconds": 60,
+    "velocityClock": "Use motorDynamics.t from the last completed native step, in seconds; track.t remains the harness session time in milliseconds."
+  },
+  "eventDefinitions": {
+    "persistenceMs": 100,
+    "tipSignedTiltDeg": 5,
+    "slideDownhillDisplacementMm": 2,
+    "slideRelativeTiltDegMax": 3,
+    "eventTime": "The first sample starting an uninterrupted qualifying interval of at least 100 ms; report the confirmation sample separately.",
+    "tipDirection": "Positive roof-to-base lean toward the deck's actual downhill direction, relative to its normal. A world-frozen upright payload leans the wrong way and cannot count as tipping.",
+    "slideCoordinate": "Observed geometric base-bottom center in the actual deck frame, relative to the settled initial pose; never inferred from COM motion or encoder angle.",
+    "qualificationWindow": "Only the outward and top-dwell stages. First instability and useful initial motion must precede catch-wall, chassis, other-payload or ground contact.",
+    "velocitySampleValidity": "For each centered finite-difference sample, the previous, middle and next recorded frames must all lie in the outward/top-dwell program window, have no chassis/other-payload/ground contacts, and have at least the existing2 mm conservative catch clearance. This applies to both native linear and angular velocity comparisons."
+  },
+  "nativeGates": {
+    "tipReferenceErrorDegMax": 2,
+    "slideReferenceErrorDegMax": 2,
+    "tipBeforeSlideDeckAngleMarginDegMin": 4,
+    "highBaseTravelBeforeTipMmMax": 2,
+    "highUsefulSignedTiltDegMin": 25,
+    "lowUsefulFreeSlideMmMin": 10,
+    "lowTiltUntilUsefulSlideDegMax": 3,
+    "preEventCatchClearanceMmMin": 2,
+    "coldPayloadShiftMmMax": 0.75,
+    "coldPayloadRelativeTiltDegMax": 1,
+    "preTiltHeldPayloadShiftMmMax": 0.75,
+    "preTiltHeldPayloadRelativeTiltDegMax": 1,
+    "preTiltNativeLinearSpeedMSMax": 0.003,
+    "preTiltNativeAngularSpeedRadSMax": 0.035,
+    "encoderArrivalErrorDegMax": 1,
+    "deckTopArrivalErrorDegMax": 1,
+    "deckReturnRelativeChassisDegMax": 1,
+    "deckReturnGravityDegMax": 1.5,
+    "programOutwardDurationSecondsMin": 20,
+    "payloadMassErrorKgMax": 1e-08,
+    "payloadComHeightErrorMmMax": 0.05,
+    "smoothVelocitySamplesMin": 10,
+    "smoothSlideWindowMm": [
+      2,
+      25
+    ],
+    "smoothSlideNativeSpeedMSMin": 0.005,
+    "linearVelocityRmsAbsoluteAllowanceMS": 0.002,
+    "linearVelocityRmsRelativeAllowance": 0.05,
+    "linearVelocityMaxAbsoluteAllowanceMS": 0.005,
+    "linearVelocityMaxRelativeAllowance": 0.1,
+    "smoothTipSamplesMin": 6,
+    "smoothTipWindowDeg": [
+      5,
+      60
+    ],
+    "angularVelocityRmsAbsoluteAllowanceDegS": 5,
+    "angularVelocityRmsRelativeAllowance": 0.1,
+    "angularVelocityMaxAbsoluteAllowanceDegS": 15,
+    "angularVelocityMaxRelativeAllowance": 0.2
+  },
+  "qualifiedEnvelope": {
+    "motorAbsDegMax": 25.5,
+    "deckGravitySlopeDegMin": -2,
+    "deckGravitySlopeDegMax": 25.5,
+    "chassisTiltDegMax": 2,
+    "chassisTranslationMmMax": 2,
+    "hingeGapMmMax": 0.5,
+    "hingeAxisMismatchDegMax": 1,
+    "payloadAcrossDriftMmMax": 3,
+    "payloadColliderBelowDeckMmMax": 1,
+    "payloadSupportBoundaryToleranceMm": 2,
+    "payloadSidewaysTiltBeforeFirstEventDegMax": 3
+  },
+  "pairGates": {
+    "identicalProgramBytes": true,
+    "samePartIdsPartsColorsRotationsAndLoadFlags": true,
+    "onlySixteenBallastYPlacementsMayChange": true,
+    "nonBallastPlacementsIdentical": true,
+    "matchedConfigurationMassDifferenceKgMax": 1e-08,
+    "matchedConfigurationComHeightDifferenceMmMax": 0.01,
+    "matchedConfigurationEventAngleDifferenceDegMax": 2,
+    "outcomeFollowsBallastConfigurationInBothLanes": true
+  },
+  "observerChallenge": "Create a copy of each recording in which both free payload poses stay at their initial poses and their native linear/angular velocities are zero. The event and useful-motion gates must reject it. This is an observer test, never another physics run.",
+  "requiredEvidence": [
+    "Actual exported model/program hashes and ordinary preparation options",
+    "Actual topology and active payload/deck collision pairs",
+    "Actual body mass, COM, inertia and friction; no payload overrides",
+    "Independent marker trajectories and first-event angles",
+    "Native velocity-to-pose consistency on nonempty smooth-motion windows",
+    "Actual controller completion, hub identity, held return and finite watchdog implementation",
+    "Full trajectory contact/retention scope, including fallen and sliding payloads"
+  ],
+  "limitations": [
+    "Native contact uses rounded primitive colliders, a 0.2 mm penetration slop and simplified uniform body friction.",
+    "Payloads have44 colliders and use discrete collision; actual moving-deck retention and penetration must pass the exported-machine record.",
+    "Rigid stud connections do not prove physical clutch strength, durability or hardware retention.",
+    "There are no claimed physical deck-angle stops; the program's bounds are operating limits.",
+    "Watchdog timeout/fault coverage must be reported separately from successful normal completion.",
+    "App/browser integration and physical hardware are UNTESTED unless separately observed.",
+    "Intentional post-event wall arrest can have finite nominal wall-plane overlap in the native approximation. Report its measured magnitude; containment tolerance does not qualify wall-contact accuracy."
+  ],
+  "revisionReason": "After the preserved v5 paired PASS, physical review found the narrow approach tiles had only one outer stud attachment. Parent added two canonical63864 smooth bearing tiles beneath the interior rims, each clutched to three studs on the lower backing. Exported part count becomes174; model hashes change. Marker/surface/wall/payload dimensions, program, observer-v2, every numeric gate and every comparison condition remain unchanged. Final acceptance requires fresh paired native recordings of these exact exports.",
+  "parentContractSha256": "867b59fedcbc550a7e17da1145f9c6b02b138f93b6350080e675bb581c24785d",
+  "preservedPriorQualification": {
+    "file": "qualification-v5-pair.json",
+    "status": "PASS",
+    "sha256": "462789e423e0aea77e5d6279df331edde9e4431328adea5077c48abfc7544dcf",
+    "scope": "Exact172-part v5 geometry only; not transferred to v6."
+  },
+  "frozenModelFiles": {
+    "tipline.ldr": "890b7a6da4b3db341d25a4637214e3b06f49d7f8bd97bcd17b7bbc98bdfaa3ef",
+    "tipline-swapped.ldr": "2b8dd2bc031861c78c518fddd64657f59505b52d2b0e8a9528e9de8a6d408736"
+  },
+  "preservedFailureHistory": [
+    {
+      "file": "qualification-v2-main.json",
+      "status": "FAIL",
+      "sha256": "06f46a0567e0e96bb7e19da475ea266ba28cea345964cbbe80ae96b2786bbd41"
+    },
+    {
+      "file": "qualification-v3-main.json",
+      "status": "FAIL",
+      "sha256": "cdea6a58db7de72ad798f950e6666c7525adbc070b9d46548abebd2cc828e484"
+    }
+  ],
+  "observer": {
+    "revision": "tipline-observer-v2",
+    "file": "judge-tipline.mjs",
+    "sha256": "f47b3d66acb7968b5493e9475cf1f7f423d08b73fdb70b175c21b5f431fa7694",
+    "priorRevision": "tipline-observer-v1",
+    "priorFile": "history/observer-v1/judge-tipline.mjs",
+    "priorSha256": "bb55f51b9cf35348798b2a03a65223740412d04c144440224a3232c8d4afc53f",
+    "correction": "Predeclared before v4 qualification: all three records contributing to a centered pose/velocity difference must satisfy the original2 mm catch-clearance, no-other-body-contact, and outward/top-dwell program-window rules. The previous observer checked only the center record. No numeric tolerance, smooth-motion window, sample-count minimum, event test or prior failed verdict is changed."
+  },
+  "supersedesUnrunGeometry": {
+    "revision": "v4",
+    "contract": "contract-v4.json",
+    "contractSha256": "5df775b680497debed7beccd1a36213684da3a5a4fe2c82ce6e85a64fddeb4ea",
+    "models": "history/geometry-v4/models",
+    "status": "STATIC CONSTRUCTION FAIL; no native run",
+    "reason": "Approach edge rails overlapped wall foundation."
+  },
+  "preservedPriorPasses": [
+    {
+      "file": "qualification-v5-main.json",
+      "status": "PASS",
+      "sha256": "04adffd4df18456e0965b8c8e0cb58919cb2a3a7d31f61d731704202e7839454"
+    },
+    {
+      "file": "qualification-v5-swapped.json",
+      "status": "PASS",
+      "sha256": "fd2d0482f7c4c27d0ae34c5bb08f5b5445d077cd8ad8e7bb6f2675fd65827daa"
+    },
+    {
+      "file": "qualification-v5-pair.json",
+      "status": "PASS",
+      "sha256": "462789e423e0aea77e5d6279df331edde9e4431328adea5077c48abfc7544dcf"
+    }
+  ],
+  "postEventWallContactScope": {
+    "claim": "The passive wall intentionally arrests payloads after the required first-event and useful free-motion measurements. Its native contact is approximate.",
+    "priorV5ObservedMaximumNominalWallPlaneOverlapMm": 1.658979043516812,
+    "priorV5Evidence": "catch-clearance-v5.json",
+    "finalV6EvidenceRequired": "Report the actual nominal wall-plane overlap from both final recordings separately from their gate verdicts.",
+    "noAccuracySubstitution": "The2 mm support-boundary tolerance is a containment envelope. It is not a wall-contact accuracy or penetration gate. No zero-overlap contact or physical hardware retention claim is made.",
+    "measurementIndependence": "The original2 mm free wall-clearance rule still applies to first events, useful initial motion and every frame contributing to the centered velocity comparisons."
+  }
+}

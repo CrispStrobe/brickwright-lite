@@ -160,9 +160,18 @@ try {
     await page.mouse.move(upBounds.x + upBounds.width / 2, upBounds.y + upBounds.height / 2);
     await page.mouse.down();
     try {
-        await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
-            .flatMap(t => Object.values(t.variables)).some(v => v.name.replace(/^(?:Game_)+/, '') === 'dynamicStep' && v.value === -3));
-        report.dynamicController = {axis: 'Y', step: 90, heldUpResult: -3};
+        // PXT controller.dy(step) is direction * step * this frame's delta time,
+        // so a held Up reads -90 * frameDeltaTime, not a fixed -3 per 1/30 s.
+        const held = await page.waitForFunction(() => {
+            const runtime = window.__brickwrightStore.getState().scratchGui.vm.runtime;
+            const dt = Number(runtime.bwArcadeDeviceState?.frameDeltaTime) || 0;
+            const step = runtime.targets.flatMap(t => Object.values(t.variables))
+                .find(v => v.name.replace(/^(?:Game_)+/, '') === 'dynamicStep');
+            const value = Number(step?.value);
+            return dt > 0 && value < 0 && Math.abs(value + 90 * dt) < 1e-9 ? {value, dt} : null;
+        });
+        const heldUp = await held.jsonValue();
+        report.dynamicController = {axis: 'Y', step: 90, heldUpResult: heldUp.value, frameDeltaTime: heldUp.dt};
     } finally { await page.mouse.up(); }
     await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
         .flatMap(t => Object.values(t.variables)).some(v => v.name.replace(/^(?:Game_)+/, '') === 'dynamicStep' && v.value === 0));

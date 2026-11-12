@@ -1,6 +1,7 @@
 # Actual accessor and Sprite operands in native addition
 
-Status: CLAIMED; merge before implementation.
+Status: DONE — source implementation and focused controls are complete in
+the integration candidate. Hosted runtime/editor qualification and landing remain pending.
 Owner: Arcade integration, continuing the existing #1128 source lane.
 Base: main `29f304204af`.
 
@@ -67,3 +68,26 @@ Run affected original/native and editor/controller checks on one final hosted
 candidate. Reuse retained evidence once; no duplicate dispatch or full label.
 Merge only every enabled exact-head check successful, with matched head and
 reviewed parents/tree verified. Record unresolved boundaries explicitly.
+
+## Implemented boundary
+
+Implicit getter/setter sites are retained before empty-receiver early returns.
+Each concrete receiver keeps its exact resolved accessor and actual argument
+cells. After propagation, closure checks validate lineage, synchronous shape,
+arity and populated non-Opaque argument domains. Compound and update operations
+use the existing real getter/write dispatch. Unproved dormant sites and actual
+writers remain obligations; pooled formal cells supply no substitute.
+
+The Sprite repair reuses the existing complete allocation/writer/use invariant.
+One registration recognizer accepts the existing symbolic button events and
+their exact emitted numeric values. Both global and source-entry frontiers
+follow every actual ordinary caller to registration after construction. Early,
+recursive, escaping, incompatible and lifecycle-callback entries still refuse.
+The original owned text-game direct/JSON files and second export are clean in
+source controls; the inherited class positive is unchanged and also clean.
+
+Seven accessor and five controller source groups pass. Three guard cuts detect
+omitted accessor-edge closure, early registration admission and arbitrary event
+values. These are source results, not original/native execution or authoring
+qualification. Keep both original runtime positives and all their assertions
+for the final hosted candidate; no corpus application is promoted here.

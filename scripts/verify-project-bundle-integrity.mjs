@@ -3,6 +3,7 @@
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {createRequire} from 'node:module';
+import {createHash} from 'node:crypto';
 import {chromium} from 'playwright';
 
 const requireFromGui = createRequire(new URL('../packages/scratch-gui/package.json', import.meta.url));
@@ -119,6 +120,23 @@ try {
     await page.getByTestId('bw-ctl-widget-slider1').waitFor({state: 'visible', timeout: 15000});
     await page.screenshot({path: resolve(artifacts, 'four-surface-restored.png'), fullPage: true});
 
+    // The circuit editor re-saves a just-loaded circuit in its own fuller form
+    // about a second after it mounts (2755 -> 5793 bytes for this bench). That
+    // write belongs to the successful open above; a snapshot taken before it
+    // lands blames the refusals below for it. Wait until the saved state stops
+    // changing, then require the refusals to leave it byte-identical.
+    // Condition wait, not a sleep: sample once a second in the page and pass
+    // once two consecutive samples match the one before them (bounded 16 s).
+    await page.waitForFunction(() => {
+        const now = JSON.stringify(['bw-code-autosave', 'bw-circuit-autosave', 'bw-ctl-widgets']
+            .map(key => localStorage.getItem(key)));
+        const seen = window.__bwSettleProbe || (window.__bwSettleProbe = {last: null, stable: 0});
+        seen.stable = now === seen.last ? seen.stable + 1 : 0;
+        seen.last = now;
+        return seen.stable >= 2;
+    }, null, {polling: 1000, timeout: 16000}).catch(error => {
+        throw new Error(`project state kept changing after the successful open: ${error.message}`);
+    });
     const beforeRefusal = await projectKeys(page);
     await openProject(page, futurePath);
     // BEFORE any tab click. Opening a project changes the active tab, so a
@@ -130,16 +148,30 @@ try {
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
     await page.getByText(/Brickwright state v7 was not applied: preserved-not-applied/)
         .waitFor({timeout: 15000});
-    if (JSON.stringify(await projectKeys(page)) !== JSON.stringify(beforeRefusal)) {
-        throw new Error('future sidecar partially replaced known project state');
+    const afterFuture = await projectKeys(page);
+    if (JSON.stringify(afterFuture) !== JSON.stringify(beforeRefusal)) {
+        const changed = Object.keys(beforeRefusal).filter(key => beforeRefusal[key] !== afterFuture[key]);
+        const evidence = Object.fromEntries(changed.map(key => [key, ['before', 'after'].map(which => {
+            const value = (which === 'before' ? beforeRefusal : afterFuture)[key];
+            return value === null ? null : {bytes: Buffer.byteLength(value),
+                sha256: createHash('sha256').update(value).digest('hex')};
+        })]));
+        throw new Error(`future sidecar partially replaced known project state: ${JSON.stringify(evidence)}`);
     }
     await openProject(page, invalidPath);
     await page.getByText(/Brickwright data could not be read/)
         .waitFor({state: 'visible', timeout: 15000});
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
     await page.getByText(/Brickwright state was not applied: invalid JSON/).waitFor({timeout: 15000});
-    if (JSON.stringify(await projectKeys(page)) !== JSON.stringify(beforeRefusal)) {
-        throw new Error('invalid sidecar partially replaced known project state');
+    const afterInvalid = await projectKeys(page);
+    if (JSON.stringify(afterInvalid) !== JSON.stringify(beforeRefusal)) {
+        const changed = Object.keys(beforeRefusal).filter(key => beforeRefusal[key] !== afterInvalid[key]);
+        const evidence = Object.fromEntries(changed.map(key => [key, ['before', 'after'].map(which => {
+            const value = (which === 'before' ? beforeRefusal : afterInvalid)[key];
+            return value === null ? null : {bytes: Buffer.byteLength(value),
+                sha256: createHash('sha256').update(value).digest('hex')};
+        })]));
+        throw new Error(`invalid sidecar partially replaced known project state: ${JSON.stringify(evidence)}`);
     }
 
     await openProject(page, vanillaPath);

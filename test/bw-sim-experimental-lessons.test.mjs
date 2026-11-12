@@ -12,7 +12,7 @@ test('every experimental entry ships its model, MPD, program, licence and detail
  for(const m of EXPERIMENTAL_MODELS){
   const id=m.file.replace(/\.ldr$/,'');
   for(const f of [`models/${id}.ldr`,`models/${id}.mpd`,`programs/${m.example}`,`licenses/${id}.txt`])assert.ok(existsSync(new URL(`static/sim-lab/${f}`,GUI)),`${id}: ${f}`);
-  const d=EXPERIMENTAL_MODEL_DETAILS[m.file];
+  const d=EXPERIMENTAL_MODEL_DETAILS[m.id||m.file];
   assert.ok(d&&d.experimental&&d.description.en&&d.description.de,id);
   assert.ok(m.intro.en&&m.intro.de&&m.experimental,id);
   // A jog range starts from the saved datum, so it must contain zero.

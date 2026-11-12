@@ -2,8 +2,9 @@ import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
-export const CALLABLE_CODEC_PIN='4db2813d366af8a110fc79599afb55d1cd42d8df';
-export const CALLABLE_CODEC_SHA256='60b19f17ecf96d9084cd0c53622474601c444f60116c1c4f13ea96664e04156e';
+import {registeredArraysSource} from '../../scripts/lib/arrays-carrier.mjs';
+export const CALLABLE_CODEC_PIN='035ab22a4d946fe5b8e367013caf898cd763e5f4';
+export const CALLABLE_CODEC_SHA256='7024089285a820105aea02fa187232991e566adf9bf8baa05cf9f63f54be5349';
 const checkout=fileURLToPath(new URL('../../',import.meta.url));
 
 // Bind the actual qualified supplier bytes, never an arbitrary installed copy.
@@ -14,10 +15,8 @@ export function qualifiedCallableCodecSource({root=checkout,explicitSource=proce
         const pins=JSON.parse(read(path.join(root,'vendor-pins.json'),'utf8'));
         if(pins['arrays-values']!==CALLABLE_CODEC_PIN)throw new Error('Callable codec requires its selected qualified supplier pin');
         const wrapper=read(path.join(root,'overlay/scratch-vm/src/extensions/crispstrobe/arrays/index.js'),'utf8');
-        const match=/^const makeExt = require\(['"]\.\.\/adapter['"]\);\s*module\.exports = makeExt\(([\s\S]*)\);\s*$/.exec(wrapper);
-        if(!match)throw new Error('Callable codec requires the literal canonical Arrays wrapper');
-        source=JSON.parse(match[1]);
-        if(typeof source!=='string')throw new Error('Callable codec wrapper source must be literal text');
+        source=registeredArraysSource(wrapper);
+        if(typeof source!=='string')throw new Error('Callable codec requires the literal canonical registered Arrays wrapper');
     }
     if(createHash('sha256').update(source).digest('hex')!==CALLABLE_CODEC_SHA256)
         throw new Error('Callable codec source differs from the qualified supplier bytes');

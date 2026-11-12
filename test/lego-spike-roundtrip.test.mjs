@@ -308,13 +308,43 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> a13f92b8 (2026-10-15): STM32 C correct on silicon (clock tree, G0 IOPORT, pulls, ADC, tone, named refusals; sb3-creator #155) plus #153/#154 Code-tab declaration fixes; src/ change is sb3Creator.js only.
     // -> 7d3f8be7 (2026-10-16): the reviewed shared producer pin. Keep the
     // complete executable artifact and round-trip assertions below required.
-    // -> 37bfe287 (2026-10-21): canonical school circuits share this compiler pin.
-    // The range also carries arithmetic, score/motor words and registry updates;
-    // the existing executable SPIKE artifact assertions must qualify this bump.
+    // -> 74f89846 (2026-10-20): one canonical Arcade source-arithmetic word;
+    // SPIKE producer bytes are unchanged. Re-run every artifact assertion.
+    // -> f4b1a789 (2026-10-21): merged supplier #159, including the source
+    // operation dialect and qualified compiler/sensor fixes; SPIKE producer
+    // source remains unchanged from 7d3f8be7. All artifact assertions remain.
+    // -> d7c25891 (2026-10-21): reviewed supplier #160 score callbacks and #161
+    // SPIKE motor-power/PWM mapping adoption. SPIKE compiler/registry source changed;
+    // rerun every executable artifact and round-trip assertion at this exact pin.
+    // -> 37bfe287 (2026-10-21): canonical school examples and supplier provenance.
+    // Compiler src is byte-identical to d7c25891; keep all artifact assertions.
     // -> 371a8f9d (2026-10-23): programmable Widgets and school battery variants;
     // preserve and re-run all executable SPIKE artifact checks below.
+    // -> c10bc94c (2026-10-25): qualified atan2 selector only; SPIKE
+    // emitter source is unchanged. Re-run every complete artifact assertion.
+    // -> cdb48273 (2026-11-01): micro:bit LED, radio value, bluetooth and class
+    // words (sb3-creator #168); SPIKE emitter unchanged. Re-run every assertion.
+    // -> 11b019c5 (2026-11-01): #168 micro:bit words and #169 Arcade external-
+    // reference words; neither touches the SPIKE emitter. Re-run every assertion.
+    // -> 04fc423e (2026-11-01): #170 micro:bit API words and #171 external image
+    // call and carnival label words. `git diff 11b019c5 04fc423e -- src/` is only
+    // arcadeDialect.js and sb3Creator.js (the SPIKE emitter, spike3Python.js, is
+    // untouched), so no SPIKE artifact assertion changes.
+    // -> 69aaba2b (2026-11-01): radio in MakeCode's packet format and the serial, I2C, SPI,
+    // buffer, sound and log words (sb3-creator #172); the SPIKE emitter is unchanged (no line
+    // of spikeprimeDialect.js, spike3Python.js or the SPIKE generator moved). Re-run every assertion.
+    // -> 2aeff387 (2026-11-01): the tilemap words (sb3-creator #173). `git diff 69aaba2b 2aeff387 -- src/`
+    // is arcadeDialect.js only (15 added words); the SPIKE emitter is unchanged, so no SPIKE artifact assertion changes.
+    // -> 17d06522 (2026-11-01): the micro:bit pin PWM, servo, pulse, touch-mode and game level words (#174) and the sibling refresh (#175); the SPIKE emitter is unchanged (no line of spikeprimeDialect.js or spike3Python.js moved). Re-run every assertion.
+    // -> ab47b412 (2026-11-01): the micro:bit radio off/band, serial redirect/baud, reset, panic, compass and
+    // accelerometer words (#176); the SPIKE emitter is unchanged (no line of spikeprimeDialect.js or spike3Python.js moved).
+    // Re-run every assertion.
+    // -> bc9070f9 (2026-11-01): serial polling and raw radio packet words (#177), the radio event frame, log rows and note-string melodies (#178, #179); the SPIKE emitter is unchanged (no line of spikeprimeDialect.js or spike3Python.js moved). Re-run every assertion.
+    // -> 1424ec3f (2026-11-02): the arcade_mathUnary and arcade_play words (#180); `git diff bc9070f9 1424ec3f -- src/` is arcadeDialect.js only (two added words), so the SPIKE emitter is unchanged.
+    // -> a7b8c394 (2026-11-03): the remaining micro:bit namespace words (#181); `git diff 1424ec3f a7b8c394 -- src/` is sb3Creator.js only (micro:bit words and helpers), so the SPIKE emitter is unchanged. Re-run every assertion.
+    // -> 8e53c162 (2026-11-03): four Arcade tilemap words (#182); `git diff a7b8c394 8e53c162 -- src/` is arcadeDialect.js only, so the SPIKE emitter is unchanged.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '1cbaeed325f5a890e43b78a4211acae8f801f2d2');
+        '8e53c1621a1b9eeb42e0565f987c4c47ab598961');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

@@ -1,11 +1,23 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 import {createHash} from 'node:crypto';
-const NAME = 'g_bw_program_addressed_sensor_abi';
-const fail = message => { throw new Error(`Addressed sensor capability: ${message}`); };
+const ADDRESSED = 'g_bw_program_addressed_sensor_abi';
 /** Optional discovery in our own ELF; this alone does not authorize a topology. */
-export function programAddressedSensorCapability (elf, symbols) {
-    const markers = symbols.split(/\r?\n/).map(line => line.trim().split(/\s+/)).filter(row => row.at(-1) === NAME);
+export const programAddressedSensorCapability = (elf, symbols) =>
+    programFeatureMarker(elf, symbols, {name: ADDRESSED, version: 1, label: 'Addressed sensor capability'});
+/**
+ * Firmware instruction ABI (brickwright-spike-prime-fw#56): 2 when the image exports
+ * g_bw_program_instruction_abi 2 (ops 7/8), else 1. A present but malformed marker throws.
+ */
+export const programInstructionAbi = (elf, symbols) =>
+    programFeatureMarker(elf, symbols, {name: 'g_bw_program_instruction_abi', version: 2, label: 'Instruction ABI'}) ? 2 : 1;
+/**
+ * One read-only four-byte feature constant in our own userspace ELF, under the same rules
+ * as firmware tools/check_addressed_sensor_marker.py: null when absent, throws when malformed.
+ */
+export function programFeatureMarker (elf, symbols, {name, version, label}) {
+    const fail = message => { throw new Error(`${label}: ${message}`); };
+    const markers = symbols.split(/\r?\n/).map(line => line.trim().split(/\s+/)).filter(row => row.at(-1) === name);
     if (!markers.length) return null;
     if (markers.length !== 1 || markers[0].length !== 3 || !['R', 'T'].includes(markers[0][1]) ||
         !/^[0-9a-fA-F]+$/.test(markers[0][0])) fail('expected one global constant symbol');
@@ -31,7 +43,7 @@ export function programAddressedSensorCapability (elf, symbols) {
             if (nameOffset >= names[5]) fail('invalid symbol name');
             const start = names[4] + nameOffset, end = elf.indexOf(0, start);
             if (end < start || end >= names[4] + names[5]) fail('unterminated symbol name');
-            if (elf.toString('utf8', start, end) !== NAME) continue;
+            if (elf.toString('utf8', start, end) !== name) continue;
             const index = elf.readUInt16LE(at + 14), section = sections[index];
             if (elf[at + 12] !== 0x11 || elf.readUInt32LE(at + 4) !== address || elf.readUInt32LE(at + 8) !== 4 ||
                 !index || !section || section[1] !== 1 || !(section[2] & 2) || (section[2] & 1) ||
@@ -55,6 +67,6 @@ export function programAddressedSensorCapability (elf, symbols) {
     const mapping = mappings[0];
     if (!(mapping.flags & 4) || mapping.physical !== mapping.virtual || address < mapping.virtual ||
         address + 4 > mapping.virtual + mapping.files || mapping.offset + address - mapping.virtual !== objects[0]) fail('invalid file-backed mapping');
-    if (elf.readUInt32LE(objects[0]) !== 1) fail('unsupported version');
-    return {abi: 1, address, userspaceSha256: createHash('sha256').update(elf).digest('hex')};
+    if (elf.readUInt32LE(objects[0]) !== version) fail('unsupported version');
+    return {abi: version, address, userspaceSha256: createHash('sha256').update(elf).digest('hex')};
 }

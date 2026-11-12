@@ -2,9 +2,14 @@
 // contract. Domain admission is separate from conversion: never call a
 // reference, getter, custom toString or Object.keys inspection path here.
 const primitiveOwner = require('../../../util/bw-primitive-owner');
+const graphVersion = require('../../../util/bw-graph-version');
 const reporterOwner = require('./font-selector-owner');
+const resultFactory = require('../../../util/bw-extension-result-factory');
 const analyseCaptures = require('./console-capture-provenance');
 const kinds = new Set(['Number','Boolean','String','Any']);
+// The readable Sprite fields the extension returns as Numbers (the menu of arcade_spriteProperty minus `data`).
+const SPRITE_NUMBER_PROPERTIES = new Set(['x','y','left','right','top','bottom','vx','vy','ax','ay','fx','fy','sx','sy','scale',
+    'width','height','z','lifespan','rotation','rotationDegrees','kind','flags']);
 const semantic = block => JSON.stringify([block.opcode,block.fields,block.inputs,block.next,
     block.mutation,block.shadow,block.parent,block.topLevel]);
 const scoreRegistrations = new WeakMap();
@@ -13,6 +18,96 @@ const scoreAdapters = new WeakMap();
 const scoreSourceRows = new WeakMap();
 const scoreIssue = Symbol('actual Arcade score metadata issuance');
 const scoreIssues = new WeakMap();
+// Only the constructor hook can capture the genuine source delegates before
+// an adapter escapes. Result evidence never grants operand/body authority.
+const sourceAdapters = new WeakMap(),sourcePrepared = new WeakMap();
+const sourceDescriptor=Object.getOwnPropertyDescriptor,sourceDefine=Object.defineProperty,sourcePrototype=Object.getPrototypeOf,sourceKeys=Reflect.ownKeys,sourceApply=Reflect.apply,sourceText=String;
+const sourceAppend=(array,value)=>sourceDefine(array,sourceText(array.length),{__proto__:null,value,writable:true,enumerable:true,configurable:true});
+const sourceWeakGet=WeakMap.prototype.get,sourceWeakSet=WeakMap.prototype.set,sourceWeakHas=WeakMap.prototype.has;
+const sourceHeld=owner=>sourceApply(sourceWeakGet,sourceAdapters,[owner]);
+const sourceOpcodes = ['sourceValueBinary','sourceValueUnary'];
+function bindSourceOperationAdapter(adapter,instance,owner) {
+    if(!owner?.isInstance(instance)||typeof owner.isSourceCurrent!=='function'||!owner.isSourceCurrent())throw Error('Arcade source result owner differs');
+    if(sourceApply(sourceWeakHas,sourceAdapters,[owner]))throw Error('Arcade source result adapter was already bound');
+    const delegates=[sourceDescriptor(adapter,sourceOpcodes[0])?.value,sourceDescriptor(adapter,sourceOpcodes[1])?.value];
+    if(typeof delegates[0]!=='function'||typeof delegates[1]!=='function'||sourceDescriptor(adapter,'_inst')?.value!==instance)throw Error('Arcade source result delegates are missing');
+    sourceApply(sourceWeakSet,sourceAdapters,[owner,{adapter,instance,delegates}]);
+}
+const sourceAdapterCurrent=owner=>{
+    const held=sourceHeld(owner);
+    if(!held||!owner.isSourceCurrent()||!owner.isInstance(held.instance)||sourceDescriptor(held.adapter,'_inst')?.value!==held.instance)return false;
+    for(let i=0;i<sourceOpcodes.length;i++)if(sourceDescriptor(held.adapter,sourceOpcodes[i])?.value!==held.delegates[i])return false;
+    return true;
+};
+const sourcePreparedRecord=func=>sourceApply(sourceWeakGet,sourcePrepared,[func]);
+const sourceMember=(list,value)=>{
+    if(!list)return false;
+    const size=sourceDescriptor(list,'length')?.value;if(typeof size!=='number')return false;
+    for(let i=0;i<size;i++)if(sourceDescriptor(list,sourceText(i))?.value===value)return true;
+    return false;
+};
+function registerSourceResultFactory(metadata,adapter,owner,name){
+    resultFactory.register(metadata,(serviceObject,funcName,preparedInfo)=>{
+        try{
+            const held=sourceHeld(owner),index=name==='sourceValueBinary'?0:1;
+            if(!held||held.adapter!==adapter||serviceObject!==adapter||funcName!==name||!sourceAdapterCurrent(owner)||
+                sourceDescriptor(preparedInfo,'opcode')?.value!==name||sourceDescriptor(preparedInfo,'blockType')?.value!=='reporter'||
+                sourceDescriptor(preparedInfo,'isDynamic')?.value)return null;
+            const record={owner,adapter,name,delegate:held.delegates[index],info:preparedInfo,valid:true};
+            const func=(args,util)=>{
+                // Preserve the original one dynamic property read/call and
+                // receiver/three arguments. A forwarding/replacement method
+                // still executes; it can never regain Number evidence by ABA.
+                if(sourceDescriptor(serviceObject,funcName)?.value!==record.delegate)record.valid=false;
+                return serviceObject[funcName](args,util,preparedInfo);
+            };
+            sourceApply(sourceWeakSet,sourcePrepared,[func,record]);return func;
+        }catch(_){return null;} // Optional result evidence cannot break old dispatch.
+    });
+}
+const sourceSameDescriptor=(a,b)=>{
+    if(!a||!b)return a===b;
+    const fields=['value','writable','get','set','enumerable','configurable'];
+    for(let i=0;i<fields.length;i++){
+        const key=fields[i],aa=sourceDescriptor(a,key),bb=sourceDescriptor(b,key);
+        if(!!aa!==!!bb||aa&&aa.value!==bb.value)return false;
+    }
+    return true;
+};
+const sourceLookup=(runtime,getter)=>{
+    const rows=[];let object=runtime;
+    while(object){
+        const descriptor=sourceDescriptor(object,'getOpcodeFunction'),prototype=sourcePrototype(object);sourceAppend(rows,{object,descriptor,prototype});
+        if(descriptor){
+            if(descriptor.value!==getter)return null;
+            return ()=>{for(let i=0;i<rows.length;i++){const row=rows[i];if(sourcePrototype(row.object)!==row.prototype||!sourceSameDescriptor(sourceDescriptor(row.object,'getOpcodeFunction'),row.descriptor))return false;}return true;};
+        }
+        object=prototype;
+    }
+    return null;
+};
+const sourceSchema=(node,name,all)=>{
+    const rows=[],keyRows=[];
+    const data=(object,key)=>{const d=sourceDescriptor(object,key);if(!d||!sourceDescriptor(d,'value'))throw Error('source result schema data differs');sourceAppend(rows,{object,key,descriptor:d});return d.value;};
+    const keys=(object,expected)=>{const saved=sourceKeys(object);if(saved.length!==expected.length||saved.some((key,index)=>key!==expected[index]))throw Error('source result schema keys differ');sourceAppend(keyRows,{object,keys:saved});};
+    try{
+        if(data(node,'opcode')!=='arcade_'+name||data(node,'shadow')!==false||data(node,'topLevel')!==false||data(node,'next')!=null||sourceDescriptor(node,'mutation')?.value!=null)return null;
+        sourceAppend(rows,{object:node,key:'mutation',descriptor:sourceDescriptor(node,'mutation')});
+        const fields=data(node,'fields'),inputs=data(node,'inputs'),id=data(node,'id'),parentId=data(node,'parent');if(typeof id!=='string'||typeof parentId!=='string')return null;keys(fields,['OP']);
+        const selector=data(fields,'OP'),op=data(selector,'value'),slots=name==='sourceValueBinary'?['LEFT','RIGHT']:['VALUE'];
+        if(name==='sourceValueBinary'?!['&','|','^','<<','>>','>>>'].includes(op):op!=='~')return null;
+        keys(inputs,slots);
+        for(const slot of slots){const edge=data(inputs,slot),childId=data(edge,'block');if(typeof childId!=='string')return null;const child=data(all,childId);if(data(child,'parent')!==id)return null;}
+        const parent=data(all,parentId),parentInputs=data(parent,'inputs'),parentKeys=sourceKeys(parentInputs);sourceAppend(keyRows,{object:parentInputs,keys:parentKeys});
+        let count=0;for(const key of parentKeys)if(data(data(parentInputs,key),'block')===id)count++;
+        if(count!==1)return null;
+        return ()=>{
+            for(let i=0;i<rows.length;i++){const row=rows[i];if(!sourceSameDescriptor(sourceDescriptor(row.object,row.key),row.descriptor))return false;}
+            for(let i=0;i<keyRows.length;i++){const row=keyRows[i],actual=sourceKeys(row.object);if(actual.length!==row.keys.length)return false;for(let j=0;j<actual.length;j++)if(actual[j]!==row.keys[j])return false;}
+            return true;
+        };
+    }catch(_){return null;}
+};
 let scoreIssueSerial = 0;
 // Only the actual finite player literals can select this existing score role.
 // Do not execute a tag, getter, toString or valueOf to establish that identity.
@@ -23,6 +118,10 @@ function scoreInfo(info,owner) {
     if(entries?.length!==1||!owner)throw Error('Arcade score declaration owner is missing');
     Object.defineProperty(entries[0],scoreInfoOwner,{value:owner,enumerable:true});
     scoreSourceRows.set(entries[0],owner);
+    if(typeof owner.isSourceCurrent==='function')for(const name of sourceOpcodes){
+        const rows=info.blocks.filter(block=>block.opcode===name);if(rows.length!==1)continue;
+        Object.defineProperty(rows[0],scoreInfoOwner,{value:owner,enumerable:true});scoreSourceRows.set(rows[0],owner);
+    }
     return info;
 }
 function scoreAdapterCurrent(owner,record) {
@@ -50,7 +149,11 @@ function bindScoreAdapterInfo(info,adapter,instance) {
     if(!scoreAdapterCurrent(owner,scoreAdapters.get(owner)))throw Error('Arcade score adapter issuance owner differs');
     if(Object.prototype.hasOwnProperty.call(entry,scoreIssue))throw Error('Arcade score metadata row was already issued');
     const token=Object.freeze({});
-    scoreIssues.set(token,{owner,adapter:scoreAdapters.get(owner),arguments:entry.arguments,serial:++scoreIssueSerial,consumed:false});
+    const sourceRows=typeof owner.isSourceCurrent==='function'?sourceOpcodes.map(name=>{const row=info.blocks.find(block=>block.opcode===name);
+        if(!row||scoreSourceRows.get(row)!==owner||Object.getOwnPropertyDescriptor(row,scoreInfoOwner)?.value!==owner)return null;
+        try{registerSourceResultFactory(row,adapter,owner,name);}catch(_){return null;}
+        return {name,arguments:row.arguments};}):[];
+    scoreIssues.set(token,{owner,adapter:scoreAdapters.get(owner),arguments:entry.arguments,sourceRows:sourceRows.some(row=>!row)?[]:sourceRows,serial:++scoreIssueSerial,consumed:false});
     Object.defineProperty(entry,scoreIssue,{value:token,enumerable:true});
 }
 // Initial registration and ordinary refresh consume genuine, single-use source
@@ -59,13 +162,23 @@ function scoreRegistration(runtime,owner) {
     if (!runtime || typeof runtime.on!=='function' || !owner) return null;
     const existing=scoreRegistrations.get(runtime);
     if(existing)return existing.owner===owner ? existing : null;
+    // Lazy require: actual Runtime has completed module construction before an
+    // Arcade instance exists. The immutable accessor only reads Runtime-private
+    // origins allocated before any extension callback; it cannot register one.
+    const NativeRuntime=require('../../../engine/runtime');
+    const originDescriptor=sourceDescriptor(NativeRuntime,'sourceResultOrigins');
+    const originReader=originDescriptor&&!originDescriptor.writable&&!originDescriptor.configurable&&originDescriptor.value;
+    const sourceOrigin=typeof originReader==='function'?sourceApply(originReader,null,[runtime]):null;
+    const sourceTable=sourceOrigin?.table,sourceCategories=sourceOrigin?.categories;
     const getter=runtime.getOpcodeFunction;
-    const record={owner,category:null,entry:null,func:null,valid:true,reason:null,disposed:false,targets:new Set(),getter,serial:0};
+    const record={owner,category:null,entry:null,func:null,valid:true,reason:null,disposed:false,targets:new Set(),getter,serial:0,sourceOperations:[]};
     const refuseRegistration=reason=>{record.valid=false;record.reason=reason;};
     const capture=(category,refresh=false)=>{
         if(category?.id!=='arcade')return;
         if(!record.valid)return;
         if(refresh ? !record.category||category!==record.category : !!record.category){refuseRegistration(refresh?'refresh category identity differs':'registration was republished');return;}
+        const categoryOrigin=typeof originReader==='function'?sourceApply(originReader,null,[runtime,category]):null;
+        const sourceBlocks=categoryOrigin?.blocks;
         const entries=(category.blocks||[]).filter(value=>value.json?.type==='arcade_getPlayerScore');
         const entry=entries.length===1&&entries[0],func=entry?.info?.func;
         const adapter=scoreAdapters.get(owner);
@@ -80,8 +193,21 @@ function scoreRegistration(runtime,owner) {
         if(typeof getter!=='function'){refuseRegistration('original primitive lookup is missing');return;}
         if(runtime.getOpcodeFunction!==getter){refuseRegistration('original primitive lookup changed');return;}
         if(getter.call(runtime,'arcade_getPlayerScore')!==func){refuseRegistration('original score primitive differs');return;}
+        // Commit the old score facet before optional source-result lookups.
+        // A newfacet lookup failure must not disable the established score role.
         issue.consumed=true;record.serial=issue.serial;
         record.category=category;record.entry=entry;record.func=func;record.adapter=adapter;
+        const sourceOperations=[];
+        try {
+            for(const row of issue.sourceRows||[]){
+                const matches=(category.blocks||[]).filter(value=>value.json?.type==='arcade_'+row.name),prepared=matches.length===1&&matches[0];
+                if(!prepared||prepared.info?.[scoreInfoOwner]!==owner||prepared.info?.arguments!==row.arguments||typeof prepared.info?.func!=='function'||sourceApply(getter,runtime,['arcade_'+row.name])!==prepared.info.func){sourceOperations.length=0;break;}
+                const bound=sourcePreparedRecord(prepared.info.func),lookupCurrent=sourceLookup(runtime,getter);
+                if(!sourceOrigin||!categoryOrigin||sourceDescriptor(runtime,'_primitives')?.value!==sourceTable||sourceDescriptor(runtime,'_blockInfo')?.value!==sourceCategories||sourceDescriptor(category,'blocks')?.value!==sourceBlocks||!lookupCurrent||!bound||bound.owner!==owner||bound.adapter!==adapter.adapter||bound.name!==row.name||bound.info!==prepared.info||!bound.valid){sourceOperations.length=0;break;}
+                sourceAppend(sourceOperations,{name:row.name,entry:prepared,func:prepared.info.func,bound,lookupCurrent,table:sourceTable,categories:sourceCategories,blocks:sourceBlocks});
+            }
+        }catch(_){sourceOperations.length=0;}
+        record.sourceOperations=sourceOperations;
     };
     scoreRegistrations.set(runtime,record);
     const categories=(runtime._blockInfo||[]).filter(value=>value.id==='arcade');
@@ -116,13 +242,33 @@ function primitive(value) {
     throw new Error('reference or opaque inspection value');
 }
 
-function create(runtime, cells, scoreOwner=null, sceneClock=null) {
+function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=null) {
     let snapshots = new Map(), disposed = false, active = false;
     const bound = !!runtime && typeof runtime.on === 'function' && Array.isArray(runtime.targets);
     const score=scoreRegistration(runtime,scoreOwner);
     const fail = reason => {throw new Error('Arcade inspection: ' + reason);};
+    // The graph is unchanged while every original target's container keeps its edit version,
+    // its variable table keeps its size and the target list is the one last verified in full.
+    let verifiedStamp = null, proofs = new Map();
+    const stampOf = () => {
+        const originals = runtime.targets.filter(target => target.isOriginal !== false);
+        const parts = [originals.length];
+        for (const target of originals) {
+            const version = graphVersion.versionOf(target.blocks);
+            if (version < 0) return null;
+            parts.push(version, Object.keys(target.variables || {}).length);
+        }
+        return {originals, key: parts.join(','), targets: originals};
+    };
     const current = () => {
         if (!bound || disposed || !snapshots.size) fail('inactive native owner; start the current project');
+        const stamp = stampOf();
+        if (stamp && verifiedStamp && verifiedStamp.key === stamp.key && verifiedStamp.targets.length === stamp.targets.length &&
+            verifiedStamp.targets.every((target, index) => target === stamp.targets[index])) return;
+        currentFull();
+        verifiedStamp = stamp;
+    };
+    const currentFull = () => {
         const originals = runtime.targets.filter(target => target.isOriginal !== false);
         if (originals.length !== snapshots.size || originals.some(target => {
             const saved = snapshots.get(target), blocks = Object.entries(target.blocks?._blocks || {}), variables=Object.entries(target.variables||{});
@@ -132,8 +278,9 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null) {
         })) fail('source graph changed; restart the project');
     };
     const snapshot = () => {
-        snapshots = new Map();
+        snapshots = new Map();verifiedStamp = null;proofs = new Map();
         if (!bound || disposed) return;
+        for (const target of runtime.targets) if (target.isOriginal !== false) graphVersion.track(target.blocks);
         if(score&&!score.disposed)score.targets=new Set(runtime.targets);
         for (const target of runtime.targets) if (target.isOriginal !== false)
             snapshots.set(target,{container:target.blocks,variables:new Map(Object.entries(target.variables||{}).map(([id,variable])=>[id,{variable,signature:JSON.stringify([variable.id,variable.name,variable.type])}])),blocks:new Map(Object.entries(target.blocks._blocks).map(([id,block]) =>
@@ -195,10 +342,129 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null) {
             }
             return true;
         };
+        const sourceNumber=node=>{
+            // Only Number-on-normal-return; operands still execute and validate.
+            if(!score?.valid||score.disposed||!score.category||!scoreAdapterCurrent(scoreOwner,score.adapter)||!sourceAdapterCurrent(scoreOwner)||runtime.getOpcodeFunction!==score.getter)return false;
+            const name=node.opcode==='arcade_sourceValueBinary'?'sourceValueBinary':node.opcode==='arcade_sourceValueUnary'?'sourceValueUnary':null;
+            let row;for(let i=0;i<score.sourceOperations.length;i++)if(score.sourceOperations[i].name===name)row=score.sourceOperations[i];
+            if(!row)return false;
+            const schema=sourceSchema(node,name,all);if(!schema)return false;
+            const category=score.category,opcode='arcade_'+name,actual=sourceApply(score.getter,runtime,[opcode]),oldFacetCurrent=scoreAdapterCurrent(scoreOwner,score.adapter);current();
+            // Complete potentially trapping source reflection before final
+            // membership and private revocation checks. These reflections do
+            // not mint or renew a registration or operand proof.
+            if(actual!==row.func||!oldFacetCurrent||!row.lookupCurrent()||
+                sourceDescriptor(runtime,'_primitives')?.value!==row.table)return false;
+            const root=util?.thread?.peekStack?.(),operations=target.blocks._cache?._executeCached?.[root]?._ops||[];
+            let operation,count=0;
+            for(let i=0;i<operations.length;i++)if(operations[i].id===node.id){operation=operations[i];count++;}
+            if(count!==1||operation._blockFunction!==row.func)return false;
+            // Join the actual already-executed source reporter, not merely a
+            // current table entry restored after a foreign cached function ran.
+            const actualArgs=operation._argValues,slots=name==='sourceValueBinary'?['LEFT','RIGHT']:['VALUE'];
+            const expectedKeys=name==='sourceValueBinary'?['LEFT','RIGHT','OP','mutation']:['VALUE','OP','mutation'];
+            const actualKeys=sourceKeys(actualArgs||{});if(actualKeys.length!==expectedKeys.length)return false;
+            for(let i=0;i<expectedKeys.length;i++){let found=false;for(let j=0;j<actualKeys.length;j++)if(actualKeys[j]===expectedKeys[i])found=true;if(!found)return false;}
+            if(sourceDescriptor(actualArgs,'OP')?.value!==sourceDescriptor(sourceDescriptor(node.fields,'OP')?.value,'value')?.value||
+                sourceDescriptor(actualArgs,'mutation')?.value!==operation.mutation||operation.mutation!==node.mutation)return false;
+            for(let i=0;i<slots.length;i++){
+                const child=read(node.inputs[slots[i]].block),cached=child&&target.blocks._cache?._executeCached?.[child.id];
+                if(!child||child.parent!==node.id||!sourceDescriptor(actualArgs,slots[i]))return false;
+                // Cached native evaluator links are present for inline shadow
+                // inputs; reporter child operations share the parent values.
+                const childOperation=operations.find(value=>value.id===child.id);
+                if(childOperation&&(childOperation._parentValues!==actualArgs||childOperation._parentKey!==slots[i]))return false;
+                if(!childOperation&&cached&&cached._parentValues&&
+                    (cached._parentValues!==actualArgs||cached._parentKey!==slots[i]))return false;
+            }
+            try{if(reporterOwner(runtime,util,actualArgs,opcode,['OP'])!==node)return false;}catch(_){return false;}
+            if(!operation._parentValues||typeof sourceDescriptor(operation._parentValues,operation._parentKey)?.value!=='number')return false;
+            if(!schema())return false;
+            const reflected=sourceDescriptor(row.entry,'info')?.value===row.bound.info&&
+                sourceDescriptor(row.bound.info,scoreInfoOwner)?.value===scoreOwner&&
+                sourceDescriptor(row.bound.info,'func')?.value===row.func&&sourceAdapterCurrent(scoreOwner);
+            // Runtime-private construction origins close these containers; no
+            // observational shape or constructor-time snapshot proves native origin.
+            // No reflective schema/table work follows these
+            // native membership reads and closed private latches.
+            return reflected&&sourceDescriptor(runtime,'_primitives')?.value===row.table&&
+                sourceDescriptor(runtime,'_blockInfo')?.value===row.categories&&
+                sourceDescriptor(category,'blocks')?.value===row.blocks&&sourceDescriptor(row.table,opcode)?.value===row.func&&
+                sourceMember(row.categories,category)&&sourceMember(row.blocks,row.entry)&&
+                score.valid&&!score.disposed&&score.category===category&&
+                sourcePreparedRecord(row.func)===row.bound&&row.bound.valid;
+
+        };
         const captureProof=analyseCaptures({targets:runtime.targets.filter(value=>value.isOriginal!==false),blocks:value=>value.blocks._blocks,
             input:(node,name,owner)=>owner.blocks.getBlock(node?.inputs?.[name]?.block),
             literal:(node,name,owner)=>node?.fields?.[name]?.value??(owner.blocks.getBlock(node?.inputs?.[name]?.block)?.opcode==='text'?owner.blocks.getBlock(node.inputs[name].block).fields?.TEXT?.value:null)});
         const owners = new Map(), seen = new Map([[false,new Set()],[true,new Set()]]);
+        const positionalElement=node=>{
+            const index=input(node,'INDEX'),receiver=input(node,'ARRAY');
+            const k=index?.opcode==='math_number'&&index.shadow===true?Number(index.fields?.NUM?.value):NaN;
+            if(!Number.isInteger(k)||k<0||String(index.fields?.NUM?.value).trim()===''||receiver?.opcode!=='data_variable')return null;
+            const vid=receiver.fields?.VARIABLE?.id;if(typeof vid!=='string')return null;
+            let writer=null,writerTarget=null;const globalResets=[];
+            for(const t of runtime.targets)for(const b of Object.values(t.blocks?._blocks||{})){
+                if(b.fields?.VARIABLE?.id!==vid&&b.fields?.LIST?.id!==vid)continue;
+                if(b.opcode==='data_variable'){const parent=t.blocks.getBlock(b.parent);
+                    // The source type declaration names the variable without writing it.
+                    if(parent?.opcode==='arcade_declareSourceReference'&&parent.inputs?.VARIABLE?.block===b.id)continue;
+                    if(!['arrays_referenceItem','arrays_referenceLength'].includes(parent?.opcode)||parent.inputs?.ARRAY?.block!==b.id)return null;continue;}
+                if(b.opcode!=='data_setvariableto')return null;
+                const resetValue=t.blocks.getBlock(b.inputs?.VALUE?.block);
+                if(resetValue?.opcode==='arrays_specialValue'&&!Object.keys(resetValue.inputs||{}).length&&['undefined','null'].includes(resetValue.fields?.KIND?.value)){globalResets.push({b,t});continue;}
+                if(writer)return null;writer=b;writerTarget=t;
+            }
+            if(!writer||writerTarget!==target)return null;
+            const local=input(writer,'VALUE');if(local?.opcode!=='arcade_getLocal')return null;const name=literal(local,'NAME');if(typeof name!=='string')return null;
+            // Walk the writer's script back to its hat.
+            let first=writer,guard=new Set();while(first.parent&&!guard.has(first)){guard.add(first);const up=read(first.parent);if(!up||up.next!==first.id)return null;first=up;}
+            // A source-start script or a procedure body: each run rebuilds and
+            // publishes before the reads that follow on the same chain.
+            if(!['arcade_whenSourceStarts','procedures_definition'].includes(first.opcode))return null;
+            const chain=[];guard=new Set();for(let n=read(first.next);n&&!guard.has(n);n=read(n.next)){guard.add(n);chain.push(n);}
+            const w=chain.indexOf(writer);if(w<0)return null;
+            // Each global reset either precedes the publication on this chain, or
+            // sits on a source-start script's top chain before the only call of
+            // the procedure that publishes (the exporter's startup prologue).
+            const topOf=(t,b0)=>{let n=b0,seen=new Set();while(n.parent&&!seen.has(n)){seen.add(n);const up=t.blocks.getBlock(n.parent);if(!up||up.next!==n.id)return null;n=up;}return n;};
+            const chainOf=(t,hat)=>{const out=[],seen=new Set();for(let n=t.blocks.getBlock(hat.next);n&&!seen.has(n);n=t.blocks.getBlock(n.next)){seen.add(n);out.push(n);}return out;};
+            for(const {b:reset,t:rt} of globalResets){
+                if(rt===target&&chain.includes(reset)){if(chain.indexOf(reset)>=w)return null;continue;}
+                if(first.opcode!=='procedures_definition')return null;
+                const proto=read(first.inputs?.custom_block?.block),proccode=proto?.mutation?.proccode;if(typeof proccode!=='string')return null;
+                const hat=topOf(rt,reset);if(hat?.opcode!=='arcade_whenSourceStarts')return null;
+                const sChain=chainOf(rt,hat),at=sChain.indexOf(reset);if(at<0)return null;
+                const callers=[];
+                for(const t of runtime.targets)for(const c of Object.values(t.blocks?._blocks||{})){
+                    if(c.opcode==='procedures_call'&&c.mutation?.proccode===proccode)callers.push({c,t});
+                    else if(c.opcode==='arcade_callFunction'){const nameBlock=t.blocks.getBlock(c.inputs?.NAME?.block);const callName=nameBlock?.opcode==='text'?nameBlock.fields?.TEXT?.value:null;
+                        if(callName===null||callName===proccode||String(callName).split(' ')[0]===proccode.split(' ')[0])callers.push({c,t});}}
+                if(callers.length!==1||callers[0].t!==rt)return null;
+                let callStmt=callers[0].c,climb=new Set();while(callStmt&&!sChain.includes(callStmt)&&!climb.has(callStmt)){climb.add(callStmt);callStmt=rt.blocks.getBlock(callStmt.parent);}
+                if(!callStmt||sChain.indexOf(callStmt)<=at)return null;
+            }
+            // The read must follow the writer on the same chain.
+            let stmt=node;guard=new Set();while(stmt&&!chain.includes(stmt)&&!guard.has(stmt)){guard.add(stmt);stmt=read(stmt.parent);}
+            if(!stmt||chain.indexOf(stmt)<=w)return null;
+            const sameLocal=b=>['arcade_setLocal','arcade_getLocal'].includes(b?.opcode)&&literal(b,'NAME')===name;
+            const pushes=[],resets=[];let alloc=-1;
+            for(const b of Object.values(all)){if(!sameLocal(b))continue;
+                if(b===local)continue;
+                if(b.opcode==='arcade_setLocal'){const value=input(b,'VALUE');
+                    // A declaration reset (null/undefined) on the chain before the allocation.
+                    if(fixedReset(value)){const at=chain.indexOf(b);if(at<0)return null;resets.push(at);continue;}
+                    if(alloc>=0)return null;alloc=chain.indexOf(b);
+                    if(alloc<0||alloc>=w||value?.opcode!=='arrays_createReference'||text(input(value,'VALUES'))!=='[]')return null;continue;}
+                const parent=read(b.parent);
+                if(parent?.opcode!=='arrays_mutateReference'||parent.inputs?.ARRAY?.block!==b.id||literal(parent,'OP')!=='push')return null;
+                const at=chain.indexOf(parent);if(at<0)return null;pushes.push({at,parent});
+            }
+            if(alloc<0||resets.some(at=>at>=alloc)||pushes.some(p=>p.at<=alloc||p.at>=w))return null;
+            pushes.sort((x,y)=>x.at-y.at);
+            return k<pushes.length?input(pushes[k].parent,'VALUE'):null;
+        };
         const mark = (node,owner,path=new Set()) => {
             if (!node || path.has(node)) return;
             path.add(node);
@@ -274,6 +540,99 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null) {
             for(let node=at;node&&!climbed.has(node);node=read(node.parent)){climbed.add(node);const index=chain.indexOf(node);if(index>=0)return chain.slice(0,index).some(statement=>assigns(statement,cell));}
             return false;
         };
+        // A local Array family: locals rooted at one empty allocation and only
+        // aliased, pushed to, measured or read by item. Its elements are exactly
+        // the pushed values and it never shrinks, so an in-bounds item read
+        // yields one of them. In bounds: a constant below the straight-line
+        // pushes before the read, or the importer's lowered map loop
+        // `repeat while I < LEN` with LEN its length, I from 0 by +1 only.
+        const constNumber=node=>{
+            if(node?.opcode==='math_number'&&!Object.keys(node.inputs||{}).length){const v=Number(node.fields?.NUM?.value);return String(node.fields?.NUM?.value).trim()!==''&&Number.isFinite(v)?v:null;}
+            if(node?.opcode==='operator_add'){const a=constNumber(input(node,'NUM1')),b=constNumber(input(node,'NUM2'));return a===null||b===null?null:a+b;}
+            return null;
+        };
+        const localsOf=cell=>Object.values(all).filter(b=>localCellOf(b)===cell);
+        const pushFamily=(cell,family=new Map())=>{
+            if(!cell||family.has(cell))return family;
+            const proof=captureProof.proof(cell);if(!proof||proof.escaped||cell.scope.target!==target||proof.index>=0)return null;
+            family.set(cell,{pushes:[],resets:[]});
+            for(const b of localsOf(cell)){
+                if(b.opcode==='arcade_setLocal'){
+                    const value=input(b,'VALUE');
+                    if(value?.opcode==='arrays_createReference'&&text(input(value,'VALUES'))==='[]'&&!Object.keys(value.fields||{}).length)continue;
+                    if(fixedReset(value)){family.get(cell).resets.push(b);continue;}
+                    if(value?.opcode==='arcade_getLocal'){if(!pushFamily(localCellOf(value),family))return null;continue;}
+                    return null;
+                }
+                const parent=read(b.parent),slot=Object.entries(parent?.inputs||{}).find(([,v])=>v?.block===b.id)?.[0];
+                if(parent?.opcode==='arrays_mutateReference'&&slot==='ARRAY'&&literal(parent,'OP')==='push'){family.get(cell).pushes.push(parent);continue;}
+                if(['arrays_referenceLength','arrays_referenceItem'].includes(parent?.opcode)&&slot==='ARRAY')continue;
+                if(parent?.opcode==='arcade_setLocal'&&slot==='VALUE'){if(!pushFamily(localCellOf(parent),family))return null;continue;}
+                return null;
+            }
+            return family;
+        };
+        const rootCount=family=>{const roots=[];for(const cell of family.keys())for(const b of localsOf(cell))if(b.opcode==='arcade_setLocal'&&input(b,'VALUE')?.opcode==='arrays_createReference')roots.push(b);
+            if(roots.length!==1)return roots.length;
+            // A null/undefined reset of a member must precede the allocation on its own chain.
+            const chain=chainOf(roots[0]),resets=[...family.values()].flatMap(entry=>entry.resets);
+            return chain&&resets.every(reset=>chain.includes(reset)&&chain.indexOf(reset)<chain.indexOf(roots[0]))?1:0;};
+        // The statement holding a reporter: climb out of input slots, but a
+        // SUBSTACK reference is a statement boundary.
+        const statementOf=node=>{let n=node;const seen=new Set();while(n?.parent&&!seen.has(n)){seen.add(n);const up=read(n.parent);
+            const slot=Object.entries(up?.inputs||{}).find(([,v])=>v?.block===n.id)?.[0];if(!slot||/^SUBSTACK/.test(slot))break;n=up;}return n;};
+        const chainOf=node=>{let first=statementOf(node),guard=new Set();while(first?.parent&&!guard.has(first)){guard.add(first);const up=read(first.parent);if(!up)return null;if(up.next!==first.id)break;first=up;}
+            const out=[];guard=new Set();for(let n=first;n&&!guard.has(n);n=read(n.next)){guard.add(n);out.push(n);}return out;};
+        const statementIn=(node,chain)=>{const guard=new Set();for(let n=node;n&&!guard.has(n);n=read(n.parent)){guard.add(n);if(chain.includes(n))return n;}return null;};
+        // The canonical lowered map loop: `repeat while I < LEN`, LEN set once
+        // before the loop to the length of a push-only family, I set to 0
+        // before it and advanced by exactly +1 as the body's last statement.
+        const writersOf=cell=>localsOf(cell).filter(b=>b.opcode==='arcade_setLocal');
+        const loopFacts=loop=>{
+            if(loop?.opcode!=='arcade_sourceWhile')return null;
+            const body=chainOf(read(loop.inputs?.SUBSTACK?.block)),outer=chainOf(loop);if(!body?.length||!outer)return null;
+            const condition=input(loop,'CONDITION'),left=input(condition,'LEFT'),right=input(condition,'RIGHT');
+            if(condition?.opcode!=='arrays_valueCompare'||literal(condition,'OP')!=='<'||left?.opcode!=='arcade_getLocal'||right?.opcode!=='arcade_getLocal')return null;
+            const counter=localCellOf(left),limit=localCellOf(right);
+            const limitWriters=writersOf(limit),counterWriters=writersOf(counter);
+            if(!limitWriters.length||limitWriters.some(b=>!outer.includes(b)||outer.indexOf(b)>outer.indexOf(loop)))return null;
+            const lastLimit=limitWriters.reduce((a,b)=>outer.indexOf(b)>outer.indexOf(a)?b:a);
+            const length=input(lastLimit,'VALUE');if(length?.opcode!=='arrays_referenceLength'||input(length,'ARRAY')?.opcode!=='arcade_getLocal')return null;
+            const receiver=pushFamily(localCellOf(input(length,'ARRAY')));if(!receiver||rootCount(receiver)!==1)return null;
+            const step=body[body.length-1],inits=counterWriters.filter(b=>b!==step);
+            if(!counterWriters.includes(step)||!inits.length||inits.some(b=>!outer.includes(b)||outer.indexOf(b)>outer.indexOf(loop)||constNumber(input(b,'VALUE'))!==0))return null;
+            const plus=input(step,'VALUE'),unary=input(plus,'LEFT');
+            if(plus?.opcode!=='arrays_valueBinary'||literal(plus,'OP')!=='+'||constNumber(input(plus,'RIGHT'))!==1||unary?.opcode!=='arrays_valueUnary'||literal(unary,'OP')!=='+'||localCellOf(input(unary,'VALUE'))!==counter)return null;
+            return {body,outer,counter,receiver};
+        };
+        const straightPushesBefore=(family,chain,at)=>[...family.values()].flatMap(entry=>entry.pushes).filter(push=>chain.indexOf(push)>=0&&chain.indexOf(push)<chain.indexOf(at)).length;
+        const familyElement=node=>{
+            const array=input(node,'ARRAY');if(array?.opcode!=='arcade_getLocal')return null;
+            const family=pushFamily(localCellOf(array));if(!family||rootCount(family)!==1)return null;
+            const pushes=[...family.values()].flatMap(entry=>entry.pushes);if(!pushes.length)return null;
+            const values=pushes.map(push=>input(push,'VALUE'));
+            const index=input(node,'INDEX'),k=constNumber(index);
+            if(k!==null){
+                if(!Number.isInteger(k)||k<0)return null;
+                const chain=chainOf(node),at=chain&&statementIn(node,chain);if(!at)return null;
+                if(k<straightPushesBefore(family,chain,at))return values;
+                // Every push is the one unconditional push of a canonical map
+                // loop that finished before this read: one element per receiver
+                // element, and the receiver had at least its straight pushes.
+                if(pushes.length!==1)return null;
+                let loop=null;const climb=new Set();for(let n=read(pushes[0].parent);n&&!climb.has(n);n=read(n.parent)){climb.add(n);if(n.opcode==='arcade_sourceWhile'){loop=n;break;}}
+                const facts=loopFacts(loop);
+                if(!facts||!facts.body.includes(pushes[0])||!chain.includes(loop)||chain.indexOf(loop)>=chain.indexOf(at))return null;
+                const roots=[...family.keys()].flatMap(cell=>writersOf(cell)).filter(b=>input(b,'VALUE')?.opcode==='arrays_createReference');
+                if(roots.length!==1||!chain.includes(roots[0])||chain.indexOf(roots[0])>chain.indexOf(loop))return null;
+                return k<straightPushesBefore(facts.receiver,chain,loop)?values:null;
+            }
+            if(index?.opcode!=='arcade_getLocal')return null;
+            let loop=null,guard=new Set();for(let n=read(node.parent);n&&!guard.has(n);n=read(n.parent)){guard.add(n);if(n.opcode==='arcade_sourceWhile'){loop=n;break;}}
+            const facts=loopFacts(loop);
+            if(!facts||!statementIn(node,facts.body)||localCellOf(index)!==facts.counter||!facts.receiver.has(localCellOf(array)))return null;
+            return values;
+        };
         const safeCell = (cell,player=false,origins=null,domains=null,at=null) => {
             const proof=captureProof.proof(cell);
             if(!proof||cell.scope.target!==target)return false;
@@ -321,6 +680,40 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null) {
                     if(!(structural?sceneClock?.eligible(target,node):sceneClock?.prove(target,node,args,util)))return false;
                     origins?.add(node);domains?.add('number');return true;
                 }
+                if(!player&&op==='arcade_frameDeltaTime'){
+                    // A dormant call is only a structural obligation of another
+                    // ordinary caller. It is never a completed supplied value.
+                    if(!(structural?frameDelta?.eligible(target,node):frameDelta?.prove(target,node,args,util)))return false;
+                    origins?.add(node);domains?.add('number');return true;
+                }
+                if(!player&&op==='arcade_spriteProperty'){
+                    // PXT Sprite fields are typed. The extension reads each numeric field as a Number
+                    // (lifespan is undefined until set); `data` is an arbitrary value, so it stays unproven.
+                    const property=node.fields?.PROPERTY?.value;
+                    if(!SPRITE_NUMBER_PROPERTIES.has(property))return false;
+                    origins?.add(node);domains?.add('number');if(property==='lifespan')domains?.add('undefined');return true;
+                }
+                if(!player&&domains&&['arcade_signNumber','arcade_truncateNumber','arcade_controllerStep','arcade_randomNumber','arcade_backgroundColor'].includes(op)){
+                    // These reporters return a Number on every normal completion; an operand the
+                    // block cannot convert throws, which supplies no value. The input-free
+                    // background color reads state its only writer stores as Number(COLOR)||0
+                    // (scene.backgroundColor(): number in the pinned SDK).
+                    origins?.add(node);domains.add('number');return true;
+                }
+                if(!player&&domains&&op==='arcade_mathUnary'&&['truncate','sign'].includes(literal(node,'OP'))){
+                    // The same Number-valued reporters as arcade_truncateNumber and arcade_signNumber.
+                    origins?.add(node);domains.add('number');return true;
+                }
+                if(!player&&op==='arrays_referenceItem'){
+                    // A literal-index read of a global that holds a start-script
+                    // Array built as empty + primitive pushes and is otherwise
+                    // only read: the element is the k-th pushed value (PXT and
+                    // Lite agree). Its own domain is then proved as usual.
+                    const slot=positionalElement(node);
+                    if(slot){const valid=safe(slot,false,origins,domains);if(valid)origins?.add(node);return valid;}
+                    const elements=familyElement(node);
+                    if(elements){const valid=elements.every(value=>safe(value,false,origins,domains));if(valid)origins?.add(node);return valid;}
+                }
                 if(!player&&op==='arcade_getPlayerScore'){
                     if(!scoreNumber(node))return false;
                     origins?.add(node);domains?.add('number');return true;
@@ -345,6 +738,17 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null) {
                     'operator_equals','operator_gt','operator_lt','operator_not','operator_and','operator_or',
                     'arrays_valueTruthy','arrays_valueCompare','arcade_sourceTypeOf','arcade_askForString',
                     'arcade_spriteToString','arcade_bufferToString','arcade_bufferToHex'].includes(op)) {origins?.add(node);terminalDomain(node,domains);return true;}
+                if(!player&&domains&&(op==='arcade_sourceValueBinary'||op==='arcade_sourceValueUnary')){
+                    if(!sourceNumber(node))return false;
+                    origins?.add(node);domains?.add('number');return true;
+                }
+                if(!player&&op==='arrays_referenceLength'){
+                    // The length of an array held in a plain variable or local is
+                    // a side-effect-free Number; any other array producer is opaque.
+                    const array=input(node,'ARRAY');
+                    if(!['data_variable','arcade_getLocal','arcade_getCaptured'].includes(array?.opcode))return false;
+                    origins?.add(node);domains?.add('number');return true;
+                }
                 if (op === 'arcade_inspectValue') {
                     if(!domains)return safe(input(node,'VALUE'))&&safe(input(node,'LIMIT'));
                     const limit=new Set();if(!safe(input(node,'VALUE'))||!safe(input(node,'LIMIT'),false,null,limit))return false;
@@ -374,6 +778,8 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null) {
                 }
                 if (op==='arrays_valueBinary') {
                     if(!domains)return safe(input(node,'LEFT'))&&safe(input(node,'RIGHT'));
+                    // Numeric-only operators complete with a Number whatever their operands are.
+                    if(['-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(literal(node,'OP'))){origins?.add(node);domains.add('number');return true;}
                     const left=new Set(),right=new Set();if(!safe(input(node,'LEFT'),false,null,left)||!safe(input(node,'RIGHT'),false,null,right))return false;
                     const operation=literal(node,'OP');
                     if(operation==='+') {
@@ -384,7 +790,21 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null) {
                     else domains.add(['-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(operation)?'number':'unknown');
                     return true;
                 }
+                if (op==='arcade_mathBinary') {
+                    // mathBinary returns one actual operand for min/max and a
+                    // Number for atan2/randomRange; other operations throw.
+                    const operation=literal(node,'OP');
+                    if(!['min','max','atan2','randomRange'].includes(operation))return false;
+                    if(!domains)return safe(input(node,'A'))&&safe(input(node,'B'));
+                    const left=new Set(),right=new Set();if(!safe(input(node,'A'),false,null,left)||!safe(input(node,'B'),false,null,right))return false;
+                    if(operation==='min'||operation==='max'){
+                        if(!left.size||!right.size)domains.add('unknown');
+                        for(const type of [...left,...right])domains.add(type);
+                    }else domains.add('number');
+                    return true;
+                }
                 if (op==='arrays_valueUnary') {
+                    if(domains&&['+','-','~','!','typeof'].includes(literal(node,'OP'))){const operation=literal(node,'OP');domains.add(operation==='typeof'?'string':operation==='!'?'boolean':'number');origins?.add(node);return true;}
                     if(!safe(input(node,'VALUE')))return false;
                     if(domains){const operation=literal(node,'OP');domains.add(operation==='typeof'?'string':operation==='!'?'boolean':['+','-','~'].includes(operation)?'number':'unknown');}return true;
                 }
@@ -445,10 +865,17 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null) {
                 const name=path[path.length-1],child=target.blocks.getBlock(node.inputs?.[name]?.block);if(!child||child.parent!==node.id)fail('actual primitive input slot is missing or disconnected');
                 return {node,name};
             });
+            // A completed proof of this call site is reused until the graph (stamp) changes.
+            const key=block.id+'|'+JSON.stringify(requests.map(request=>request.node?[request.node.id,request.name]:[request.procedure,request.formal]));
+            const stamp=verifiedStamp&&verifiedStamp.key;
+            const cached=stamp&&proofs.get(key);
+            if(cached&&cached.stamp===stamp)return cached.result;
             const possible=new Map();prove(target,block,requests,possible,util,args);
-            return Object.freeze(requests.map((_,index)=>Object.freeze([...possible.get(index)])));
+            const result=Object.freeze(requests.map((_,index)=>Object.freeze([...possible.get(index)])));
+            if(stamp)proofs.set(key,{stamp,result});
+            return result;
         }finally{active=false;}
     };
-    return Object.freeze({inspect,inputDomains,snapshot,invalidate:()=>{snapshots=new Map();},dispose:()=>{disposed=true;snapshots=new Map();}});
+    return Object.freeze({inspect,inputDomains,snapshot,invalidate:()=>{snapshots=new Map();verifiedStamp=null;proofs=new Map();},dispose:()=>{disposed=true;snapshots=new Map();verifiedStamp=null;proofs=new Map();}});
 }
-module.exports=Object.assign(create,{primitive,scoreInfo,bindScoreAdapterInfo});
+module.exports=Object.assign(create,{primitive,scoreInfo,bindScoreAdapterInfo,bindSourceOperationAdapter});

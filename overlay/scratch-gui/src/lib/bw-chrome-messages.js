@@ -35,6 +35,7 @@ const german = {
         "fpgaHint": "⬢-FPGA-Tab anzeigen: Verilog für den Tang Nano 20K synthetisieren und die virtuelle Platine steuern",
         "legacyHint": "Vier archivierte SPIKE-Prime-Treiber zur Hardware-Fehlersuche in der Erweiterungsgalerie anzeigen"
     },
+    "paintEditor": {"outlineWidth": "Konturstärke (Pixel)"},
     "menuBar": {
         "gettingStarted": "Erste Schritte…",
         "lessons": "Lektionen…",
@@ -54,6 +55,10 @@ const german = {
         "saveProject": "Projekt speichern",
         "saveProjectAs": "Projekt speichern unter…",
         "openProjectError": "Das Projekt konnte nicht geöffnet werden: {error}",
+        "codeToBlocks": "Code in Blöcke umwandeln",
+        "codeFromBlocks": "Code aus Blöcken erzeugen",
+        "openCodeFile": "Code-Datei öffnen…",
+        "saveCodeFile": "Code speichern unter…",
         "openCircuit": "Schaltung öffnen…",
         "saveCircuit": "Schaltung speichern",
         "importCircuit": "Schaltung importieren…",
@@ -64,6 +69,9 @@ const german = {
         "downloadMindstormsLms": "Als LEGO MINDSTORMS (.lms) speichern",
         "undo": "Rückgängig",
         "redo": "Wiederholen",
+        "findReplace": "Suchen und ersetzen…",
+        "goToLine": "Zu Zeile springen…",
+        "selectAll": "Alles auswählen",
         "history": "Verlauf",
         "autosaveHistory": "Automatisch speichern & Verlauf…"
     },

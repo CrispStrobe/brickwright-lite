@@ -1,6 +1,7 @@
 # atan2 in existing Number consumers
 
-Status: CLAIMED; merge before implementation. Owner: Arcade integration.
+Status: IMPLEMENTED in the integration candidate; final exact-head runtime/editor
+qualification pending. Owner: Arcade integration.
 Base: `e7cc6678b5d0b8e887192142146f0cb945ecdba6`.
 This precisely extends the merged
 [atan2 capability claim](2026-10-25-arcade-atan2-authoring.md), in the same

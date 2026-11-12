@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {closeCodeActions as closeCodeMenu} from './lib-code-actions.mjs';
 /** Browser acceptance for the Code-tab example selector and game gallery. */
 import {chromium} from 'playwright';
 import {openCodeActions} from './lib-code-actions.mjs';
@@ -103,8 +104,8 @@ try {
         await page.locator('[data-testid="bw-catalog-toggle"]').count() === 0);
 
     const actions = page.locator('[data-testid="bw-code-actions"]');
-    await actions.locator('summary').click();
-    await page.waitForFunction(() => !document.querySelector('[data-testid="bw-code-actions"]')?.open);
+    await closeCodeMenu(page);
+    await page.waitForFunction(() => document.querySelector('[data-testid="bw-code-actions-trigger"]')?.getAttribute('aria-expanded') === 'false');
     await openCodeActions(page);
     check('reopening Tools reuses the bundled-examples chunk',
         (await bundledExampleRequests()).length === 1);

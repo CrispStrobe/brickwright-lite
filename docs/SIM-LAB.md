@@ -743,3 +743,67 @@ See [their mechanisms, bounded design revisions and validation](ROBOT-LAB-COUNTE
 Both have one motor, automatic example programs, bilingual lessons and connected
 building instructions. The current source library has 72 assemblies and 80 example
 choices; individual release tags preserve their own documented inventories.
+
+## Motor direction compatibility
+
+Models without a direction declaration keep their existing behavior. A new or
+deliberately migrated model can opt into the motor's own shaft frame by placing
+this line once in its main LDraw/MPD model section:
+
+```text
+0 !BW MOTOR_DIRECTION motor-frame
+```
+
+With this setting, turning a motor over reverses its drive direction in world
+coordinates, and inserting a symmetric axle the other way around does not
+reverse the motor. `0 !BW MOTOR_DIRECTION legacy` explicitly keeps the older
+bearing-led convention. Build edits, undo, save and reopen preserve the setting;
+embedded submodels do not override their receiving model's choice. Invalid or
+duplicate declarations refuse simulation.
+
+This does not migrate any existing example. A migration must check its program,
+lesson directions and mechanical-law qualification together. The setting makes
+the compiler consistent with the motor's frame; it does not establish a
+physical SPIKE motor's clockwise/counterclockwise command convention. See
+[issue #1460](https://github.com/CrispStrobe/brickwright-lite/issues/1460).
+Qualify an opted-in model on a runtime revision that includes this setting;
+older pinned-worker receipts cannot qualify the changed drive behavior.
+
+## Motor rotor treatment
+
+A motor's rotor, reflected through its gearbox, adds inertia Jr to the hinge it
+drives (the SPIKE medium motor: about 3e-4 kg·m²). By default (`legacy`) the
+simulator adds Jr about the hinge axis to both hinge bodies. That is exact when
+the motor's housing does not turn about its own axis: a clamped motor, a frame
+standing on the floor, a driving base. It is wrong when the housing is free to
+turn about the axis: each body then gets its own Jr, and a free platform turns
+(Iw + Jr)/(J + 2·Jr) per wheel degree instead of Iw/J
+([issue #1494](https://github.com/CrispStrobe/brickwright-lite/issues/1494)).
+A model whose motor housing is free to turn about the motor axis can opt into
+the engine's relative hinge rotor by placing this line once in its main
+LDraw/MPD model section:
+
+```text
+0 !BW ROTOR_INERTIA native
+```
+
+With `native`, the rotor's kinetic energy is ½·Jr·(ω2 − ω1)². It depends only on
+the hinge's relative rate, and bare body mass, centre of mass and inertia stay
+unchanged. `0 !BW ROTOR_INERTIA legacy` explicitly keeps the default. (This is
+separate from `0 !BW ROTOR <degrees>`, which sets one motor output's initial angle.) Build edits, undo,
+save and reopen preserve the setting. Embedded submodels do not override the
+receiving model's choice. Invalid or duplicate declarations refuse simulation.
+Afterturn opts in. Its platform turns 0.0261 degrees per reaction-wheel degree,
+which matches Iw/J at the saved pose, and 0.0275 with the masses in (B = 70°); its
+judge (`afterturn-shape-cycle-v1`) predicts both from the compiled masses and the
+net 1.25° cycle from their difference. The earlier 4.66° cycle was the legacy
+double count.
+
+Known limit: the engine solves the native rotor as its own constraint row
+alongside the output body's contact, end-stop, friction and gear-mesh rows, and
+those rows see the bare body. When the output is a light part (a gear, arm or
+wheel of a few grams) that is stopped, held or meshed, the rotor's momentum
+converges slowly. Arms then pass end stops, holds slip and gear trains can
+become unstable. Keep `legacy` for such models; a solver change that solves the
+rotor row with those rows is separate future work. Qualify an opted-in model on
+a runtime revision that includes this setting.

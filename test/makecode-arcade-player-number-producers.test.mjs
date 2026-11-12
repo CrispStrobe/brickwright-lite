@@ -21,7 +21,7 @@ test('registered Player property keeps actual identity and String output through
  const {runArcadeSourceCode}=await import('./helpers/arcade-source-program.mjs');
  const {stepFrames,clearStrayTimers}=await import('./helpers/bw-vm.mjs');
  const {projectToArcade}=await import('../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js');
- const source='let observed="";let count=0;let ready=false;let beforeNull=-1;let beforeUndefined=-1;let afterNumber=-1;function describe(player){return console.inspect("Player "+mp.getPlayerProperty(player,mp.PlayerProperty.Number))}mp.onControllerEvent(ControllerEvent.Connected,function(renamed){let pending=null;beforeNull=mp.getPlayerProperty(pending,mp.PlayerProperty.Number);pending=undefined;beforeUndefined=mp.getPlayerProperty(pending,mp.PlayerProperty.Number);pending=renamed;afterNumber=mp.getPlayerProperty(pending,mp.PlayerProperty.Number);observed=describe(pending);count+=1});controller.player2.connected=true;game.onUpdate(function(){ready=count===1})';
+ const source='let observed="";let count=0;let ready=false;let beforeNull=-1;let beforeUndefined=-1;let afterNumber=-1;function describe(player:mp.Player){return console.inspect("Player "+mp.getPlayerProperty(player,mp.PlayerProperty.Number))}mp.onControllerEvent(ControllerEvent.Connected,function(renamed){let pending=null;beforeNull=mp.getPlayerProperty(pending,mp.PlayerProperty.Number);pending=undefined;beforeUndefined=mp.getPlayerProperty(pending,mp.PlayerProperty.Number);pending=renamed;afterNumber=mp.getPlayerProperty(pending,mp.PlayerProperty.Number);observed=describe(pending);count+=1});controller.player2.connected=true;game.onUpdate(function(){ready=count===1})';
  const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);const runs=[];
  const check=run=>{assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);const values=Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name,v.value]));assert.equal(values.observed,'Player 2');assert.equal(values.count,1);assert.equal(values.ready,true);assert.equal(values.beforeNull,0);assert.equal(values.beforeUndefined,0);assert.equal(values.afterNumber,2);};
  const tick=async run=>{await stepFrames(run.vm,1,0);await stepFrames(run.vm,12,20);check(run);};
@@ -31,6 +31,16 @@ test('registered Player property keeps actual identity and String output through
   const saved=Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer());run.vm.stopAll();await run.vm.loadProject(saved);run.vm.runtime.bwArcadeFrameAuthority='manual';run.vm.greenFlag();await tick(run);
   const fresh=await runArcadeSourceCode('SPRITE Placeholder:\nWHEN flag clicked:\n  hide',{frames:0});runs.push(fresh);fresh.vm.stopAll();await fresh.vm.loadProject(saved);fresh.vm.runtime.bwArcadeFrameAuthority='manual';fresh.vm.greenFlag();await tick(fresh);
   const current=JSON.parse(run.vm.toJSON()),exported=projectToArcade(current);assert.deepEqual(exported.unsupported,[]);assert.match(exported.ts,/mp\.getPlayerProperty\([^\n]+mp\.PlayerProperty\.Number/);const again=arcadeToPseudocode(exported.files);assert.deepEqual(again.unsupported,[],exported.ts);await execute(again.code);
+  // These are separate executions of the original pinned SDK, with its own
+  // controller setter, event delivery and Player class. Source/host passes do
+  // not substitute for either original or exported application behavior.
+  const {runPxtArcade}=await import('./helpers/pxt-arcade-runtime.mjs');
+  assert.equal(JSON.parse(exported.files['pxt.json']).dependencies.multiplayer,'*');
+  const reference=await runPxtArcade(source,{dependencies:{device:'*',multiplayer:'*'},waitForGlobals:{ready:true}});
+  const reopenedReference=await runPxtArcade(exported.files,{waitForGlobals:{ready:true}});
+  for(const [name,value]of Object.entries({observed:'Player 2',count:1,ready:true,beforeNull:0,beforeUndefined:0,afterNumber:2})){
+   assert.equal(reference[name],value,'original '+name);assert.equal(reopenedReference[name],value,'executed export '+name);
+  }
   for(const change of ['selector','receiver','registration','writer','duplicateProcedure']){
    const edited=structuredClone(current),target=edited.targets.find(t=>Object.values(t.blocks||{}).some(b=>b.opcode==='arcade_playerProperty')),blocks=target.blocks;
    const findProperty=(node,seen=new Set())=>{if(!node||seen.has(node))return null;seen.add(node);if(node.opcode==='arcade_playerProperty')return node;for(const slot of Object.values(node.inputs||{})){const found=findProperty(blocks[slot[1]],seen);if(found)return found;}return null;};

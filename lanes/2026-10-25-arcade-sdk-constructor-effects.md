@@ -1,7 +1,37 @@
 # Selected SDK Sprite constructor scalar effects
 
-Status: CLAIMED; merge before implementation. Base: `681f61fea139a656ed6016a489bbf3ce38ac67af`.
+Status: DONE implementation candidate; actual SDK/native/editor qualification pending.
+Claim PR #1390 merged at `2a6574b9a1382feb0f364e2467a51a4f8449f2a5`
+before implementation. Base: `681f61fea139a656ed6016a489bbf3ce38ac67af`.
 Owner: Arcade integration; preserve the separate Image consumer ABI lane.
+
+Implementation: `0c8335d9159` (integrated from `e065cdeffd6`). The constructor module now has fifteen
+source controls, including the three-generation JSON admission discriminator
+added in `b7f08218dfe`. The earlier 99-control source cohorts and final composed
+38-control SDK/Image/score cohort pass; these overlapping counts are not additive. Twelve meaningful cuts detect identity, writer,
+virtual-effect, readiness, currentness, namespace, publication, metadata and
+fallback-denial guards. An earlier redundant single-observer cut survived and
+is retained; it is not counted as guard coverage.
+
+The supported slice is direct canonical Sprite ancestry with closed synchronous
+calls and actual Image inputs. It follows executed parameter-property stores,
+field initializers, audited SDK registration/prefix/virtual calls/suffix and
+owned aliases. SDK registration is controlled storage under this closed slice,
+not proof that an object never escapes. Primitive/readiness facts are conditional
+on real SDK calls returning normally; their actual execution and errors remain.
+Unknown callbacks, Scene observers, yielding and unmodeled setters stay refused.
+SDK storage/member collisions also refuse the older projection rather than
+falling back to a false Number fact. No generic SDK ancestry, Array or field
+declaration acquires producer authority.
+
+Source export/reimport, Code, owned JSON/SB3 and real SVG/constructor-argument
+source edits pass. An exploratory third live-object export reaches Array
+read/mutation refusals. A subsequent admission discriminator passes all three
+owned-JSON stages on the same projects and genuine assets. Both the GUI and
+compatibility journey already use that API. This case establishes no additional
+Array implementation defect; retain the live-input admission boundary.
+The unchanged actual SDK fixture and all its assertions still require hosted
+qualification. Do not report source controls as runtime or complete-app results.
 
 ## Actual boundary
 

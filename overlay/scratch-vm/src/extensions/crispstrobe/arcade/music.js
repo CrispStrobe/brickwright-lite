@@ -36,7 +36,10 @@ const decodeInstructions = bytes => {
 const oscillatorType = wave => wave === 1 ? 'triangle' : wave === 2 ? 'sawtooth' : wave === 3 ? 'sine' :
     wave >= 11 && wave <= 15 ? 'square' : null;
 
-module.exports = function createArcadeMusic ({initializePxtMusic, clock, audioContext = () => null, onError = () => {}}) {
+// `wake(delayMs)`, when supplied, is asked for a timer at each positive pause
+// deadline. PXT resumes a paused fiber from its own timer, not at the next
+// frame; the host pumps at that deadline so the caller resumes on time.
+module.exports = function createArcadeMusic ({initializePxtMusic, clock, audioContext = () => null, onError = () => {}, wake = null}) {
     let fibers = [];
     let generation = 0;
     let pxt = null;
@@ -62,6 +65,10 @@ module.exports = function createArcadeMusic ({initializePxtMusic, clock, audioCo
         }
         fiber.pauseMs = Math.max(0, Number(result.value) || 0);
         fiber.wakeAt = fiber.resumeAt + fiber.pauseMs;
+        if (wake && fiber.pauseMs > 0) {
+            const delay = fiber.wakeAt - clock();
+            if (delay > 0) wake(delay);
+        }
     };
 
     const start = generator => {

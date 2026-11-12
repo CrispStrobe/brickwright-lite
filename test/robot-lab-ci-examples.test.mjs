@@ -2,6 +2,7 @@
 // Copyright (c) 2026 CrispStrobe
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
 import {NINE_INTAKES} from '../scripts/lib/sim-lab-nine-intake-judge.mjs';
+import {Q5_BROWSER_MODELS} from '../scripts/lib/sim-lab-q5-browser-gate.mjs';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const script=read('scripts/verify-sim-lab-browser.mjs');
 function checkExampleCoverage(workflow){
@@ -12,7 +13,8 @@ function checkExampleCoverage(workflow){
  // The new-model gate filters its own id list rather than a runExample loop.
  const newModels=[...script.matchAll(/const newModelIds = \[([^\]]+)\]/g)].flatMap(m=>[...m[1].matchAll(/'([^']+)'/g)].map(n=>n[1]));
  assert.match(script,/Object\.keys\(NINE_INTAKES\)\.filter\(id => runExample\(id \+ '\.ldr'\)\)/,'Every reviewed intake is an actual selectable browser journey');
- const expected=[...new Set([...named,...robots,...extras,...newModels,...Object.keys(NINE_INTAKES)])].sort();
+ assert.match(script,/for \(const id of \[\.\.\.Q5_BROWSER_MODELS,/,'Every Q5 promotion is an actual selectable browser journey');
+ const expected=[...new Set([...named,...robots,...extras,...newModels,...Object.keys(NINE_INTAKES),...Q5_BROWSER_MODELS])].sort();
  // Match the actual filter's primary -> automatically included control pairs.
  const automatic=[...script.matchAll(/\(id==='([^']+)' && runExample\('([^']+)\.ldr'\)\)/g)].map(m=>({control:m[1],primary:m[2]}));
  assert.deepEqual(automatic.map(p=>p.primary).sort(),['cable-compass','cascade','rise-ratio','wavemaker']);
@@ -62,4 +64,17 @@ test('Atlas CI partition preserves original export and full replay under existin
  assert.throws(()=>checkAtlasPartition(workflow.replace('--intake-capture=atlas-six','')),/producer/);
  assert.throws(()=>checkAtlasPartition(workflow.replace("matrix.shard == 'robotaddon9'","matrix.shard == 'robotaddon8'")),/same job/);
  assert.throws(()=>checkAtlasPartition(workflow.replace(/(saved-project replay\n(?:        id: \S+\n)?        timeout-minutes: )8/,'$19')),/bounded step/);
+});
+
+test('Cross Ratio coverage rejects an absent or duplicated dedicated journey',()=>{
+ const workflow=read('.github/workflows/build.yml');
+ const command='run: npm run verify:sim-lab -- --part=examples --examples=cross-ratio';
+ assert.equal(workflow.split(command+'\n').length,2,'one new original-program journey');
+ checkExampleCoverage(workflow);
+ assert.throws(()=>checkExampleCoverage(workflow.replace(command+'\n','run: true\n')));
+ assert.throws(()=>checkExampleCoverage(workflow+'\n'+command+'\n'),/duplicate work/);
+ const helper=read('scripts/lib/sim-lab-new-models-gate.mjs');
+ assert.match(helper,/id==='cross-ratio'\?\{includeExperimental:true\}/,'explicit experimental opt-in');
+ assert.match(helper,/if\(id==='cross-ratio'\)await crossRatioRoundtrip\(page,modelOpts\)/,'actual project replay stays connected');
+ assert.ok(helper.indexOf("if(id==='cross-ratio')await crossRatioRoundtrip")<helper.indexOf('await manualMechanicsInteractions(page,'),'save the actual gallery program before manual reload');
 });

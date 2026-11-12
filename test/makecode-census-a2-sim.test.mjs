@@ -317,18 +317,29 @@ test('switch: shared labels, default, a return inside a case', {skip}, async () 
 
 // ── lite's firmware only: what one simulator cannot show ──────────────────
 
-test('radio serial numbers: the sender puts its number in front, the receiver reads it and gets the payload', {skip}, async () => {
+/** A MakeCode number packet (type 0) as the frame text after MicroPython's 3-byte header. */
+function makecodeNumberPacket (serial, value) {
+    const b = Buffer.alloc(32);
+    b.writeInt32LE(serial, 5);
+    b.writeInt32LE(value, 9);
+    return b.toString('latin1');
+}
+
+test('radio serial numbers: the sender puts its number in the packet, the receiver reads it and gets the payload', {skip}, async () => {
     const tx = lite('radio.setGroup(4)\nradio.setTransmitSerialNumber(true)\nradio.sendNumber(255)\nserial.writeLine("" + control.deviceSerialNumber())\n');
     const sent = await runOnMicrobitFirmware(tx.py, {ms: 500});
     assert.equal(sent.traceback, null, sent.traceback);
     // the simulator firmware has no machine.unique_id: its serial number is 1
     assert.deepEqual(sent.out.split(/\r?\n/).filter(Boolean), ['1']);
-    assert.deepEqual(sent.sent.map(p => p.slice(3)), ['\u0000S1\u0000255']);
+    // MakeCode's packet (radio.ts): type 0, the serial number at byte 5, the number at byte 9
+    const frame = Buffer.from(sent.sent[0], 'latin1');
+    assert.equal(frame.length, 35);
+    assert.deepEqual([frame[3], frame.readInt32LE(8), frame.readInt32LE(12)], [0, 1, 255]);
     const rx = lite([
         'radio.onReceivedNumber(function (receivedNumber) {',
         '    serial.writeLine("" + radio.receivedPacket(RadioPacketProperty.SerialNumber) + ":" + receivedNumber)',
         '})'].join('\n'));
-    const got = await runOnMicrobitFirmware(rx.py, {ms: 1000, radio: [[100, '\u0000S77\u000042'], [300, '5']]});
+    const got = await runOnMicrobitFirmware(rx.py, {ms: 1000, radio: [[100, makecodeNumberPacket(77, 42)], [300, '5']]});
     assert.equal(got.traceback, null, got.traceback);
     assert.deepEqual(got.out.split(/\r?\n/).filter(Boolean), ['77:42', '0:5'], 'a packet without one reads 0, as in MakeCode');
 });

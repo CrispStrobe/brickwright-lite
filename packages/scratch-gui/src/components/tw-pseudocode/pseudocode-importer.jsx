@@ -1,4 +1,9 @@
 import React from 'react';
+import {showDebuggerOnStage} from '../../lib/bw-debug/show-debugger-on-stage.js';
+import {Popup, toolStyles} from './sim-lab-toolbar.jsx';
+import ScrollRow from './toolbar-scroll-row.jsx';
+import {toolbarActionApplies} from '../../lib/code-toolbar-actions.js';
+import {notifyEditorMenuActions, registerEditorMenuActions} from '../../lib/editor-menu-actions.js';
 import {clearControllerPanel} from '../../lib/controller-inputs.js';
 import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
@@ -88,6 +93,7 @@ const FPGA_TAB_INDEX = 5;
 
 const L10N = {
     en: {
+        actionFiles: 'Files', actionPrograms: 'Program and export', actionExamples: 'Examples',
         fileMenuTitle: 'Open, save, import, examples and reference',
         makeCircuit: '⚙ Make this a circuit',
         makeCircuitTitle: e => `Build "${e}" as logic gates in the FPGA tab — it is a boolean expression over 1-bit pins, so it needs no program to run`,
@@ -320,6 +326,7 @@ const L10N = {
         micropythonReadonly: 'Read-only — generated from your blocks for the micro:bit.',
         micropythonImported: 'Imported from a .hex — the simulator runs this as it is.',
         runOnSimulator: '▶ Run',
+        toolbarLabel: 'Code editor toolbar (scrolls sideways)',
         openSpikeArena: '🪐 SPIKE arena',
         openSpikeArenaTitle: 'Explore a free virtual SPIKE sandbox or run a program in the arena challenges',
         spikeFirmwareRunTitle: 'Run the supported code subset in our simulation-only ARM firmware',
@@ -425,6 +432,7 @@ const L10N = {
         }
     },
     de: {
+        actionFiles: 'Dateien', actionPrograms: 'Programm und Export', actionExamples: 'Beispiele',
         fileMenuTitle: 'Öffnen, speichern, importieren, Beispiele und Referenz',
         makeCircuit: '⚙ Daraus eine Schaltung bauen',
         makeCircuitTitle: e => `„${e}" im FPGA-Tab als Logikgatter bauen — ein boolescher Ausdruck über 1-Bit-Pins, der kein Programm zum Laufen braucht`,
@@ -651,6 +659,7 @@ const L10N = {
         micropythonReadonly: 'Nur-Lesen — aus deinen Blöcken für den micro:bit generiert.',
         micropythonImported: 'Aus einer .hex importiert — der Simulator führt das direkt aus.',
         runOnSimulator: '▶ Ausführen',
+        toolbarLabel: 'Code-Editor-Werkzeugleiste (seitlich scrollbar)',
         openSpikeArena: '🪐 SPIKE-Arena',
         openSpikeArenaTitle: 'Eine freie virtuelle SPIKE-Arena erkunden oder ein Programm in den Arena-Aufgaben ausführen',
         spikeFirmwareRunTitle: 'Unterstützten Code in unserer ARM-Firmware für die Simulation ausführen',
@@ -1285,6 +1294,7 @@ class PseudocodeImporter extends React.Component {
             catalog: null, catalogError: null, showCatalog: false, exampleFilter: '', actionsOpen: false,
             bundledExamplesStatus: 'idle'};
         this._cmEditor = null;
+        this._codeFileInput = React.createRef();
         // Cache compiled ASM by source hash so tab switching doesn't recompile.
         this._asmCache = {hash: null, asm: '', lineMap: null};
         this.handleFiles = this.handleFiles.bind(this);
@@ -1317,6 +1327,7 @@ class PseudocodeImporter extends React.Component {
 
     componentDidMount () {
         this._unmounted = false;
+        this._unregisterCodeMenu = registerEditorMenuActions('code', () => this.codeMenuActions());
         window.addEventListener('bw-microbit-run-request', this._onMicrobitRunRequest);
         // CodeMirror arrives when the tab is first shown (_reveal), not now:
         // every TabPanel is force-rendered, so "mounted" is every first paint.
@@ -1330,6 +1341,7 @@ class PseudocodeImporter extends React.Component {
         let consumedParkedSource = false;
         if (vm && vm.runtime) {
             this._onProjectChanged = () => {
+                this.invalidateArcadeReport();
                 const src = vm.runtime.bwPseudocodeSource;
                 if (src) {
                     if (src !== this.state.buffers.pseudocode) {
@@ -1558,6 +1570,11 @@ class PseudocodeImporter extends React.Component {
     }
 
     componentDidUpdate (prevProps, prevState) {
+        if (prevProps.vm !== this.props.vm || prevState.lang !== this.state.lang ||
+            prevState.buffers[this.state.lang] !== this.state.buffers[this.state.lang]) this.invalidateArcadeReport();
+        if (prevProps.isVisible !== this.props.isVisible || prevState.busy !== this.state.busy ||
+            prevState.revealed !== this.state.revealed || prevState.buffers !== this.state.buffers ||
+            prevState.lang !== this.state.lang || prevState.asmMode !== this.state.asmMode) notifyEditorMenuActions();
         if (this.props.isVisible && !this.state.revealed) this._reveal();
         // Tools may have opened while a hardware device was selected. If the
         // user then chooses "none" without closing it, onToggle does not fire
@@ -2096,6 +2113,25 @@ class PseudocodeImporter extends React.Component {
         return `${(dev ? dev[1].toLowerCase() : f.base)}.${f.ext}`;
     }
 
+    canCompileToBlocks () {
+        return !this.state.busy && !!this.activeCode().trim() &&
+            (TWO_WAY.has(this.state.lang) || this.canLiftAsm());
+    }
+
+    codeMenuActions () {
+        if (this._unmounted || !this.props.isVisible || !this.state.revealed) return null;
+        return {
+            open: {
+                enabled: !this.state.busy && !!this._codeFileInput.current,
+                run: () => this._codeFileInput.current.click()
+            },
+            // Match the toolbar: saving a snapshot is allowed while compiling.
+            save: {enabled: true, run: this.saveCodeFile},
+            'to-blocks': {enabled: this.canCompileToBlocks(), run: this.compile},
+            'from-blocks': {enabled: !this.state.busy, run: this.fromBlocks}
+        };
+    }
+
     // Save the code ITSELF, comments and all. The .sb3 round-trip preserves a
     // program but not a single comment — blocks carry no file-level text — so
     // a documented source can only survive as its own file.
@@ -2385,15 +2421,10 @@ class PseudocodeImporter extends React.Component {
             const detail = {format: 'firmware', kind: 'labwired', labwiredChip: 'board:microbit-v2', target: 'microbit',
                 firmware: {name: `${slug}-microbit-v2-emu.elf`, bytes: elf, text: null, fCpu: null},
                 rom: null, image: null, listing: null};
-            try { localStorage.setItem('bw-right-pane-hidden', '0'); } catch { /* private mode */ }
-            window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-right-pane-hidden', value: '0'}}));
-            // A simulator/console dock hides the Debug pane: show the debugger instead.
-            let dock = 'top';
-            try { dock = localStorage.getItem('bw-debug-dock') || 'top'; } catch { /* private mode */ }
-            if (!['top', 'right', 'solo'].includes(dock)) {
-                try { localStorage.setItem('bw-debug-dock', 'right'); } catch { /* private mode */ }
-                window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-debug-dock', value: 'right'}}));
-            }
+            // The Debug pane must be on screen to receive the image: a 'top' or
+            // device dock, or a hidden stage circuit, leaves it in the Circuit tab.
+            showDebuggerOnStage({storage: localStorage, dispatch: (key, value) =>
+                window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key, value}}))});
             window.__bwPendingMedia = {type: 'asm', detail};
             window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {detail}));
             this.setState({busy: false, status: this.L.mcEmulateStarted(subject.name) + this.fetchedNote(out)});
@@ -2506,9 +2537,10 @@ class PseudocodeImporter extends React.Component {
                 if (artwork?.animation?.resource) animationDocuments.push(artwork);
             }
         }
-        const {projectToArcade} = await import(
+        const {projectJsonToArcade} = await import(
             /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/export-arcade.js');
-        return projectToArcade(project, {
+        return projectJsonToArcade(JSON.stringify(project), {
+            captureObservation: true,
             name: 'brickwright-game',
             animationDocuments,
             costumeSvg: (t, c) => svgs.get(c.assetId) || null,
@@ -2530,14 +2562,60 @@ class PseudocodeImporter extends React.Component {
         } catch (error) { this.setState({status: error.message}); }
     }
 
-    async runAsArcade () {
-        this.setState({busy: true, status: this.L.mcRunCompiling('Arcade')});
+    invalidateArcadeReport () {
+        this._arcadeReportRevision = (this._arcadeReportRevision || 0) + 1;
+        this._arcadeReportRequest = null;
+        const revision = this._arcadeReportRevision;
+        if (this.state.conversionReport?.operation) {
+            try {
+                this.setState(state => this._arcadeReportRevision === revision && this._arcadeReportRequest === null &&
+                    state.conversionReport?.operation ? {conversionReport: null} : null);
+            } catch { /* Clearing a report must not prevent the original edit/project handoff. */ }
+        }
+    }
+
+    beginArcadeReport () {
+        const request = {vm: this.props.vm, revision: this._arcadeReportRevision || 0};
+        this._arcadeReportRequest = request;
+        return request;
+    }
+
+    publishArcadeReport (request, out, operation, outcome) {
+        // Report ownership only. This does not alter download, compilation,
+        // player publication, asset collection or their original errors.
+        if (this._unmounted || this._arcadeReportRequest !== request || request.vm !== this.props.vm ||
+            request.revision !== (this._arcadeReportRevision || 0)) return;
         try {
-            const out = await this.arcadeFromStage();
+            this.setState(() => {
+                if (this._unmounted || this._arcadeReportRequest !== request || request.vm !== this.props.vm ||
+                    request.revision !== (this._arcadeReportRevision || 0)) return null;
+                try {
+                    let observation=null;
+                    try {
+                        const evidence=Object.getOwnPropertyDescriptor(out,'refusalEvidence')?.value;
+                        observation=evidence&&typeof evidence==='object'?
+                            Object.getOwnPropertyDescriptor(evidence,'ownedJsonObservation')?.value:null;
+                    } catch { /* Missing evidence cannot hide the original unsupported report. */ }
+                    return {conversionReport: {direction: operation === 'export' ? 'Blocks → Arcade export' : 'Blocks → Arcade run',
+                        operation, outcome, preserved: false, changed: [], unsupported: [...out.unsupported],
+                        details: out.unsupportedDetails || [], observation: observation || null}, reportExpanded: Boolean(out.unsupported.length)};
+                } catch { return null; }
+            });
+        } catch { /* Reporting must not replace the original export/run outcome. */ }
+    }
+
+    async runAsArcade () {
+        const request = this.beginArcadeReport();
+        this.setState({busy: true, status: this.L.mcRunCompiling('Arcade'), conversionReport: null});
+        let out;
+        try {
+            out = await this.arcadeFromStage();
+            this.publishArcadeReport(request, out, 'run', 'Arcade source prepared; compiler result pending.');
             const {compileMakeCode} = await import(
                 /* webpackChunkName: "bw-makecode-pxt" */ '../../lib/bw-makecode/pxt-runtime.js');
             const built = await compileMakeCode({target: 'arcade', files: out.files});
             if (!built.success) {
+                this.publishArcadeReport(request, out, 'run', 'The compiler rejected the generated Arcade source.');
                 const d = built.diagnostics[0] || {};
                 this.setState({busy: false, status: this.L.mcCompileErrors(built.diagnostics.length, `${d.file}:${(d.line || 0) + 1} ${d.message || ''}`)});
                 return;
@@ -2550,24 +2628,32 @@ class PseudocodeImporter extends React.Component {
             window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-right-pane-hidden', value: '0'}}));
             window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-debug-dock', value: 'makecode'}}));
             window.dispatchEvent(new CustomEvent('bw-makecode-load', {detail: program}));
+            this.publishArcadeReport(request, out, 'run', 'Arcade source compiled and sent to the player; behavior is not verified.');
             this.setState({busy: false, status: this.L.arcStarted(out.unsupported.length, out.warnings.length)});
         } catch (err) {
+            if (out) this.publishArcadeReport(request, out, 'run', 'Arcade run failed; the original error is shown in the status.');
             this.setState({busy: false, status: this.makeCodeFailure(err, 'arcade')});
         }
     }
 
     async exportArcade () {
-        this.setState({busy: true});
+        const request = this.beginArcadeReport();
+        this.setState({busy: true, conversionReport: null});
         try {
             const original = this.makeCodeOriginalStatus();
             const out = original.status === 'current' && original.target === 'arcade' ?
-                {files: original.files, unsupported: [], warnings: []} : await this.arcadeFromStage();
+                {files: original.files, unsupported: [], warnings: [], refusalEvidence: {ownedJsonObservation: {
+                    schema: 'arcade-clean-export-observation-v1', origin: 'original-source-passthrough',
+                    captureStatus: 'UNAVAILABLE_ORIGINAL_SOURCE_BRANCH'}}} : await this.arcadeFromStage();
             const {makeCodeProjectFile} = await import(
                 /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
             const name = JSON.parse(out.files['pxt.json']).name;
             const filename = `arcade-${String(name).replace(/[^a-z0-9_-]+/gi, '-').toLowerCase()}.mkcd`;
             const projectFile = makeCodeProjectFile(out.files, {name, target: 'arcade'});
             await downloadBlob(filename, new Blob([projectFile], {type: 'application/octet-stream'}));
+            this.publishArcadeReport(request, out, 'export', original.status === 'current' && original.target === 'arcade' ?
+                'Recovered original Arcade source saved; later behavior is not verified.' :
+                'Arcade source saved, including all reported unsupported operations; it has not been compiled or run.');
             this.setState({busy: false, status: this.L.arcDone(filename, out.unsupported.length, out.warnings.length)});
         } catch (err) {
             this.setState({busy: false, status: this.L.mcFailed('MakeCode Arcade', (err && err.message) || String(err))});
@@ -2596,6 +2682,7 @@ class PseudocodeImporter extends React.Component {
 
     componentWillUnmount () {
         this._unmounted = true;
+        if (this._unregisterCodeMenu) this._unregisterCodeMenu();
         this._makeCodeRequest = null;
         const vm = this.props.vm;
         if (vm && vm.runtime && this._onProjectChanged) {
@@ -2681,7 +2768,8 @@ class PseudocodeImporter extends React.Component {
         return this.state.buffers[this.state.lang] ?? '';
     }
     setActiveCode (text) {
-        if (this.state.lang === 'asm' && this.state.asmMode === 'listing') return; // listing is read-only
+        if (this.state.lang === 'asm' && this.state.asmMode === 'listing') return;
+        this.invalidateArcadeReport();
         this.setState(s => ({buffers: {...Object.fromEntries(Object.keys(LANG_LABEL).map(l => [l, ''])), [s.lang]: text}}));
     }
 
@@ -5482,7 +5570,7 @@ class PseudocodeImporter extends React.Component {
         }) : list;
         const open = this.state.showCatalog;
         return (
-            <span style={{position: 'relative', alignSelf: 'center'}}>
+            <span style={{display: 'block', width: '100%', minWidth: 0}}>
                 <button type="button"
                     onClick={() => { this.loadCatalog(); this.setState(s => ({showCatalog: !s.showCatalog})); }}
                     style={{...csel, cursor: 'pointer', border: '1px solid #cbd5e1',
@@ -5492,8 +5580,8 @@ class PseudocodeImporter extends React.Component {
                     {this.L.loadExample}
                 </button>
                 {open && (
-                    <div style={{position: 'absolute', top: '100%', ...(this.state.actionsAlignLeft ? {left: 0} : {right: 0}), zIndex: 60, marginTop: 4,
-                        width: 340, maxHeight: 380, display: 'flex', flexDirection: 'column',
+                    <div style={{marginTop: 4, boxSizing: 'border-box',
+                        width: '100%', maxWidth: 340, maxHeight: 380, display: 'flex', flexDirection: 'column',
                         background: '#fff', border: '1px solid #cbd5e1', borderRadius: 8,
                         boxShadow: '0 8px 24px rgba(15,23,42,.18)', textAlign: 'left'}}
                         data-testid="bw-catalog-panel"
@@ -5572,33 +5660,37 @@ class PseudocodeImporter extends React.Component {
     }
 
     renderActionMenu (csel) {
-        const item = {...csel, display: 'block', width: '100%', boxSizing: 'border-box',
-            textAlign: 'left', cursor: 'pointer', border: 'none', background: 'transparent'};
+        const item = {...csel, ...toolStyles(false).button, display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
+            width: '100%', boxSizing: 'border-box', textAlign: 'left', cursor: 'pointer', height: 'auto',
+            minHeight: 32, padding: '6px 8px', whiteSpace: 'normal', fontSize: 12};
         return (
-            <details style={{position: 'relative', alignSelf: 'center'}} data-testid="bw-code-actions"
-                onToggle={event => {
-                    // The menu and its catalog open leftwards from the ⋯; with too
-                    // little room on the left (a narrow row), open them rightwards.
-                    const right = event.currentTarget.getBoundingClientRect().right;
-                    this.setState({actionsOpen: event.currentTarget.open, actionsAlignLeft: right < 360});
-                }}>
-                <summary style={{...csel, cursor: 'pointer', listStyle: 'none', border: '1px solid #cbd5e1',
-                    background: '#f1f5f9', whiteSpace: 'nowrap'}} title={L10N[pickLocale(this.props.locale)].fileMenuTitle}>
-                    ⋯
-                </summary>
-                <div style={{position: 'absolute', top: '100%', ...(this.state.actionsAlignLeft ? {left: 0} : {right: 0}), zIndex: 70, marginTop: 4,
-                    width: 220, padding: 6, background: '#fff', border: '1px solid #cbd5e1', borderRadius: 8,
-                    boxShadow: '0 8px 24px rgba(15,23,42,.2)', display: 'flex', flexDirection: 'column', gap: 2}}>
+            <Popup id="code-actions" anchorTestId="bw-code-actions" testId="bw-code-actions-menu"
+                open={this.props.isVisible !== false && this.state.actionsOpen} align="right" width={260} keepMounted
+                label={L10N[pickLocale(this.props.locale)].fileMenuTitle}
+                onToggle={() => this.setState(state => ({actionsOpen: !state.actionsOpen}))}
+                onClose={() => this.setState({actionsOpen: false})}
+                button={<button type="button" data-testid="bw-code-actions-trigger" style={toolStyles(false).button}
+                    title={L10N[pickLocale(this.props.locale)].fileMenuTitle}
+                    aria-label={L10N[pickLocale(this.props.locale)].fileMenuTitle}>⋯</button>}>
+                <div style={{display: 'flex', flexDirection: 'column', gap: 2}}>
+                    <strong style={{padding: '4px 8px', fontSize: 11, color: '#64748b'}}>{this.L.actionFiles}</strong>
                     <label style={item} title={this.L.openFileTitle(`${CODE_ACCEPT},${IMPORT_ACCEPT}`)}
-                        data-testid="bw-open-file" aria-disabled={this.state.busy}>
+                        data-testid="bw-open-file" role="button" tabIndex={this.state.busy ? -1 : 0} aria-disabled={this.state.busy}
+                        onKeyDown={event => {
+                            if (event.key !== 'Enter' && event.key !== ' ') return;
+                            event.preventDefault();
+                            if (!this.state.busy) this._codeFileInput.current?.click();
+                        }}>
                         {this.L.openFile}
-                        <input type="file" accept={`${CODE_ACCEPT},${IMPORT_ACCEPT}`} style={{display: 'none'}}
-                            disabled={this.state.busy} onChange={this.openCodeFile} />
+                        <input ref={this._codeFileInput} type="file" accept={`${CODE_ACCEPT},${IMPORT_ACCEPT}`} style={{display: 'none'}}
+                            disabled={this.state.busy}
+                            onChange={event => { this.setState({actionsOpen: false}); this.openCodeFile(event); }} />
                     </label>
                     <button type="button" onClick={this.saveCodeFile} style={item}
                         title={this.L.saveFileTitle(this.saveFileName())} data-testid="bw-save-file">
                         {this.L.saveFile}
                     </button>
+                    <strong style={{padding: '8px 8px 4px', marginTop: 4, borderTop: '1px solid #e2e8f0', fontSize: 11, color: '#64748b'}}>{this.L.actionPrograms}</strong>
                     {this.state.lang === 'micropython' ? (
                         <button type="button" onClick={() => this.downloadMicrobitHex()} style={item}
                             disabled={this.state.busy || !this.state.buffers.micropython.trim() || /^# ===/.test(this.state.buffers.micropython)}
@@ -5664,6 +5756,7 @@ class PseudocodeImporter extends React.Component {
                         title={this.L.arcExportTitle} disabled={this.state.busy}
                         data-testid="bw-makecode-arcade-export">{this.L.arcExport}</button>
                     <div style={{borderTop: '1px solid #e2e8f0', margin: '3px 0'}} />
+                    <strong style={{padding: '8px 8px 4px', marginTop: 4, borderTop: '1px solid #e2e8f0', fontSize: 11, color: '#64748b'}}>{this.L.actionExamples}</strong>
                     {this.currentDevice() ? this.renderCatalogControl(item) :
                         this.state.bundledExamplesStatus === 'error' ? (
                             <button type="button" onClick={this._loadBundledExamples} style={item}
@@ -5674,7 +5767,7 @@ class PseudocodeImporter extends React.Component {
                             <span style={{...item, cursor: 'wait', color: '#64748b'}} aria-live="polite"
                                 data-testid="bw-load-example-loading">{this.L.examplesLoading}</span>
                         ) : (
-                        <select defaultValue="" onChange={e => this.loadExample(e.target.value)}
+                        <select defaultValue="" onChange={e => { this.setState({actionsOpen: false}); this.loadExample(e.target.value); }}
                             style={{...item, border: 'none'}} title={this.L.loadExampleTitle}
                             data-testid="bw-load-example">
                             <option value="" disabled>{this.L.loadExample}</option>
@@ -5693,7 +5786,7 @@ class PseudocodeImporter extends React.Component {
                         🖼️ {this.L.customArt}{this.state.uploads.length ? ` (${this.state.uploads.length})` : ''}
                     </button>
                 </div>
-            </details>
+            </Popup>
         );
     }
 
@@ -5785,6 +5878,9 @@ class PseudocodeImporter extends React.Component {
         const csel = {...sel, padding: '4px 8px', fontSize: 12}; // compact select
         const spikeCode = /\b(?:spike(?:prime)?|PrimeHub|InventorHub)\b/i.test(this.activeCode());
         const showSpikeAction = isSpikeExtensionLoaded(this.props.vm) || spikeCode;
+        // The device this tab is writing for: the MakeCode project's target, else the DEVICE header.
+        const toolbarDevice = (this._makeCodeProject && this._makeCodeProject.target) || this.currentDevice();
+        const applies = id => toolbarActionApplies(id, {device: toolbarDevice, evidence: showSpikeAction});
         return (
             <div style={wrap} data-testid="bw-code-editor">
                 {/* ── Single merged row: language tabs (left) + compact controls (right) ── */}
@@ -5798,8 +5894,22 @@ class PseudocodeImporter extends React.Component {
                     room is reserved unconditionally because the overlay is there
                     at every chrome height; it was only ever luck that they
                     missed each other. */}
-                <div style={{display: 'flex', gap: 2, marginBottom: -1, alignItems: 'flex-end', flexWrap: 'wrap', flexShrink: 0, paddingRight: 40}}
-                    data-testid="bw-lang-row">
+                <ScrollRow testId="bw-lang-row" label={this.L.toolbarLabel}
+                    style={{marginBottom: -1, paddingRight: 40}} scrollerStyle={{paddingBottom: 1}}
+                    trailing={(
+                        <React.Fragment>
+                            {this.renderActionMenu(csel)}
+                    <button onClick={() => this.toggleMaximize()}
+                        style={{...csel, cursor: 'pointer', background: max ? '#4c97ff' : '#f1f5f9',
+                            color: max ? '#fff' : 'inherit', minWidth: 24, border: '1px solid #cbd5e1', alignSelf: 'center'}}
+                        title={max ? this.L.restoreTitle : this.L.maximizeTitle}
+                        aria-label={max ? this.L.restoreTitle : this.L.maximizeTitle} aria-pressed={max}
+                        data-testid="bw-editor-maximize">
+                        {max ? '⊡' : '⊞'}
+                    </button>
+
+                        </React.Fragment>
+                    )}>
                     {[['pseudocode', '🧩 Pseudo'], ['python', '🐍 Py'], ['javascript', '🟨 JS'], ['c', '🔧 C'], ['basic', '📺 BAS'], ['asm', '🔩 ASM'],
                         ...this.visibleOptionalLangs().map(([l, label]) => [l, label]),
                         // The tab follows the DEVICE line, except when a
@@ -5834,112 +5944,33 @@ class PseudocodeImporter extends React.Component {
                         const hidden = BW_OPTIONAL_LANGS.filter(([l]) => !shown.includes(l));
                         if (!hidden.length) return null;
                         return (
-                            <span style={{position: 'relative'}}>
-                                <button type="button" data-testid="bw-lang-more" aria-haspopup="menu"
-                                    aria-expanded={this.state.langMenuOpen} aria-label={this.L.moreLanguages} title={this.L.moreLanguages}
-                                    disabled={this.state.busy}
-                                    onClick={() => this.setState(s => ({langMenuOpen: !s.langMenuOpen}))}
+                            <Popup id="code-lang-more" anchorTestId="bw-lang-more-anchor" testId="bw-lang-more-menu" role="menu"
+                                open={this.props.isVisible !== false && this.state.langMenuOpen} align="left" width={220}
+                                label={this.L.moreLanguages}
+                                onToggle={() => { if (!this.state.busy) this.setState(s => ({langMenuOpen: !s.langMenuOpen})); }}
+                                onClose={() => this.setState({langMenuOpen: false})}
+                                button={<button type="button" data-testid="bw-lang-more" disabled={this.state.busy}
+                                    aria-label={this.L.moreLanguages} title={this.L.moreLanguages}
                                     style={{padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: '8px 8px 0 0', cursor: 'pointer',
                                         fontWeight: 700, fontSize: 13, background: '#eef2f7', color: '#64748b', position: 'relative', top: 1}}>
                                     +
-                                </button>
-                                {this.state.langMenuOpen ? (
-                                    <span role="menu" data-testid="bw-lang-more-menu"
-                                        style={{position: 'absolute', top: '100%', left: 0, zIndex: 20, display: 'flex', flexDirection: 'column',
-                                            background: '#fff', border: '1px solid #cbd5e1', borderRadius: 6, boxShadow: '0 4px 12px rgba(15,23,42,.15)', minWidth: 170}}>
-                                        {hidden.map(([l, label, name]) => (
-                                            <button key={l} type="button" role="menuitem" onClick={() => this.addOptionalLang(l)}
-                                                style={{padding: '7px 10px', border: 0, background: 'transparent', textAlign: 'left', cursor: 'pointer',
-                                                    fontSize: 13, color: '#1e293b', whiteSpace: 'nowrap'}}>
-                                                {label} — {name}
-                                            </button>
-                                        ))}
-                                    </span>
-                                ) : null}
-                            </span>
+                                </button>}>
+                                {hidden.map(([l, label, name]) => (
+                                    <button key={l} type="button" role="menuitem" onClick={() => this.addOptionalLang(l)}
+                                        style={{padding: '7px 10px', border: 0, background: 'transparent', textAlign: 'left', cursor: 'pointer',
+                                            fontSize: 13, color: '#1e293b', whiteSpace: 'nowrap'}}>
+                                        {label} — {name}
+                                    </button>
+                                ))}
+                            </Popup>
                         );
                     })()}
-                    <span style={{flex: 1, minWidth: 4}} />
-                    {/* Compact controls */}
-                    <React.Fragment>
-                        <button type="button" onClick={() => this.setState(s => ({showInfo: !s.showInfo}))}
-                            aria-label={this.L.infoAria} title={this.L.infoTitle}
-                            style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20,
-                                padding: 0, border: 'none', borderRadius: '50%', background: this.state.showInfo ? '#4c97ff' : '#e2e8f0',
-                                color: this.state.showInfo ? '#fff' : '#475569', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                                fontStyle: 'italic', alignSelf: 'center'}}>
-                            i
-                        </button>
-                        <button type="button" onClick={() => this.setState(s => ({showMatrix: !s.showMatrix}))}
-                            aria-label={this.L.matrixAria} title={this.L.matrixTitle}
-                            data-testid="bw-matrix-toggle"
-                            style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: 20,
-                                padding: '0 6px', border: 'none', borderRadius: 10,
-                                background: this.state.showMatrix ? '#4c97ff' : '#e2e8f0',
-                                color: this.state.showMatrix ? '#fff' : '#475569', fontSize: 11, fontWeight: 700,
-                                cursor: 'pointer', alignSelf: 'center'}}>
-                            ⊞⊟
-                        </button>
-                        <button type="button" onClick={() => showCircuitDebugger()}
-                            aria-label={pickLocale(this.props.locale) === 'de' ? 'Debugger öffnen' : 'Open debugger'}
-                            title={pickLocale(this.props.locale) === 'de' ? 'Debugger im rechten Bereich öffnen' : 'Open debugger in the right pane'}
-                            data-testid="bw-open-circuit-debugger"
-                            style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: 20,
-                                padding: '0 7px', border: 'none', borderRadius: 10, background: '#e2e8f0',
-                                color: '#475569', fontSize: 11, fontWeight: 700, cursor: 'pointer', alignSelf: 'center'}}>
-                            {'🐞 Debugger'}
-                        </button>
-                        <select value={this.currentDevice() || ''} onChange={e => this.setDevice(e.target.value)}
-                            style={{...csel, alignSelf: 'center', maxWidth: '100%', minWidth: 0}} title={this.L.deviceTitle}
-                            data-testid="bw-device-select">
-                            <option value="">{this.L.noChips}</option>
-                            {DEVICE_GROUPS.map(g => (
-                                <optgroup key={g.label} label={g.label}>
-                                    {g.devices.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
-                                </optgroup>
-                            ))}
-                            {/* Opens the machine library (gui.jsx renders it); not a device. */}
-                            <option value="__manage__">{'Manage machines…'}</option>
-                        </select>
-                        {/* What this language can do on this device: native, lowered, or
-                            an open task — one line, read from lib/bw-matrix/capabilities.js,
-                            the same table the docs are generated from. Title = the long form. */}
-                        {this.currentDevice() && matrixSummary(this.state.lang, this.currentDevice(), pickLocale(this.props.locale)) ? (
-                            <span style={{position: 'relative', alignSelf: 'center', display: 'inline-flex'}}>
-                                {/* The reach summary is long; keep it behind an (i) button. */}
-                                <button type="button" data-testid="bw-matrix-badge"
-                                    aria-expanded={this.state.matrixInfoOpen ? 'true' : 'false'}
-                                    aria-label={this.L.matrixInfoAria}
-                                    data-summary={matrixSummary(this.state.lang, this.currentDevice(), pickLocale(this.props.locale))}
-                                    title={matrixExplain(this.state.lang, this.currentDevice(), pickLocale(this.props.locale))}
-                                    onClick={() => this.setState(state => ({matrixInfoOpen: !state.matrixInfoOpen}))}
-                                    style={{width: 20, height: 20, padding: 0, borderRadius: '50%', fontSize: 11,
-                                        fontWeight: 700, fontStyle: 'italic', fontFamily: 'Georgia, serif', lineHeight: '18px',
-                                        color: '#475569', background: '#f1f5f9', border: '1px solid #cbd5e1', cursor: 'pointer'}}>
-                                    i
-                                </button>
-                                {this.state.matrixInfoOpen ? (
-                                    <span data-testid="bw-matrix-badge-popover" role="status"
-                                        style={{position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 20,
-                                            width: 'max-content', maxWidth: 320, padding: '6px 8px', fontSize: 11,
-                                            color: '#334155', background: '#fff', border: '1px solid #cbd5e1',
-                                            borderRadius: 4, boxShadow: '0 2px 6px rgba(15,23,42,0.15)', whiteSpace: 'normal'}}>
-                                        <strong style={{display: 'block'}}>
-                                            {matrixSummary(this.state.lang, this.currentDevice(), pickLocale(this.props.locale))}
-                                        </strong>
-                                        {matrixExplain(this.state.lang, this.currentDevice(), pickLocale(this.props.locale))}
-                                    </span>
-                                ) : null}
-                            </span>
-                        ) : null}
-                        {this.renderActionMenu(csel)}
-                    </React.Fragment>
                     {/* Convert/run actions live in the tab row, in maximize mode too. */}
                     <div data-testid="bw-code-action-row" style={{display: 'inline-flex', alignSelf: 'center',
-                        alignItems: 'center', gap: 6, flexWrap: 'wrap', flexShrink: 1, minWidth: 0}}>
+                        alignItems: 'center', gap: 6, flexWrap: 'nowrap', flexShrink: 0}}>
                         <button onClick={this.compile}
                             aria-label={this.L.toBlocks}
-                            disabled={this.state.busy || !this.activeCode().trim() || !(TWO_WAY.has(this.state.lang) || this.canLiftAsm())}
+                            disabled={!this.canCompileToBlocks()}
                             title={this.L.toBlocksTitle(LANG_LABEL[this.state.lang])}
                             style={actionBtn}>
                             <span aria-hidden="true">⇦ ▣</span>
@@ -5958,8 +5989,8 @@ class PseudocodeImporter extends React.Component {
                                 {this.L.deployPico}
                             </button>
                         ) : null}
-                        {this.state.lang === 'pseudocode' && showSpikeAction ? (
-                            <span style={{display: 'inline-flex', gap: 5, alignItems: 'center', flexWrap: 'wrap', minWidth: 0, maxWidth: '100%'}}>
+                        {this.state.lang === 'pseudocode' && applies('spike-usb') ? (
+                            <span style={{display: 'inline-flex', gap: 5, alignItems: 'center', flexWrap: 'nowrap'}}>
                                 <select value={this.state.spikeUsbRoute} disabled={this.state.busy}
                                     aria-label={this.L.spikeUsbRouteLabel} data-testid="bw-spike-usb-route"
                                     onChange={e => this.setState({spikeUsbRoute: e.target.value})}
@@ -6184,26 +6215,28 @@ class PseudocodeImporter extends React.Component {
                         ) : null}
     
                         <React.Fragment>
-                            <button onClick={() => this.openSpikeArena()} title={this.L.openSpikeArenaTitle}
-                                style={{...actionBtn, background: 'linear-gradient(135deg,#e8590c,#c2410c)'}}
-                                data-testid="bw-open-spike-arena">
-                                {this.L.openSpikeArena}
-                            </button>
-                            {window.__TAURI_INTERNALS__ && this.state.lang === 'python' && this.activeCode().trim() ?
+                            {applies('spike-arena') ? (
+                                <button onClick={() => this.openSpikeArena()} title={this.L.openSpikeArenaTitle}
+                                    style={{...actionBtn, background: 'linear-gradient(135deg,#e8590c,#c2410c)'}}
+                                    data-testid="bw-open-spike-arena">
+                                    {this.L.openSpikeArena}
+                                </button>
+                            ) : null}
+                            {applies('spike-nuttx') && window.__TAURI_INTERNALS__ && this.state.lang === 'python' && this.activeCode().trim() ?
                                 <button type="button" onClick={() => this.runOnNuttxPython()} disabled={this.state.busy}
                                     style={actionBtn} data-testid="bw-spike-nuttx-python-run"
                                     title={pickLocale(this.props.locale) === 'de' ? 'Python in unserer vollständigen NuttX-Firmware ausführen. Benötigt das Desktop-Paket mit eingebettetem MicroPython; Roboter-API: brickwright.' :
                                         'Run Python in our full NuttX firmware. Requires the desktop package with embedded MicroPython; robot API: brickwright.'}>
                                     ▶ Python · NuttX
                                 </button> : null}
-                            {window.__TAURI_INTERNALS__ && this.state.lang === 'python' && this.activeCode().trim() ?
+                            {applies('spike-nuttx') && window.__TAURI_INTERNALS__ && this.state.lang === 'python' && this.activeCode().trim() ?
                                 <button type="button" onClick={() => this.runOnMicroPythonImage()} disabled={this.state.busy}
                                     style={actionBtn} data-testid="bw-spike-micropython-run"
                                     title={pickLocale(this.props.locale) === 'de' ? 'Lokales MicroPython-Anwendungsimage auswählen und Python in Renode ausführen. Benötigt ein Desktop-Paket mit MicroPython-Simulationsprofil.' :
                                         'Choose a local MicroPython application image and run Python in Renode. Requires a desktop package with the MicroPython simulation profile.'}>
                                     ▶ MicroPython · Image
                                 </button> : null}
-                            {window.__TAURI_INTERNALS__ && ((this.state.lang === 'pseudocode' && this.currentDevice() === 'spike') || (this.state.lang === 'python' && isSpike3Program(this.activeCode()))) ? <button type="button" onClick={() => this.runOnSpikeFirmware()}
+                            {applies('spike-firmware') && window.__TAURI_INTERNALS__ && ((this.state.lang === 'pseudocode' && this.currentDevice() === 'spike') || (this.state.lang === 'python' && isSpike3Program(this.activeCode()))) ? <button type="button" onClick={() => this.runOnSpikeFirmware()}
                                 disabled={this.state.busy} style={actionBtn} data-testid="bw-spike-firmware-run"
                                 title={this.L.spikeFirmwareRunTitle}>
                                 ▶ Firmware
@@ -6333,6 +6366,84 @@ class PseudocodeImporter extends React.Component {
                                 title={this.L.asmInfoTitle} data-testid="bw-asm-info-toggle">i</button>
                         ) : null}
                     </div>
+                    <span style={{flex: 1, minWidth: 4}} />
+                    {/* Compact controls */}
+                    <React.Fragment>
+                        <button type="button" onClick={() => this.setState(s => ({showInfo: !s.showInfo}))}
+                            aria-label={this.L.infoAria} title={this.L.infoTitle}
+                            style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20,
+                                padding: 0, border: 'none', borderRadius: '50%', background: this.state.showInfo ? '#4c97ff' : '#e2e8f0',
+                                color: this.state.showInfo ? '#fff' : '#475569', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                                fontStyle: 'italic', alignSelf: 'center'}}>
+                            i
+                        </button>
+                        <button type="button" onClick={() => this.setState(s => ({showMatrix: !s.showMatrix}))}
+                            aria-label={this.L.matrixAria} title={this.L.matrixTitle}
+                            data-testid="bw-matrix-toggle"
+                            style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: 20,
+                                padding: '0 6px', border: 'none', borderRadius: 10,
+                                background: this.state.showMatrix ? '#4c97ff' : '#e2e8f0',
+                                color: this.state.showMatrix ? '#fff' : '#475569', fontSize: 11, fontWeight: 700,
+                                cursor: 'pointer', alignSelf: 'center'}}>
+                            ⊞⊟
+                        </button>
+                        <button type="button" onClick={() => showCircuitDebugger()}
+                            aria-label={pickLocale(this.props.locale) === 'de' ? 'Debugger öffnen' : 'Open debugger'}
+                            title={pickLocale(this.props.locale) === 'de' ? 'Debugger im rechten Bereich öffnen' : 'Open debugger in the right pane'}
+                            data-testid="bw-open-circuit-debugger"
+                            style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: 20,
+                                padding: '0 7px', border: 'none', borderRadius: 10, background: '#e2e8f0',
+                                color: '#475569', fontSize: 11, fontWeight: 700, cursor: 'pointer', alignSelf: 'center'}}>
+                            {'🐞 Debugger'}
+                        </button>
+                        <select value={this.currentDevice() || ''} onChange={e => this.setDevice(e.target.value)}
+                            style={{...csel, alignSelf: 'center', maxWidth: '100%', minWidth: 0}} title={this.L.deviceTitle}
+                            data-testid="bw-device-select">
+                            <option value="">{this.L.noChips}</option>
+                            {DEVICE_GROUPS.map(g => (
+                                <optgroup key={g.label} label={g.label}>
+                                    {g.devices.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
+                                </optgroup>
+                            ))}
+                            {/* Opens the machine library (gui.jsx renders it); not a device. */}
+                            <option value="__manage__">{'Manage machines…'}</option>
+                        </select>
+                        {/* What this language can do on this device: native, lowered, or
+                            an open task — one line, read from lib/bw-matrix/capabilities.js,
+                            the same table the docs are generated from. Title = the long form. */}
+                        {this.currentDevice() && matrixSummary(this.state.lang, this.currentDevice(), pickLocale(this.props.locale)) ? (
+                            <span style={{alignSelf: 'center', display: 'inline-flex'}}>
+                                {/* The reach summary is long; keep it behind an (i) button, in a portalled
+                                    pop-up (the toolbar scrolls sideways and would clip an absolute one). */}
+                                <Popup id="code-matrix-info" anchorTestId="bw-matrix-badge-anchor" testId="bw-matrix-badge-popover"
+                                    open={this.props.isVisible !== false && this.state.matrixInfoOpen} align="right" width={320}
+                                    label={this.L.matrixInfoAria}
+                                    onToggle={() => this.setState(state => ({matrixInfoOpen: !state.matrixInfoOpen}))}
+                                    onClose={() => this.setState({matrixInfoOpen: false})}
+                                    button={<button type="button" data-testid="bw-matrix-badge"
+                                        aria-label={this.L.matrixInfoAria}
+                                        data-summary={matrixSummary(this.state.lang, this.currentDevice(), pickLocale(this.props.locale))}
+                                        title={matrixExplain(this.state.lang, this.currentDevice(), pickLocale(this.props.locale))}
+                                        style={{width: 20, height: 20, padding: 0, borderRadius: '50%', fontSize: 11,
+                                            fontWeight: 700, fontStyle: 'italic', fontFamily: 'Georgia, serif', lineHeight: '18px',
+                                            color: '#475569', background: '#f1f5f9', border: '1px solid #cbd5e1', cursor: 'pointer'}}>
+                                        i
+                                    </button>}>
+                                    <div style={{padding: '2px 4px', color: '#334155'}}>
+                                        <strong style={{display: 'block'}}>
+                                            {matrixSummary(this.state.lang, this.currentDevice(), pickLocale(this.props.locale))}
+                                        </strong>
+                                        {matrixExplain(this.state.lang, this.currentDevice(), pickLocale(this.props.locale))}
+                                    </div>
+                                </Popup>
+                            </span>
+                        ) : null}
+                    </React.Fragment>
+                </ScrollRow>
+                {/* Transient messages sit under the row, not in it: they can be long and expand. */}
+                {this.state.status || this.state.conversionReport ? (
+                    <div data-testid="bw-code-notices" style={{display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'flex-start',
+                        flexShrink: 0, minWidth: 0, paddingTop: 4}}>
                     {/* A one-line status pill; click to read all of it on its own line. */}
                     {this.state.status ? <div data-testid="bw-code-status" role="status"
                         data-expanded={this.state.statusExpanded ? 'true' : 'false'}
@@ -6376,10 +6487,10 @@ class PseudocodeImporter extends React.Component {
                                     {de ? 'Umwandlungsbericht' : 'Conversion report'}: {report.direction}
                                     {!exp && (
                                         <span style={{marginLeft: 'auto', display: 'flex', gap: 6, fontSize: 11}}>
-                                            {report.preserved ? null : <span style={{color: '#991b1b'}}>❌</span>}
+                                            {report.operation || report.preserved ? null : <span style={{color: '#991b1b'}}>❌</span>}
                                             {report.changed.length > 0 && <span style={{color: '#0284c7'}}>{report.changed.length} {de ? 'geändert' : 'changed'}</span>}
                                             {report.unsupported.length > 0 && <span style={{color: '#92400e'}}>{report.unsupported.length} {de ? 'nicht unterstützt' : 'unsupported'}</span>}
-                                            {report.preserved && report.changed.length === 0 && report.unsupported.length === 0 && <span style={{color: '#166534'}}>✓ OK</span>}
+                                            {!report.operation && report.preserved && report.changed.length === 0 && report.unsupported.length === 0 && <span style={{color: '#166534'}}>✓ OK</span>}
                                         </span>
                                     )}
                                     <button type="button" data-testid="bw-dismiss-conversion-report"
@@ -6391,9 +6502,9 @@ class PseudocodeImporter extends React.Component {
                                 {exp && (
                                     <div style={{padding: '0 10px 7px 26px'}}>
                                         <div data-testid="bw-conversion-preserved" style={{color: report.preserved ? '#166534' : '#991b1b'}}>
-                                            {de ? 'Bewahrt' : 'Preserved'}: {report.preserved ?
+                                            {report.operation ? report.outcome : <>{de ? 'Bewahrt' : 'Preserved'}: {report.preserved ?
                                                 (de ? 'Projektstruktur erzeugt und geladen' : 'project structure generated and loaded') :
-                                                (de ? 'nein — Umwandlung fehlgeschlagen' : 'no — conversion failed')}
+                                                (de ? 'nein — Umwandlung fehlgeschlagen' : 'no — conversion failed')}</>}
                                         </div>
                                         <div data-testid="bw-conversion-changed">
                                             {de ? 'Geändert' : 'Changed'}: {report.changed.length ? report.changed.join(' · ') :
@@ -6404,19 +6515,15 @@ class PseudocodeImporter extends React.Component {
                                             {de ? 'Nicht unterstützt' : 'Unsupported'}: {report.unsupported.length ?
                                                 report.unsupported.join(' · ') : (de ? 'nichts gemeldet' : 'nothing reported')}
                                         </div>
+                                        {report.details?.length > 0 && <pre data-testid="bw-conversion-refusal-details"
+                                            style={{whiteSpace: 'pre-wrap', fontSize: 11}}>{JSON.stringify(report.details, null, 2)}</pre>}
                                     </div>
                                 )}
                             </div>
                         );
                     })() : null}
-                    <button onClick={() => this.toggleMaximize()}
-                        style={{...csel, cursor: 'pointer', background: max ? '#4c97ff' : '#f1f5f9',
-                            color: max ? '#fff' : 'inherit', minWidth: 24, border: '1px solid #cbd5e1', alignSelf: 'center'}}
-                        title={max ? this.L.restoreTitle : this.L.maximizeTitle}
-                        data-testid="bw-editor-maximize">
-                        {max ? '⊡' : '⊞'}
-                    </button>
-                </div>
+                    </div>
+                ) : null}
 
                 {this.state.showRepresentation && !max && (
                     <div data-testid="bw-representation-status" role="status"

@@ -8,7 +8,7 @@ const vm = 'overlay/scratch-vm/src';
 
 test('the console mirrors a real 160x120 stage and posts all eight controls', () => {
     const source = readFileSync(`${gui}/components/tw-pseudocode/arcade-device-pane.jsx`, 'utf8');
-    assert.match(source, /paintArcadeDeviceFrame\(destination, source\)/);
+    assert.match(source, /mirrorArcadeDeviceFrame\(renderer, \(\) => canvasRef.current\)/);
     for (const button of ['up', 'down', 'left', 'right', 'a', 'b', 'start', 'select']) {
         assert.match(source, new RegExp(`${button}: \\{label:`), `${button} is not wired`);
     }

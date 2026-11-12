@@ -2,8 +2,8 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "8785e4688cc308b34fea434c1734523caa621f74",
-    "read": "2026-10-28"
+    "sha": "33d3ee399db9224105e70f34864f1af962ccdb41",
+    "read": "2026-11-10"
   },
   "rows": [
     {
@@ -317,6 +317,30 @@
       "what": "The labwired engine as WASM — the differential oracle for the labwired bridge."
     },
     {
+      "id": "labwired-esp32s3-flash-fixtures",
+      "kind": "fixture",
+      "present": false,
+      "ciAvailable": false,
+      "ci": "no — ordinary ci.yml does not fetch these inputs. The separate esp32s3-firmware-boot.yml workflow fetches and admits them, sets LABWIRED_REQUIRE_ESP32S3=1, and requires all real cases with zero skips. Its result is a separate exact-head qualification.",
+      "via": "tried $LABWIRED_ESP32S3_INPUTS",
+      "gates": [
+        "test/labwired-esp32s3-flash.test.mjs"
+      ],
+      "what": "The exact retained Node engine, ESP32-S3 mask ROMs and merged Rust/Arduino firmware used by the public-factory boot/reset and console-selection proof. Directory presence does not admit bytes: the test checks every size and SHA-256 before importing executable glue. The structural source controls always run; the real-engine cases require this input directory."
+    },
+    {
+      "id": "labwired-esp32s040-fixtures",
+      "kind": "fixture",
+      "present": false,
+      "ciAvailable": false,
+      "ci": "no — ordinary CI has no S040 engine/guest inputs. The separate esp32s040-public-factory.yml workflow requires a qualified release, LABWIRED_REQUIRE_ESP32S040=1, actual execution and zero skips; the current candidate manifest deliberately cannot pass that gate.",
+      "via": "tried $LABWIRED_ESP32S040_INPUTS",
+      "gates": [
+        "test/labwired-esp32s040-engine.test.mjs"
+      ],
+      "what": "Exact S040 engine glue/WASM, source-owned Xtensa panel/touch guest, and unchanged M1 ROMs/retained Arduino smoke image for public-factory display, typed input, reset, five-pin H1 and composed merged-flash proof. The retained manifest is currently candidate evidence, not a qualified release or physical capture. Directory presence does not admit bytes; the test checks length/SHA-256 before importing executable glue and checks the exact producer system/chip catalog."
+    },
+    {
       "id": "labwired-warmed-window-profile",
       "kind": "fixture",
       "present": false,
@@ -482,7 +506,7 @@
       "present": false,
       "ciAvailable": false,
       "ci": "no — the binaries live at an absolute /tmp path, the same blind spot as the ehBASIC ROM: audit-clean-checkout strips untracked REPO files by archiving HEAD and cannot reach /tmp, so their absence in a fresh checkout is invisible to it. Can only stand in CI if the job fetches them explicitly.",
-      "via": "$MSDOS_BIN_DIR=/mnt/volume1/code/msdos-v2-bin (set, but does not exist)",
+      "via": "$MSDOS_BIN_DIR=[local path omitted] (set, but does not exist)",
       "gates": [
         "test/oracle-masm.test.mjs",
         "scripts/oracle-masm.mjs",

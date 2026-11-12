@@ -10,6 +10,8 @@ const {profiles}=JSON.parse(readFileSync(new URL('docs/data/robot-lab-lessons.js
 const keys=new Set(MODELS.map(m=>m.id||m.file));
 const dir=new URL('overlay/scratch-gui/static/sim-lab/lessons/',root);
 mkdirSync(dir,{recursive:true});
+// The mechanism name leads the summary once: a summary that already opens with it is not prefixed again.
+const mechanismLead=(name,summary)=>!name||summary.startsWith(name+'. ')?'':name+'. ';
 for(const m of MODELS){
  const id=lessonId(m),physical=m.file.replace(/\.ldr$/,'');
  const p=profiles[id]||profiles[physical];
@@ -17,7 +19,7 @@ for(const m of MODELS){
  for(const language of ['en','de']){
   const src=p[language],description=MODEL_LESSONS[m.id||m.file].description[language];
   const summary=src.what===description||src.what.startsWith(description+' ')?src.what:src.what+' '+description;
-  const data={version:1,id,language,...src,what:(MODEL_LESSONS[m.id||m.file].mechanism ? MODEL_LESSONS[m.id||m.file].mechanism[language]+'. ' : '')+summary,formula:typeof p.formula==='object'?p.formula[language]:p.formula,
+  const data={version:1,id,language,...src,what:mechanismLead(MODEL_LESSONS[m.id||m.file].mechanism?.[language],summary)+summary,formula:typeof p.formula==='object'?p.formula[language]:p.formula,
    related:p.related.filter(k=>keys.has(k)&&k!==(m.id||m.file))};
   const text=JSON.stringify(data,null,2)+'\n',file=new URL(`${id}.${language}.json`,dir);
   if(process.argv.includes('--check')){if(readFileSync(file,'utf8')!==text)throw Error(`Stale lesson ${id}/${language}`);}else writeFileSync(file,text);

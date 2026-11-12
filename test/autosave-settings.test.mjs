@@ -8,7 +8,7 @@ globalThis.localStorage = {
     setItem: (key, value) => store.set(key, String(value)),
     removeItem: key => store.delete(key)
 };
-const {readSettings, writeSettings, folderPickerAvailable, fixedFolder} = await import('../overlay/scratch-gui/src/lib/bw-autosave.js');
+const {readSettings, writeSettings, folderPickerAvailable, fixedFolder, isAndroidApp, chooseFolder} = await import('../overlay/scratch-gui/src/lib/bw-autosave.js');
 
 test('autosave is on by default and its settings stay in safe bounds', () => {
     store.clear();
@@ -23,6 +23,29 @@ test('autosave is on by default and its settings stay in safe bounds', () => {
 
 test('a folder can be chosen only where the platform offers a picker', () => {
     assert.equal(folderPickerAvailable(), false, 'plain Node has neither the app bridge nor showDirectoryPicker');
+});
+
+test('the Android app keeps in-app versions without offering an invisible native folder', async () => {
+    const savedWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+    const savedNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+    const calls = [];
+    try {
+        globalThis.window = {__TAURI__: {core: {invoke: (...args) => { calls.push(args); }}}};
+        Object.defineProperty(globalThis, 'navigator', {configurable: true,
+            value: {userAgent: 'Mozilla/5.0 (Linux; Android 15; Phone)', maxTouchPoints: 5}});
+        assert.equal(isAndroidApp(), true);
+        assert.equal(fixedFolder(), false);
+        assert.equal(folderPickerAvailable(), false);
+        await assert.rejects(chooseFolder(), /Android autosaves stay inside the app/);
+        assert.deepEqual(calls, [], 'the hidden private folder is never selected');
+        // A real browser picker remains available independently of the native app.
+        globalThis.window = {showDirectoryPicker: () => {}};
+        assert.equal(isAndroidApp(), false);
+        assert.equal(folderPickerAvailable(), true);
+    } finally {
+        if (savedWindow) Object.defineProperty(globalThis, 'window', savedWindow); else delete globalThis.window;
+        if (savedNavigator) Object.defineProperty(globalThis, 'navigator', savedNavigator); else delete globalThis.navigator;
+    }
 });
 
 test('the app on an iPad uses its own Files-app folder instead of a picker', () => {

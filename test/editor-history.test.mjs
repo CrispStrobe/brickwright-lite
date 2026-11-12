@@ -76,6 +76,83 @@ test('Redo and multi-step history move the active editor back and forth', async 
     }
 });
 
+test('merged History awaits async editor steps before crossing project edits', async () => {
+    clearProjectHistory();
+    const past = [], future = [], jobs = [], trace = [];
+    let value = 0, queue = Promise.resolve();
+    const step = direction => {
+        const job = queue.then(async () => {
+            const from = direction === 'undo' ? past : future;
+            const to = direction === 'undo' ? future : past;
+            if (!from.length) return false;
+            const next = from.pop();
+            // Model the sound editor's serial re-encoding boundary.
+            await new Promise(resolve => setImmediate(resolve));
+            to.push(value);
+            value = next;
+            trace.push(`${direction}:${value}`);
+            notifyUndoState();
+            return true;
+        });
+        queue = job;
+        jobs.push(job);
+        return job;
+    };
+    const unregister = registerUndoSurface('test-async-order', {
+        depth: () => ({undo: past.length, redo: future.length}),
+        undo: () => step('undo'), redo: () => step('redo')
+    });
+    const edit = next => { past.push(value); future.length = 0; value = next; notifyUndoState(); };
+    try {
+        activateUndoSurface('test-async-order');
+        edit(1);
+        recordProjectEdit({label: 'Project edit', undo: () => trace.push('project:undo'),
+            redo: () => trace.push('project:redo')});
+        edit(2);
+        assert.equal(await moveHistory(-3, 'all'), 3);
+        assert.deepEqual(trace, ['undo:1', 'project:undo', 'undo:0']);
+        assert.equal(value, 0);
+        assert.equal(await moveHistory(3, 'all'), 3);
+        assert.deepEqual(trace.slice(3), ['redo:1', 'project:redo', 'redo:2']);
+        assert.equal(value, 2);
+    } finally {
+        await Promise.allSettled(jobs);
+        unregister();
+        clearProjectHistory();
+    }
+});
+
+for (const rejects of [false, true]) {
+test(`merged History stops on an async editor ${rejects ? 'rejection' : 'refusal'}`, async () => {
+    clearProjectHistory();
+    let calls = 0;
+    const jobs = [];
+    const unregister = registerUndoSurface('test-async-failure', {
+        depth: () => ({undo: 1, redo: 0}),
+        undo: () => {
+            calls++;
+            const job = Promise.resolve().then(() => {
+                if (rejects) throw new Error('Sound encoding failed');
+                return false;
+            });
+            job.catch(() => {}); // The original coordinator drops this Promise.
+            jobs.push(job);
+            return job;
+        }
+    });
+    try {
+        activateUndoSurface('test-async-failure');
+        assert.equal(await moveHistory(-3, 'all'), 0, 'a failed edit is not a completed History step');
+        assert.equal(calls, 1, 'stop at the first unsuccessful edit');
+        if (rejects) assert.match(getUndoState().error, /Sound encoding failed/);
+    } finally {
+        await Promise.allSettled(jobs);
+        unregister();
+        clearProjectHistory();
+    }
+});
+}
+
 test('Undo reverts whichever came last: a project edit or the editor edit', async () => {
     clearProjectHistory();
     const editor = counter('test-order');

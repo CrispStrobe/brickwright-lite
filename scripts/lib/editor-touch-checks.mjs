@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 import assert from 'node:assert/strict';
+import {pixelControl} from '../lib-pixel-controls.mjs';
 
 export async function verifyEditorTouch (browser, url, evidence, check) {
     for (const [name, viewport] of [['portrait', {width: 390, height: 844}], ['landscape', {width: 844, height: 390}]]) {
@@ -41,7 +42,7 @@ export async function verifyEditorTouch (browser, url, evidence, check) {
             const backdrop = options.find(option => option.name === 'Backdrops');
             const spriteId = await targets.inputValue();
             assert.notEqual(spriteId, backdrop.id);
-            await page.getByTestId('bw-pixel-colour-10').tap();
+            await (await pixelControl(page, 'bw-pixel-colour-10')).tap();
             await page.getByTestId('bw-pixel-tool-pencil').tap();
             const before = await canvas.evaluate(element => element.toDataURL());
             await canvas.tap({position: {x: 30, y: 30}});

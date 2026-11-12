@@ -1,6 +1,7 @@
 0 Afterturn - closed internal-shape heading cycle - fixed outer masses comparison
 0 Name: afterturn-fixed-masses.ldr
 0 Author: CrispStrobe
+0 !BW ROTOR_INERTIA native
 0 !LICENSE BSD-3-Clause : see ../licenses/afterturn-fixed-masses.txt
 0 !LDRAW_ORG Unofficial_Model
 0 // A free-yaw platform changes internal inertia through two real opposed slider-cranks.

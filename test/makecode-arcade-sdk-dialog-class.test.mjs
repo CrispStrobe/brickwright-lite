@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
@@ -33,7 +34,7 @@ async function execute(imported, runs) {
     await stepFrames(run.vm, 150, 0); assert.deepEqual(run.errors, []); return run;
 }
 
-test('real SDK SplashDialog retains fields, image identity/pixels, resize and all authoring routes', async () => {
+test('real SDK SplashDialog retains fields, image identity/pixels, resize and all authoring routes', async t => {
     const original = await runPxtArcade(dialogOriginalSource, {inspectImageGlobals:['initial','resized']});
     const runs = [];
     try {
@@ -42,7 +43,44 @@ test('real SDK SplashDialog retains fields, image identity/pixels, resize and al
         check(await execute({...imported, code:run.creator.decompile()}, runs), original, 'Code');
         const exported = projectToArcade(run.creator.project, {costumeSvg:(target,costume) => run.creator.assets.get(costume.assetId)?.data});
         assert.deepEqual(exported.unsupported, []); assert.match(exported.ts, /new game\.SplashDialog/);
-        const exportedOriginal = await runPxtArcade(exported.files, {inspectImageGlobals:['initial','resized']});
+        let compiled = null;
+        let exportedOriginal;
+        try {
+            exportedOriginal = await runPxtArcade(exported.files, {
+                inspectImageGlobals:['initial','resized'],
+                onCompilation: ({files,built}) => {
+                    const binary = built.outfiles?.['binary.js'];
+                    const sha256 = value => createHash('sha256').update(value).digest('hex');
+                    compiled = {
+                        files:Object.fromEntries(Object.entries(files).map(([name,value]) => [name,sha256(value)])),
+                        success:built.success,
+                        binary:typeof binary === 'string' ? binary : null,
+                        binarySHA256:typeof binary === 'string' ? sha256(binary) : null
+                    };
+                }
+            });
+        } catch (error) {
+            // Diagnose only this owned fixture's same required compilation.
+            // The observer receives copies; neither execution nor assertions change.
+            const positions = [...String(error?.stack || error).matchAll(/<anonymous>:(\d+):(\d+)/g)]
+                .slice(0,3).map(match => ({line:Number(match[1]),column:Number(match[2])}));
+            const lines = compiled?.binary?.split('\n') || [];
+            const contexts = positions.map(position => ({...position,
+                lines:lines.slice(Math.max(0,position.line - 5),position.line + 4)
+                    .map((text,index) => ({line:Math.max(0,position.line - 5) + index + 1,text:text.slice(0,240)}))
+            }));
+            const diagnostic = {schema:'owned-dialog-compilation-failure/v1',
+                compilationAvailable:compiled !== null,success:compiled?.success ?? null,
+                inputSHA256:compiled?.files ?? null,binarySHA256:compiled?.binarySHA256 ?? null,
+                contextStatus:positions.length && lines.length ? 'BOUNDED_CONTEXT' : 'UNAVAILABLE_STACK_POSITION',
+                contexts};
+            if (Buffer.byteLength(JSON.stringify(diagnostic)) > 10000) {
+                diagnostic.contexts = [];
+                diagnostic.contextStatus = 'UNAVAILABLE_CONTEXT_SIZE';
+            }
+            t.diagnostic(JSON.stringify(diagnostic));
+            throw error;
+        } finally {compiled = null;}
         for (const name of names) assert.equal(exportedOriginal[name], original[name], 'original export ' + name);
         assert.deepEqual(exportedOriginal.$images, original.$images, 'original export full images');
         check(await execute(arcadeToPseudocode(exported.files), runs), original, 'reimport');

@@ -23,6 +23,7 @@ import {createRequire} from 'node:module';
 import path from 'node:path';
 import {INTEGRATED} from './helpers/bw-integrated.mjs';
 import {runProgram} from './helpers/bw-vm.mjs';
+import {arrayFixture} from './helpers/arrays-current-operation.mjs';
 
 const require = createRequire(import.meta.url);
 const ArraysExtension = require(
@@ -44,11 +45,15 @@ const REFERENCE_BLOCKS = {
     referenceIndexOf: 'reporter', mutateReference: 'command'
 };
 
-test('the blocks here compute with the shared Scratch.BWValues, as the header says', () => {
+test('the blocks here compute with the shared Scratch.BWValues, as the header says', async t => {
     const BWValues = require(path.join(INTEGRATED, 'node_modules/scratch-vm/src/util/bw-values.js'));
-    const {ext, runtime} = makeExt();
+    const {ext, runtime, instance} = await arrayFixture(t);
     // Only the shared module's heap can resolve a reference the bundle made.
-    assert.deepEqual(BWValues.arrayValue(runtime, ext.createReference({VALUES: '[1, 2]'})), [1, 2]);
+    const ref = await ext.createReference({VALUES: '[1, 2]'});
+    assert.deepEqual(BWValues.arrayValue(runtime, ref), [1, 2]);
+    assert.throws(() => instance.referenceLength({ARRAY: ref}), /current operation/,
+        'the same tracked reference cannot authorize an off-thread public call');
+    assert.equal(await ext.referenceLength({ARRAY: ref}), 2);
 });
 
 test('the 18 reference blocks are declared, with the shapes the dialect words build', () => {
@@ -61,64 +66,77 @@ test('the 18 reference blocks are declared, with the shapes the dialect words bu
     }
 });
 
-test('a reference is shared by identity, and its blocks act on the array it names', () => {
-    const {ext} = makeExt();
-    const ref = ext.createReference({VALUES: '[1,2,3]'});
+test('a reference is shared by identity, and its blocks act on the array it names', async t => {
+    const {ext} = await arrayFixture(t);
+    const ref = (await ext.createReference({VALUES: '[1,2,3]'}));
     const alias = ref;
-    ext.mutateReference({ARRAY: alias, OP: 'push', INDEX: 0, VALUE: 4});
-    assert.equal(ext.referenceLength({ARRAY: ref}), 4, 'a push through the alias is seen through the original');
-    assert.equal(ext.referenceItem({ARRAY: ref, INDEX: 3}), 4);
-    assert.equal(ext.jsonValue({VALUE: ref}), '[1,2,3,4]');
-    assert.equal(ext.referenceRemove({ARRAY: ref, VALUE: 2}), true);
-    assert.equal(ext.referenceRemove({ARRAY: ref, VALUE: 99}), false);
-    assert.equal(ext.referenceIndexOf({ARRAY: ref, VALUE: 4, INDEX: 0}), 2);
-    assert.equal(ext.referenceTake({ARRAY: ref, OP: 'shift', INDEX: 0}), 1);
-    assert.equal(ext.referenceTake({ARRAY: ref, OP: 'removeAt', INDEX: 1}), 4);
-    assert.equal(ext.jsonValue({VALUE: ref}), '[3]');
-    ext.mutateReference({ARRAY: ref, OP: 'insertAt', INDEX: 0, VALUE: 'a'});
-    ext.mutateReference({ARRAY: ref, OP: 'reverse', INDEX: 0, VALUE: ''});
-    assert.equal(ext.jsonValue({VALUE: ref}), '[3,"a"]');
+    (await ext.mutateReference({ARRAY: alias, OP: 'push', INDEX: 0, VALUE: 4}));
+    assert.equal((await ext.referenceLength({ARRAY: ref})), 4, 'a push through the alias is seen through the original');
+    assert.equal((await ext.referenceItem({ARRAY: ref, INDEX: 3})), 4);
+    assert.equal((await ext.jsonValue({VALUE: ref})), '[1,2,3,4]');
+    assert.equal((await ext.referenceRemove({ARRAY: ref, VALUE: 2})), true);
+    assert.equal((await ext.referenceRemove({ARRAY: ref, VALUE: 99})), false);
+    assert.equal((await ext.referenceIndexOf({ARRAY: ref, VALUE: 4, INDEX: 0})), 2);
+    assert.equal((await ext.referenceTake({ARRAY: ref, OP: 'shift', INDEX: 0})), 1);
+    assert.equal((await ext.referenceTake({ARRAY: ref, OP: 'removeAt', INDEX: 1})), 4);
+    assert.equal((await ext.jsonValue({VALUE: ref})), '[3]');
+    (await ext.mutateReference({ARRAY: ref, OP: 'insertAt', INDEX: 0, VALUE: 'a'}));
+    (await ext.mutateReference({ARRAY: ref, OP: 'reverse', INDEX: 0, VALUE: ''}));
+    assert.equal((await ext.jsonValue({VALUE: ref})), '[3,"a"]');
     // A nested array comes back as a reference to the SAME inner array.
-    const outer = ext.createReference({VALUES: ext.referenceValues({VALUE: ref, REST: '[]'})});
-    const inner = ext.referenceItem({ARRAY: outer, INDEX: 0});
-    ext.mutateReference({ARRAY: inner, OP: 'push', INDEX: 0, VALUE: 7});
-    assert.equal(ext.referenceLength({ARRAY: ref}), 3);
+    const outer = (await ext.createReference({VALUES: (await ext.referenceValues({VALUE: ref, REST: '[]'}))}));
+    const inner = (await ext.referenceItem({ARRAY: outer, INDEX: 0}));
+    (await ext.mutateReference({ARRAY: inner, OP: 'push', INDEX: 0, VALUE: 7}));
+    assert.equal((await ext.referenceLength({ARRAY: ref})), 3);
 });
 
-test('MakeCode values: undefined, + that joins text, === against ==, NaN', () => {
-    const {ext} = makeExt();
-    const ref = ext.createReference({VALUES: '[1]'});
-    const missing = ext.referenceItem({ARRAY: ref, INDEX: 5});
+test('MakeCode values: undefined, + that joins text, === against ==, NaN', async t => {
+    const {ext} = await arrayFixture(t);
+    const ref = (await ext.createReference({VALUES: '[1]'}));
+    const missing = (await ext.referenceItem({ARRAY: ref, INDEX: 5}));
     assert.equal(String(missing), 'undefined', 'an index past the end is undefined, not ""');
-    assert.equal(ext.valueTruthy({VALUE: missing}), false);
-    assert.equal(ext.valueCompare({LEFT: missing, OP: '==', RIGHT: ext.specialValue({KIND: 'null'})}), true);
-    assert.equal(ext.valueCompare({LEFT: missing, OP: '===', RIGHT: ext.specialValue({KIND: 'null'})}), false);
-    assert.equal(ext.valueBinary({LEFT: 'a', OP: '+', RIGHT: 1}), 'a1');
-    assert.equal(ext.valueBinary({LEFT: 7, OP: '%', RIGHT: 4}), 3);
-    assert.equal(ext.valueUnary({OP: '-', VALUE: '5'}), -5);
-    assert.equal(ext.valueCompare({LEFT: 1, OP: '===', RIGHT: '1'}), false);
-    assert.equal(ext.valueCompare({LEFT: 1, OP: '==', RIGHT: '1'}), true);
-    const nan = ext.createReference({VALUES: ext.referenceValues({VALUE: NaN, REST: '[]'})});
-    assert.ok(Number.isNaN(ext.referenceItem({ARRAY: nan, INDEX: 0})), 'NaN survives the value chain');
-    assert.equal(ext.referenceIndexOf({ARRAY: nan, VALUE: NaN, INDEX: 0}), -1, 'indexOf is ===, as in MakeCode');
+    assert.equal((await ext.valueTruthy({VALUE: missing})), false);
+    assert.equal((await ext.valueCompare({LEFT: missing, OP: '==', RIGHT: (await ext.specialValue({KIND: 'null'}))})), true);
+    assert.equal((await ext.valueCompare({LEFT: missing, OP: '===', RIGHT: (await ext.specialValue({KIND: 'null'}))})), false);
+    assert.equal((await ext.valueBinary({LEFT: 'a', OP: '+', RIGHT: 1})), 'a1');
+    assert.equal((await ext.valueBinary({LEFT: 7, OP: '%', RIGHT: 4})), 3);
+    assert.equal((await ext.valueUnary({OP: '-', VALUE: '5'})), -5);
+    assert.equal((await ext.valueCompare({LEFT: 1, OP: '===', RIGHT: '1'})), false);
+    assert.equal((await ext.valueCompare({LEFT: 1, OP: '==', RIGHT: '1'})), true);
+    const nan = (await ext.createReference({VALUES: (await ext.referenceValues({VALUE: NaN, REST: '[]'}))}));
+    assert.ok(Number.isNaN((await ext.referenceItem({ARRAY: nan, INDEX: 0}))), 'NaN survives the value chain');
+    assert.equal((await ext.referenceIndexOf({ARRAY: nan, VALUE: NaN, INDEX: 0})), -1, 'indexOf is ===, as in MakeCode');
 });
 
-test('a named array is reachable by reference, and a reference expires with the project run', () => {
-    const {ext, runtime, errors} = makeExt();
-    ext.create1D({NAME: 'xs', JSON: '[7,8]'});
-    const named = ext.namedReference({NAME: 'xs'});
-    ext.mutateReference({ARRAY: named, OP: 'push', INDEX: 0, VALUE: 9});
-    assert.equal(ext.toJSON({NAME: 'xs'}), '[7,8,9]');
-    const ref = ext.createReference({VALUES: '[1]'});
-    runtime.emit('PROJECT_START');
-    assert.equal(ext.referenceLength({ARRAY: ref}), 0);
-    assert.deepEqual(errors, ['Array reference is null or expired'],
-        'an expired reference is an error, not an empty array that looks real');
-    ext.mutateReference({ARRAY: named, OP: 'push', INDEX: 0, VALUE: 1});
-    assert.equal(ext.toJSON({NAME: 'xs'}), '[7,8,9]', 'a stale reference cannot write into the named array');
+test('a named array is reachable by reference, and a reference expires with the project run', async t => {
+    const {ext, runtime, errors, vm} = await arrayFixture(t);
+    (await ext.create1D({NAME: 'xs', JSON: '[7,8]'}));
+    const named = (await ext.namedReference({NAME: 'xs'}));
+    (await ext.mutateReference({ARRAY: named, OP: 'push', INDEX: 0, VALUE: 9}));
+    assert.equal((await ext.toJSON({NAME: 'xs'})), '[7,8,9]');
+    const ref = (await ext.createReference({VALUES: '[1]'}));
+    const BWValues = require(path.join(INTEGRATED, 'node_modules/scratch-vm/src/util/bw-values.js'));
+    const oldBody = BWValues.arrayValue(runtime, named);
+    vm.greenFlag();
+    const refused = async call => {
+        const before = errors.length;
+        let issued;
+        await assert.rejects(call, error => {
+            issued = error;
+            return error instanceof Error &&
+                error.message === 'Array operation ownership: foreign or stale Array body';
+        });
+        assert.equal(errors.length, before + 1, 'one issued refusal per stale operation');
+        assert.equal(errors[before], issued, 'the actual issued Error reaches the observer unchanged');
+        assert.deepEqual(oldBody, [7,8,9], 'stale access cannot change the old named backing');
+    };
+    await refused(() => ext.referenceLength({ARRAY: ref}));
+    await refused(() => ext.mutateReference({ARRAY: named, OP: 'push', INDEX: 0, VALUE: 1}));
+    await refused(() => ext.toJSON({NAME: 'xs'}));
+
 });
 
-test('the dialect words run: parse -> blocks -> VM', async () => {
+test('the dialect words run: parse -> blocks -> VM', async t => {
     const run = await runProgram([
         'GLOBAL r', 'GLOBAL alias', 'GLOBAL n', 'GLOBAL last', 'GLOBAL joined', 'GLOBAL same', 'GLOBAL text',
         'SPRITE Game:', 'WHEN flag clicked:',
@@ -149,25 +167,25 @@ test('the dialect words run: parse -> blocks -> VM', async () => {
 });
 
 
-test('named item reporters preserve plaintext through the actual shared Lite codec', () => {
+test('named item reporters preserve plaintext through the actual shared Lite codec', async t => {
     const values = require(path.join(INTEGRATED, 'node_modules/scratch-vm/src/util/bw-values.js'));
-    const {ext, runtime, errors} = makeExt();
+    const {ext, runtime, errors, vm} = await arrayFixture(t);
     const texts = ['abc', '', 'null', 'true', '[1,2]', '{"value":2}', '"quoted"', 'é雪😀', 'line\nnext'];
-    ext.create1D({NAME: 'items', JSON: JSON.stringify(texts)});
-    ext.create2D({NAME: 'grid', JSON: JSON.stringify([texts])});
+    (await ext.create1D({NAME: 'items', JSON: JSON.stringify(texts)}));
+    (await ext.create2D({NAME: 'grid', JSON: JSON.stringify([texts])}));
     for (let index = 0; index < texts.length; index++) {
-        assert.equal(values.decode(ext.get({NAME: 'items', INDEX: index})), texts[index]);
-        assert.equal(values.decode(ext.get2D({NAME: 'grid', ROW: 0, COL: index})), texts[index]);
-        assert.equal(values.decode(ext.getMulti({NAME: 'grid', INDICES: JSON.stringify([0, index])})), texts[index]);
+        assert.equal(values.decode((await ext.get({NAME: 'items', INDEX: index}))), texts[index]);
+        assert.equal(values.decode((await ext.get2D({NAME: 'grid', ROW: 0, COL: index}))), texts[index]);
+        assert.equal(values.decode((await ext.getMulti({NAME: 'grid', INDICES: JSON.stringify([0, index])}))), texts[index]);
     }
-    for (const text of [...texts].reverse()) assert.equal(values.decode(ext.pop({NAME: 'items'})), text);
-    ext.create1D({NAME: 'aggregates', JSON: '[3,null,[1,2]]'});
-    assert.equal(values.decode(ext.get({NAME: 'aggregates', INDEX: 0})), 3);
-    assert.equal(values.decode(ext.get({NAME: 'aggregates', INDEX: 1})), null);
-    assert.equal(ext.get({NAME: 'aggregates', INDEX: 2}), '[1,2]');
+    for (const text of [...texts].reverse()) assert.equal(values.decode((await ext.pop({NAME: 'items'}))), text);
+    (await ext.create1D({NAME: 'aggregates', JSON: '[3,null,[1,2]]'}));
+    assert.equal(values.decode((await ext.get({NAME: 'aggregates', INDEX: 0}))), 3);
+    assert.equal(values.decode((await ext.get({NAME: 'aggregates', INDEX: 1}))), null);
+    assert.equal((await ext.get({NAME: 'aggregates', INDEX: 2})), '[1,2]');
     const image = values.reference(runtime, 'image', 'item-owner');
-    ext.set({NAME: 'aggregates', INDEX: 3, VALUE: image});
-    const read = ext.get({NAME: 'aggregates', INDEX: 3});
+    (await ext.set({NAME: 'aggregates', INDEX: 3, VALUE: image}));
+    const read = (await ext.get({NAME: 'aggregates', INDEX: 3}));
     assert.equal(values.referenceId(runtime, read, 'image'), 'item-owner');
     assert.equal(values.referenceId({}, read, 'image'), null);
     assert.deepEqual(errors, []);

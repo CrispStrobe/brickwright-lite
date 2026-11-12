@@ -14,7 +14,11 @@ test('Floor contact: exact public served inputs and kernel identities',()=>{
     assert.equal(manifest.engine.pinSource,'scripts/integrate.mjs');
     const pinURL=new URL(producer.match(/const JOLT_PHYSICS_URL = '([^']+)'/)[1]);
     assert.equal(pinURL.hostname,'github.com');
-    assert.equal(pinURL.pathname,'/CrispStrobe/JoltPhysics.js/releases/download/v'+manifest.engine.version+'/jolt-physics-'+manifest.engine.version+'.tgz');
+    // The release tag is the producer's own URL segment (bw.9 is published under
+    // bw.9-qualified-20261029, not v<version>); the lockfile must resolve the same bytes.
+    assert.equal(pinURL.pathname,'/CrispStrobe/JoltPhysics.js/releases/download/'+manifest.engine.releaseTag+'/jolt-physics-'+manifest.engine.version+'.tgz');
+    const lock=JSON.parse(readFileSync(new URL('../packages/scratch-gui/package-lock.json',import.meta.url),'utf8')).packages['node_modules/jolt-physics'];
+    assert.deepEqual({version:lock.version,resolved:lock.resolved,integrity:lock.integrity},{version:manifest.engine.version,resolved:pinURL.href,integrity:manifest.engine.integrity});
     assert.equal(producer.match(/const JOLT_PHYSICS_INTEGRITY = '([^']+)'/)[1],manifest.engine.integrity);
     assert.equal(kernelSource(source,'candidate',manifest),source);
     const baseline=readFileSync(new URL('baseline-jolt-core.js',root),'utf8');

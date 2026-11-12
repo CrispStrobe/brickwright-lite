@@ -1,6 +1,6 @@
 # Arcade captured class primitive normal results — claim
 
-CLAIMED. Owner: Arcade integration. Branch:
+DONE for source implementation; focused qualification passed, hosted qualification pending. Owner: Arcade integration. Branch:
 `lane/arcade-captured-class-primitive-results-claim-20261023`.
 Base: `bd5cb3043467702c225d4124a4963b4d72d574c4`.
 Merge this claim before implementation. Continue the same owner's class-scalar
@@ -138,3 +138,24 @@ claimed. Graphics/Image/Sprite reference fields retain their separate pending
 capabilities. Remeasure genuine complete applications before changing corpus
 counts. Mark source implementation DONE separately from qualification, retaining
 original failures and pending work for the next agent.
+
+## Source implementation checkpoint
+
+The issuer and consumer composition, complete new twelve-group pure module and
+capability/editor task documentation are written. Existing class-scalar four
+groups, captured-operation eleven groups and original SDK/native fixtures are
+unchanged. All 27 complete focused groups pass: new class12, existing class4
+and captured-operation11, with no failures or skips. Final-head hosted, SDK,
+runtime and browser qualification remain pending.
+
+The issuer uses held membership/reflection intrinsics and indexed checks, watches
+its allocated carriers/prototypes and relevant realm aliases, and checks those
+before dynamic legacy guards after use. Copied nodes, replaced collection methods
+and whole Object/Reflect alias facades cannot supply membership or hide edits.
+Negative controls restore original descriptors and source before asserting.
+
+The unchanged lexical frontier still refuses captured getters/methods using
+`this` and some Boolean/union forms. Those cases retain their original refusal;
+[the capability document](../docs/ARCADE-CAPTURED-CLASS-PRIMITIVE-RESULTS.md) scopes
+the separate method-entry and representation work. No class application failure
+or corpus reduction is attributed to this source checkpoint.

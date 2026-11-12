@@ -1,0 +1,198 @@
+0 PairedDoorSync - synchronized opposed door leaves
+0 Name: paired-door-sync.ldr
+0 Author: CrispStrobe
+0 !LICENSE BSD-3-Clause : see ../licenses/paired-door-sync.txt
+0 !LDRAW_ORG Unofficial_Model
+0 // One SPIKE medium motor on A drives one 16T pinion.
+0 // Two opposed 64781 racks ride toggles on two horizontal guide axles;
+0 // the leaves are carried by the racks. Law: x_front = -x_back.
+0 // Standard LDraw geometry is external and retains its original author/license.
+0 // Assembly: 01 - base, feet and chassis reference hub
+0 !BW ID base_runner_left
+1 72 -80 240 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_runner_right
+1 72 80 240 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_cross_front
+1 72 0 220 -100 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_pin_left_front
+1 0 -80 230 -100 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID base_pin_right_front
+1 0 80 230 -100 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID base_cross_rear
+1 72 0 220 100 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_pin_left_rear
+1 0 -80 230 100 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID base_pin_right_rear
+1 0 80 230 100 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID foot_left_front
+1 72 -80 220 -120 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID foot_pin_left_front
+1 0 -80 230 -120 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID foot_left_rear
+1 72 -80 220 120 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID foot_pin_left_rear
+1 0 -80 230 120 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID foot_right_front
+1 72 80 220 -120 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID foot_pin_right_front
+1 0 80 230 -120 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID foot_right_rear
+1 72 80 220 120 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID foot_pin_right_rear
+1 0 80 230 120 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID chassis_reference
+1 15 0 210 0 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID hub_pin_left_front
+1 0 -60 210 -100 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID hub_pin_left_rear
+1 0 -60 210 100 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID hub_pin_right_front
+1 0 60 210 -100 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID hub_pin_right_rear
+1 0 60 210 100 0 0 1 1 0 0 0 1 0 2780.dat
+0 STEP
+0 // Assembly: 02 - posts and paired upper crossrails
+0 !BW ID post_left_front
+1 14 -80 80 -140 -1 0 0 0 0 1 0 1 0 32278.dat
+0 !BW ID post_left_rear
+1 14 -80 80 140 -1 0 0 0 0 1 0 1 0 32278.dat
+0 !BW ID post_right_front
+1 14 80 80 -140 -1 0 0 0 0 1 0 1 0 32278.dat
+0 !BW ID post_right_rear
+1 14 80 80 140 -1 0 0 0 0 1 0 1 0 32278.dat
+0 !BW ID rail_front_guide
+1 72 0 0 -120 0 0 1 1 0 0 0 1 0 32525.dat
+0 !BW ID rail_pin_front_guide_left
+1 0 -80 0 -130 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID rail_pin_front_guide_right
+1 0 80 0 -130 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID rail_front_brace
+1 72 0 -40 -120 0 0 1 1 0 0 0 1 0 32525.dat
+0 !BW ID rail_pin_front_brace_left
+1 0 -80 -40 -130 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID rail_pin_front_brace_right
+1 0 80 -40 -130 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID rail_rear_guide
+1 72 0 0 120 0 0 1 1 0 0 0 1 0 32525.dat
+0 !BW ID rail_pin_rear_guide_left
+1 0 -80 0 130 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID rail_pin_rear_guide_right
+1 0 80 0 130 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID rail_rear_brace
+1 72 0 -40 120 0 0 1 1 0 0 0 1 0 32525.dat
+0 !BW ID rail_pin_rear_brace_left
+1 0 -80 -40 130 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID rail_pin_rear_brace_right
+1 0 80 -40 130 0 0 -1 0 1 0 1 0 0 2780.dat
+0 STEP
+0 // Assembly: 03 - motor cradle and torque reaction ties
+0 !BW ID motor_cheek_left
+1 72 -40 60 0 0 1 0 -1 0 0 0 0 1 32278.dat
+0 !BW ID motor_mount_left_front
+1 0 -30 60 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_mount_left_rear
+1 0 -30 60 20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_cheek_right
+1 72 40 60 0 0 1 0 -1 0 0 0 0 1 32278.dat
+0 !BW ID motor_mount_right_front
+1 0 30 60 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_mount_right_rear
+1 0 30 60 20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_tie_front
+1 72 0 60 -160 0 0 1 1 0 0 0 1 0 40490.dat
+0 !BW ID motor_tie_post_front_left
+1 0 -80 60 -150 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID motor_tie_post_front_right
+1 0 80 60 -150 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID motor_elbow_front_left
+1 72 -60 60 -140 1 0 0 0 0 -1 0 1 0 15100.dat
+0 !BW ID motor_tie_elbow_front_left
+1 0 -60 60 -150 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID motor_elbow_front_right
+1 72 60 60 -140 -1 0 0 0 0 1 0 1 0 15100.dat
+0 !BW ID motor_tie_elbow_front_right
+1 0 60 60 -150 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID motor_tie_rear
+1 72 0 60 160 0 0 1 1 0 0 0 1 0 40490.dat
+0 !BW ID motor_tie_post_rear_left
+1 0 -80 60 150 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID motor_tie_post_rear_right
+1 0 80 60 150 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID motor_elbow_rear_left
+1 72 -60 60 140 1 0 0 0 0 -1 0 1 0 15100.dat
+0 !BW ID motor_tie_elbow_rear_left
+1 0 -60 60 150 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID motor_elbow_rear_right
+1 72 60 60 140 -1 0 0 0 0 1 0 1 0 15100.dat
+0 !BW ID motor_tie_elbow_rear_right
+1 0 60 60 150 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID motor_A
+0 !BW PORT A
+1 15 0 80 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 STEP
+0 // Assembly: 04 - horizontal guide axles and holders
+0 !BW ID guide_holder_pin_left_front
+1 0 -100 0 -110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID guide_holder_pin_left_rear
+1 0 -100 0 110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID guide_holder_pin_right_front
+1 0 100 0 -110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID guide_holder_pin_right_rear
+1 0 100 0 110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID guide_x_-100
+1 0 0 -20 -100 1 0 0 0 1 0 0 0 1 3708.dat
+0 !BW ID guide_x_holder_-100_-100
+1 72 -100 -20 -100 1 0 0 0 1 0 0 0 1 6536.dat
+0 !BW ID guide_x_holder_100_-100
+1 72 100 -20 -100 1 0 0 0 1 0 0 0 1 6536.dat
+0 !BW ID guide_x_cap_-115_-100
+1 71 -115 -20 -100 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID guide_x_cap_115_-100
+1 71 115 -20 -100 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID guide_x_100
+1 0 0 -20 100 1 0 0 0 1 0 0 0 1 3708.dat
+0 !BW ID guide_x_holder_-100_100
+1 72 -100 -20 100 1 0 0 0 1 0 0 0 1 6536.dat
+0 !BW ID guide_x_holder_100_100
+1 72 100 -20 100 1 0 0 0 1 0 0 0 1 6536.dat
+0 !BW ID guide_x_cap_-115_100
+1 71 -115 -20 100 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID guide_x_cap_115_100
+1 71 115 -20 100 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 STEP
+0 // Assembly: 05 - one pinion, opposed racks, carriages and toggles
+0 !BW ID pinion
+1 71 0 -20 0 1 0 0 0 0 -1 0 1 0 94925.dat
+0 !BW ID rack_front
+1 71 0 -20 25 1 0 0 0 0 -1 0 1 0 64781.dat
+0 !BW ID carriage_front
+1 72 0 -20 59.5 0 0 1 1 0 0 0 1 0 41239.dat
+0 !BW ID toggle_front
+1 72 0 -20 70 0 0 1 -1 0 0 0 -1 0 48496.dat
+0 !BW ID carriage_pin_0_-120
+1 0 -120 -20 42 0 0 1 0 1 0 -1 0 0 6558.dat
+0 !BW ID carriage_pin_0_120
+1 0 120 -20 42 0 0 1 0 1 0 -1 0 0 6558.dat
+0 !BW ID drive_axle
+1 0 0 0 0 0 -1 0 1 0 0 0 0 1 3705.dat
+0 !BW ID rack_back
+1 71 0 -20 -25 1 0 0 0 0 1 0 -1 0 64781.dat
+0 !BW ID carriage_back
+1 72 0 -20 -59.5 0 0 1 1 0 0 0 1 0 41239.dat
+0 !BW ID toggle_back
+1 72 0 -20 -70 0 0 1 1 0 0 0 1 0 48496.dat
+0 !BW ID carriage_pin_1_-120
+1 0 -120 -20 -42 0 0 1 0 1 0 -1 0 0 6558.dat
+0 !BW ID carriage_pin_1_120
+1 0 120 -20 -42 0 0 1 0 1 0 -1 0 0 6558.dat
+0 STEP
+0 // Assembly: 06 - paired door leaves on the racks
+0 !BW ID door_front_0
+1 72 120 -40 42 -1 0 0 0 0 1 0 1 0 6632.dat
+0 !BW ID door_front_1
+1 72 -120 -40 42 -1 0 0 0 0 1 0 1 0 6632.dat
+0 !BW ID door_back_0
+1 72 120 -40 -42 -1 0 0 0 0 1 0 1 0 6632.dat
+0 !BW ID door_back_1
+1 72 -120 -40 -42 -1 0 0 0 0 1 0 1 0 6632.dat
+0 STEP

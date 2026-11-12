@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/bend-ripple.ldr": "ff9fee60b1c13bb31f31b86c22d54747beaceec530f2617eec7497c31f5249df",
+  "programs/bend-ripple.bw": "0569e19e533cfd193cd955597b1d4172ef9a77fb315ac22349809208d9eff91a",
+  "LICENSE.txt": "a096c77ac7c151875cdcfcc89285d7372701076a3e53e29b3ee8abcd4e71ec9e",
+  "SOURCES.md": "8aebca42861fb240799b333685093db5cef23d1ee9f11fef6eefc5ff79b43294"
+ }
+}

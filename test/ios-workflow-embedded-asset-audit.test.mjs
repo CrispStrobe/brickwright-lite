@@ -822,10 +822,32 @@ class AdapterControls(unittest.TestCase):
         # Linux test-host observation only: a zombie has stopped executing. Only
         # the direct leader is ours to reap; this is not a whole-descendant census.
         file=Path('/proc')/str(pid)/'stat'
-        if file.exists():return file.read_text().split(') ',1)[1][0]=='Z'
+        try:return file.read_text().split(') ',1)[1][0]=='Z'
+        except (FileNotFoundError,ProcessLookupError):pass
+        # The process may exit during the read. Hosts without /proc still need
+        # the live-process probe; a missing proc entry alone cannot prove exit.
         try:os.kill(pid,0)
         except ProcessLookupError:return True
         return False
+    def test_process_observer_handles_proc_exit_races_without_hiding_other_errors(self):
+        pid=123456
+        # Force the old exists/read interleaving too: the original observer
+        # raises before reaching the live-process probe in both missing cases.
+        with mock.patch.object(Path,'exists',return_value=True):
+            for error in (FileNotFoundError(2,'authored missing proc entry'),
+                          ProcessLookupError(3,'authored process departed')):
+                with mock.patch.object(Path,'read_text',side_effect=error):
+                    with mock.patch.object(os,'kill',side_effect=ProcessLookupError) as probe:
+                        self.assertTrue(self.inactive(pid));probe.assert_called_once_with(pid,0)
+                    with mock.patch.object(os,'kill',return_value=None) as probe:
+                        self.assertFalse(self.inactive(pid));probe.assert_called_once_with(pid,0)
+            for state,expected in (('Z',True),('S',False)):
+                with mock.patch.object(Path,'read_text',return_value='123456 (authored) '+state+' 0'),mock.patch.object(os,'kill') as probe:
+                    self.assertEqual(self.inactive(pid),expected);probe.assert_not_called()
+            for error in (PermissionError(13,'authored denied read'),OSError(5,'authored I/O failure')):
+                with mock.patch.object(Path,'read_text',side_effect=error),mock.patch.object(os,'kill') as probe:
+                    with self.assertRaises(type(error)) as caught:self.inactive(pid)
+                    self.assertIs(caught.exception,error);probe.assert_not_called()
     def assert_child_stopped(self):
         pid=json.loads((self.root/'pid.json').read_text())['child']
         until=time.monotonic()+2
@@ -1040,7 +1062,7 @@ test('unwired bounded simctl adapter controls execute real owned subprocesses', 
             env: {...process.env, GITHUB_WORKSPACE: dir, RUNNER_TEMP: dir, TMPDIR: dir}, encoding: 'utf8', timeout: 20000
         });
         assert.equal(result.status, 0, result.stdout + result.stderr);
-        assert.match(result.stderr, /Ran 17 tests/);
+        assert.match(result.stderr, /Ran 18 tests/);
         assert.match(result.stderr, /OK/);
         assert.equal((retention.match(/bounded_simulator_command\(/g) || []).length, 1, 'adapter definition only');
     } finally { rmSync(dir, {recursive: true, force: true}); }

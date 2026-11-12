@@ -160,14 +160,8 @@ try {
 
     // A fixed strip floats over everything by nature, so prove it does not
     // float over the menus it now sits beside.
-    const menus = await page.evaluate(() => {
-      const items = [...document.querySelectorAll('[class*="menu-bar_menu-bar-item"]')];
-      const file = items.find(e => /File/i.test(e.textContent || ''));
-      if (!file) return {opened: false};
-      file.dispatchEvent(new MouseEvent('mouseup', {bubbles: true}));
-      return {opened: true};
-    });
-    if (menus.opened) {
+    await page.getByTestId('bw-file-menu-trigger').click();
+    {
       await page.waitForFunction(
         "[...document.querySelectorAll('[class*=\"menu_menu\"]')].some(e => e.getBoundingClientRect().height > 20)",
         null, {timeout: 6000, polling: 100}).catch(() => {});

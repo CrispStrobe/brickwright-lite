@@ -59,7 +59,7 @@
 import {test, describe} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync, writeFileSync, mkdtempSync, rmSync} from 'node:fs';
-import {execSync} from 'node:child_process';
+import {execFileSync, execSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {resolveRef, recordPin, FULL_SHA as LIB_FULL_SHA} from '../scripts/lib-pin.mjs';
@@ -228,6 +228,36 @@ const describeSkips = ({unreadable, nul}) => {
 //   waived        genuinely cannot be sha-addressed; reason required
 const CENSUS = [
     {
+        file: 'scripts/i80386-native-font-selection/run.py', kind: 'raw',
+        text: 'raw.githubusercontent.com/google/fonts/', class: 'sha-const',
+        why: 'The selected Roboto Mono font and Apache notice URLs contain the fixed full 40-hex Google Fonts commit in this file. The URL guard rejects movable and unsafe paths before the bounded input GET; the separately pinned byte lengths and SHA-256 values must match before staging.'
+    },
+    {
+        file: 'scripts/i80386-native-font-selection/reader.py', kind: 'raw',
+        text: 'raw.githubusercontent.com/google/fonts/', class: 'sha-const',
+        why: 'Independent original-byte reader for the same fixed full-commit font and notice constants. It rechecks URL shape and selected bytes without performing a fetch; the producer is the only native-font GET site.'
+    },
+    {
+        file: 'scripts/i80386-native-font-selection/controls.py', kind: 'raw',
+        text: 'raw.githubusercontent.com/google/fonts/', class: 'source-link',
+        why: 'Pure mocked positive and hostile-URL controls construct a full-commit Google Fonts source string. They do not request content or stage a font.'
+    },
+    {
+        file: 'scripts/run-i80386-hdd-gui-actual.py', kind: 'raw',
+        text: 'raw.githubusercontent.com/google/fonts/', class: 'validated-input',
+        why: 'The separately admitted native-font reference supplies a URL. Before curl, the GUI producer requires the exact Google Fonts origin, a lowercase full 40-hex commit and a safe nonempty path; exact admitted byte length and SHA-256 are checked before staging.'
+    },
+    {
+        file: 'scripts/read-i80386-hdd-gui-originals.py', kind: 'raw',
+        text: 'raw.githubusercontent.com/google/fonts/', class: 'validated-input',
+        why: 'Standalone original reader validates the same full-commit URL and source/content joins. It reads retained originals and does not fetch any content.'
+    },
+    {
+        file: 'test/i80386-hdd-gui-actual.test.mjs', kind: 'raw',
+        text: 'raw.githubusercontent.com/google/fonts/', class: 'source-link',
+        why: 'An inert full-commit font and notice fixture used by the mocked current GUI controls. The synthetic URLs are never requested from the network.'
+    },
+    {
         file: 'test/fixtures/model-files/axis-plotter-source/README.txt', kind: 'git',
         text: 'git clone https://github.com/CrispStrobe/brickwright-lite.git brickwright-lite',
         class: 'shell-pin',
@@ -371,17 +401,6 @@ const CENSUS = [
     },
     {
         file: '.github/workflows/build.yml',
-        kind: 'raw',
-        text: 'raw.githubusercontent.com/CrispStrobe/extensions/${ARRAY_SUPPLIER_SHA}/extensions/CrispStrobe/arrays.js',
-        class: 'sha-const',
-        why: 'CONTENT, sha-addressed and byte-bound. ARRAY_SUPPLIER_SHA is a 40-hex constant '
-           + 'in the same step env (SHA_CONSTANTS below asserts it) and the step also checks the '
-           + 'downloaded bytes against ARRAY_SUPPLIER_SHA256 before exporting the path. The file '
-           + 'is the explicit frozen Array supplier the two *-native unit tests require; it is '
-           + 'read by those tests only and never written into the tree.'
-    },
-    {
-        file: '.github/workflows/build.yml',
         kind: 'git',
         text: 'git clone --bare --filter=blob:none https://github.com/CrispStrobe/emu8051-stc.git /tmp/emu8051-stc.git 2>/dev/null',
         class: 'waived',
@@ -519,13 +538,13 @@ const CENSUS = [
     {
         file: 'scripts/integrate.mjs',
         kind: 'release',
-        text: 'github.com/CrispStrobe/JoltPhysics.js/releases/download/v1.1.0-bw.7/jolt-physics-1.1.0-bw.7.tgz',
+        text: 'github.com/CrispStrobe/JoltPhysics.js/releases/download/bw.9-qualified-20261029/jolt-physics-1.1.0-bw.9.tgz',
         class: 'content-hash',
-        why: 'The Sim Lab physics engine: the Brickwright JoltPhysics.js fork build 1.1.0-bw.7 (Jolt master '
-           + 'plus the gear fixes, the CCD bounce fix, MaterialPairs, RackMeshConstraint, PartPairSimShapeFilter and optional single-thread SIMD and retained distance-constraint velocity impulses), taken as an npm tarball dependency. The tag is movable, so it is not what '
+        why: 'The Sim Lab physics engine: the Brickwright JoltPhysics.js fork build 1.1.0-bw.9 (Jolt master '
+           + 'plus the gear fixes, the CCD bounce fix, MaterialPairs, RackMeshConstraint, PartPairSimShapeFilter and optional single-thread SIMD, retained distance-constraint velocity impulses and coupled soft-motor/reflected-rotor rows), taken as an npm tarball dependency. The tag is movable, so it is not what '
            + 'is trusted: packages/scratch-gui/package-lock.json holds the tarball\'s sha512 integrity '
-           + '(sha256 ab468ca0ed4ecb0f3b8387da6796c8485d8c8e46cf06380d9939f3d105346aa0) and npm refuses '
-           + 'different bytes. The fork\'s brickwright-release.yml re-derives the bytes from the pinned commits.'
+           + '(sha256 381bbd4fa13e4f71205e9671f1a427320bea917fa5875481de3928aad227aa2d) and npm refuses '
+           + 'different bytes. The qualified release retains the exact archive from the pinned source and native commits.'
     },
     {
         file: 'scripts/vendor-forward.mjs',
@@ -543,26 +562,6 @@ const CENSUS = [
         class: 'sha-const',
         why: 'GUI_COMMIT is a 40-hex literal in this file — the last BSD-3 commit '
            + 'of scratch-gui. Asserted below.'
-    },
-    {
-        file: '.github/workflows/deploy-daily.yml',
-        kind: 'git',
-        text: "git ls-remote origin refs/heads/main | awk '{print $1}')",
-        class: 'resolver',
-        why: 'reads main\'s HEAD sha to refuse publishing a tree older than what is live: '
-           + 'the sha it PRODUCES is compared against the checkout\'s, no content is fetched. '
-           + 'The gate was red on main since f4ba84d62 for want of this row.'
-    },
-    {
-        file: 'test/vercel-deployment-policy.test.mjs',
-        kind: 'git',
-        text: 'git ls-remote origin refs\\/heads\\/main/,',
-        class: 'resolver',
-        why: 'not a fetch — this is the test that PINS the deploy-daily.yml resolver above, '
-           + 'asserting the publish step resolves main -> sha before deploying. The detector '
-           + 'matches the assertion regex\'s text; declared here rather than excluding the file '
-           + '(which would blind the scan to any real fetch it later gains), and classed with '
-           + 'the site it guards.'
     },
     {
         file: 'scripts/probe-pico-micropython.mjs',
@@ -665,7 +664,9 @@ const SHA_CONSTANTS = [
     ['scripts/sync-emu8051-wasm.mjs', /const PIN = '([0-9a-zA-Z]+)'/],
     ['scripts/sync-labwired-wasm.mjs', /const PIN = '([0-9a-zA-Z]+)'/],
     ['.github/workflows/build.yml', /^\s*FLOOR=(\S+)/m],
-    ['.github/workflows/build.yml', /^\s*ARRAY_SUPPLIER_SHA: (\S+)/m],
+    // The unit job now decodes the registered local carrier instead of fetching
+    // the supplier. Its admission constant must still name a complete commit.
+    ['scripts/admit-arrays-number-value-test-source.mjs', /commit: '([^']+)'/],
     ['overlay/scratch-gui/src/lib/bw-machines/lessons.js', /const LINUX_MEDIA_COMMIT = '([0-9a-zA-Z]+)'/],
     ['overlay/scratch-gui/src/lib/bw-machines/lessons.js', /const ELKS_MEDIA_COMMIT = '([0-9a-zA-Z]+)'/],
     ['scripts/verify-native-downloads-e2e.mjs', /'([0-9a-zA-Z]+)\/riscv32-linux\/Image'/],
@@ -860,6 +861,18 @@ describe('fetch pinning: every fetch that decides what ships names an immutable 
         assert.ok(names.length >= 3,
             `vendor-pins.json names only ${names.length} upstreams; expected at least 3 `
             + '(bw-circuit-ui, bw-board, sb3-creator).');
+        // The offline unit input is still tied to the canonical vendor pin and
+        // receipt. Removing its old network fetch must not leave a second,
+        // independently drifting supplier identity in the shipped admission CLI.
+        const admission = readFileSync(path.join(ROOT, 'scripts/admit-arrays-number-value-test-source.mjs'), 'utf8');
+        const supplier = admission.match(/commit: '([^']+)'/);
+        assert.ok(supplier, 'the local Arrays admission supplier commit is missing');
+        assert.equal(supplier[1], pins['arrays-values'],
+            'the local Arrays admission supplier differs from vendor-pins.json');
+        const receipt = JSON.parse(readFileSync(path.join(ROOT,
+            'overlay/scratch-vm/src/extension-support/bundled-upstream-pins.json'), 'utf8'));
+        assert.equal(receipt.files?.arrays?.commit, pins['arrays-values'],
+            'the bundled Arrays receipt differs from vendor-pins.json');
         const bad = names.filter((n) => !FULL_SHA.test(String(pins[n])));
         assert.deepEqual(bad, [],
             'these pins are not 40-hex shas: ' + bad.map((n) => `${n}=${pins[n]}`).join(', '));
@@ -882,6 +895,67 @@ describe('fetch pinning: every fetch that decides what ships names an immutable 
                 + 'API call and every file is served from a cached branch URL again, silently.');
         }
     });
+});
+
+test('x86 Google Fonts selectors require a full immutable commit and safe path before fetch', () => {
+    // Exercise the actual Python guards with no network, browser or native tool.
+    // These are the boundaries that justify the census rows above.
+    const probe = String.raw`
+import importlib.util, json, pathlib, sys, urllib.request
+root = pathlib.Path(sys.argv[1])
+paths = {
+    'nativeProducer': 'scripts/i80386-native-font-selection/run.py',
+    'nativeReader': 'scripts/i80386-native-font-selection/reader.py',
+    'guiProducer': 'scripts/run-i80386-hdd-gui-actual.py',
+    'guiReader': 'scripts/read-i80386-hdd-gui-originals.py',
+}
+modules = {}
+for name, relative in paths.items():
+    spec = importlib.util.spec_from_file_location(name, root / relative)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    modules[name] = module
+selected = [modules['nativeProducer'].FONT_URL, modules['nativeProducer'].LICENSE_URL,
+            'https://raw.githubusercontent.com/google/fonts/' + '9'*40 + '/apache/robotomono/RobotoMono%5Bwght%5D.ttf']
+prefix = 'https://raw.githubusercontent.com/google/fonts/'
+bad = [prefix + 'main/apache/font.ttf', prefix + '9'*7 + '/font.ttf',
+       prefix + 'A'*40 + '/font.ttf', prefix + '9'*40 + '/',
+       prefix + '9'*40 + '/../font.ttf', prefix + '9'*40 + '/%2e%2e/font.ttf',
+       prefix + '9'*40 + '/font.ttf?ref=main', prefix + '9'*40 + '/font.ttf#part',
+       'https://example.invalid/google/fonts/' + '9'*40 + '/font.ttf']
+def accepted(module, url):
+    try: module.google_fonts_raw_url(url); return True
+    except ValueError: return False
+observed = {name: {'selected': [accepted(module, url) for url in selected],
+                   'refused': [not accepted(module, url) for url in bad]}
+            for name, module in modules.items()}
+for name in ('guiProducer', 'guiReader'):
+    module = modules[name]
+    observed[name]['argvSelected'] = module.native_font_fetch_argv(selected[0],30,184768)[-1] == selected[0]
+    observed[name]['argvRefused'] = []
+    for url in bad:
+        try: module.native_font_fetch_argv(url,30,184768); observed[name]['argvRefused'].append(False)
+        except ValueError: observed[name]['argvRefused'].append(True)
+calls = []
+urllib.request.build_opener = lambda *args: calls.append(args)
+native = modules['nativeProducer'].LiveOps({})
+for url in bad:
+    try: native.input(url,1)
+    except ValueError: pass
+observed['nativeGetCallsForRefusedUrls'] = len(calls)
+print(json.dumps(observed,sort_keys=True))
+`;
+    const observed = JSON.parse(execFileSync('/usr/bin/python3', ['-I', '-B', '-c', probe, ROOT],
+        {encoding: 'utf8', timeout: 10_000, maxBuffer: 65_536}));
+    for (const role of ['nativeProducer', 'nativeReader', 'guiProducer', 'guiReader']) {
+        assert.deepEqual(observed[role].selected, [true, true, true], `${role}: selected full-commit URLs`);
+        assert.deepEqual(observed[role].refused, Array(9).fill(true), `${role}: mutable or unsafe URL`);
+    }
+    for (const role of ['guiProducer', 'guiReader']) {
+        assert.equal(observed[role].argvSelected, true, `${role}: guarded selected curl argument`);
+        assert.deepEqual(observed[role].argvRefused, Array(9).fill(true), `${role}: refusal before curl argument`);
+    }
+    assert.equal(observed.nativeGetCallsForRefusedUrls, 0, 'native source refuses before opener');
 });
 
 describe('lib-pin: the mechanism the `resolved-var` class depends on', () => {

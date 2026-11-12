@@ -38,7 +38,7 @@ only open x86 lane, and three optional follow-ups are scoped after it.
   been removed under a later-reversed instruction. All its other checks
   passed, and PR718's full tier on a later base was entirely green.
 
-### Lane 1: close current GUI qualification first (draft PR1540)
+### Lane 1: close current GUI qualification first (PR1540)
 
 **Scope:** [PR1540](https://github.com/CrispStrobe/brickwright-lite/pull/1540),
 the successor to the now-closed PR1318. Start with
@@ -46,7 +46,8 @@ the successor to the now-closed PR1318. Start with
 `scripts/run-i80386-hdd-gui-actual.py`,
 `scripts/read-i80386-hdd-gui-originals.py`, their tests and
 `.github/workflows/i80386-hdd-gui-actual.yml` at the actual candidate head.
-The published candidate is `4257afa4052c4b14667ac4c54f482b2cc0cb1c40`.
+The initial published checkpoint is `4257afa4052c4b14667ac4c54f482b2cc0cb1c40`;
+obtain PR1540's current head from GitHub before acting.
 Main's older producer is not this prepared implementation.
 
 The published test-only repair at `6da13f73194b316d2c4030c7c82ac161e9035474`
@@ -67,8 +68,9 @@ single-run admission rule. Current unarmed checks are preparation evidence.
 resolver was a symlink; the earlier V8 attempt had required a symlink and found
 a regular file. Both attempts are consumed and their failures remain retained.
 The [V10 claim](../lanes/2026-10-28-x86-finite-v10-resolver-kind.md) is on
-main and its implementation is published in draft PR1540 with all new guards
-false. The owner-released sealed-study repair passes 83 affected source controls;
+main and its implementation has a reviewed source-arming candidate in PR1540.
+Its activated source flags do not authorize an actual event; separate source,
+Build, reference and once-only operational admission is still required. The owner-released sealed-study repair passes 83 affected source controls;
 hosted checks and actual guest acceptance remain pending. Keep the resolver in the complete observed runtime graph, bind the
 explicit selected branch and endpoint, and reject unknown targets or drift.
 A different actual runner must still satisfy the frozen request; supporting two
@@ -106,7 +108,7 @@ receipt look current. No previous head's qualification transfers automatically.
    source/profile bytes. Review the implemented template, guard, collector,
    independent reader, workflow and connected controls. Complete and review the
    external phase-admission, request/ACK and final-reader tooling before arming.
-   New guards remain false until that separate review. Preserve the strict historical V8/V9
+   Keep actual event selection closed until that separate review. Preserve the strict historical V8/V9
    readers, retire V9 execution, and requalify the final head.
 2. Admit the successful frontend Build's actual checkout, tree, dependency and
    source closure from its selected original. A proposed PR merge SHA or a later
@@ -216,6 +218,25 @@ unimplemented CD-ROM device. Record observed freely licensed/freeware tests and
 exact limitations; retain private operational details outside public Markdown.
 
 ## Current boundary
+
+The selected actual V6 attempt failed its Python startup check before media or
+guest work. Its retained log establishes the guard-mode mismatch; the later
+preflight and actual mode mismatches are source findings, not observed later
+steps. The distinct [V7 startup-mode lane](../lanes/2026-10-25-x86-gui-actual-v7-startup-mode.md)
+qualified source checks but was never selected for an actual event. Its three
+CLI modes and reader remain available for historical review. A pure V7 control
+used memory originals and produced 157 registered roles, above the real
+producer's 128-role limit; it did not establish a reachable sealed actual
+packet or a guest result. The [V8 dispatch lane](../lanes/2026-10-25-x86-gui-actual-v8-head-pinned-dispatch.md)
+has an armed source candidate awaiting hosted qualification, still
+unselected for any actual event. It packs the 35 Git capture triplets into
+bounded physical envelopes while retaining their raw bytes and independent
+reader checks. Its controls use mocked host and child edges; dormant
+default-branch dispatch registration has landed, and V8 still needs exact-head
+source CI, a qualified Build and request, and a separately selected one-shot
+event before any hosted claim. V7 execution is retired in this candidate while
+its wire and reader remain; V6 execution remains retired while its original
+reader and failed attempt remain available.
 
 The functional experimental 386 AT exposes console/VGA and keyboard/mouse routes through Circuits, Widgets and Code. Machine Manager accepts raw HDD media with supported CHS geometry and partial DOSBox configs; the named FreeDOS VGA route has its own documented floppy/HDD constraints. Widgets supports a large screen and full screen. Media selection remains tab-local and mouse reporting depends on the guest enabling it. These capabilities have different synthetic, headless-adapter and actual-browser evidence boundaries; consult the guide rather than treating them as one broad compatibility claim.
 
@@ -523,6 +544,34 @@ full-OS, broad DOSBox, physical-timing, RTx or release claim.
 
 
 ## Next finite GUI composition and hosted acceptance
+
+Current Arcade composition selects compiler `37bfe28760f60c836097854fb141fd114bbee518` from
+main's reviewed supplier adoption. Its compiler source is identical to D7;
+both x86 consumer literals match the current selection. Actual execution remains
+disabled. The preceding F9 hosted source workflow passed all 67 Node control
+groups, including twelve GUI groups; it supplies no current composed GUI/guest,
+tool or external-event qualification. Keep the following D7 record as historical
+source maintenance and preserve its original reader identities.
+
+Current D7 supplier-consumer maintenance is a SOURCE candidate: the fixed SB3
+selection in `scripts/run-i80386-hdd-gui-actual.py` and
+`scripts/read-i80386-hdd-gui-originals.py` is
+`d7c258910dd3837021a7a8c4b85d38a4e28e138a`. Both actual gates remain disabled;
+all other script bytes, dependency declarations and historical readers stay held.
+The complete unchanged source-control module and exact-head checks are pending.
+Fresh affected GUI/guest qualification still needs its own admitted D7 source,
+installed supplier/browser and tool graph, finite resources, external request and
+event, and independent original reader. No earlier source result or consumed
+event qualifies this candidate; no guest attempt is authorized here.
+
+The earlier GUI source work in
+[PR #1095](https://github.com/CrispStrobe/brickwright-lite/pull/1095) has merged.
+The current-main compiler selection is an ancestor of the explicit D7 adoption;
+D7 adds the source operators, score callbacks and motor-power support. The
+candidate's twenty mapped compiler files and mirrors match D7. Preserve that
+adoption and the two matching consumer fences while qualifying the combined
+head. This refresh supplies no new tool availability, request, event or guest
+result; retain the earlier consumed failures and their historical readers.
 
 A separate source-only exact-entry chain slice is being reviewed on top of
 PR1013's `79afc8bc` checkpoint. It adds `font-chain-guard` and `font-chain`
@@ -1219,7 +1268,7 @@ four CUI commits change five module-label/layout and supporting files; existing
 386 target/API source is unchanged. Full rendering and this scenario's browser
 acceptance still need their own qualification. Board and SB3 selections stay held.
 
-The current-main composition explicitly advances only the GUI consumer expectation
+The earlier composition explicitly advanced only the GUI consumer expectation
 to canonical CUI `bda0157410a6704ae859a19398a8a742cdfae50b`, checking root
 devDependencies, GUI dependencies, both lock roots/resolutions and vendor pins.
 The dependency declarations remain main bytes. Earlier request/source selections
@@ -1238,7 +1287,7 @@ lock and vendor selection. A synthetic noncurrent consumer tests refusal without
 retaining a stale active supplier pin. The earlier CI failure stays retained;
 this repair changes no dependency version or runtime qualification.
 
-The current-main pin adoption now explicitly selects Board
+The earlier main pin adoption explicitly selected Board
 `fac3a5a9928c8b53a778b0c42d8d91d5e693e4b7` and CUI
 `a7621be4d40d089826d78cd1e656b7c592ef16db` in both consumers, preserving main
 package/lock/vendor declarations. Board controls actual v3/v4 admission and
@@ -1246,6 +1295,16 @@ scenario proof grading; historical actual originals require their retained
 historical reader. Font-prior formats and bytes remain held. New source, reader
 and request bindings, exact-head CI and affected guest qualification remain
 pending; this pin refresh establishes no new runtime result.
+
+The 2026-10-20 consumer composition follows main's canonical CUI selection
+`989f9541de610d2a742b36867c12df61d36b0c24` in both the controller and reader.
+Root and GUI package/lock declarations and vendor pins remain unchanged;
+Board and SB3 selections are also unchanged. This explicitly updates the
+consumer identity after the B27 part-face adoption, not a dependency selection
+or browser/guest qualification. Actual execution stays disabled. Historical
+originals retain their historical readers and source bindings. Any new actual
+needs a freshly admitted complete source, request, workflow/event and artifact
+envelope, followed by the existing affected GUI/guest acceptance.
 
 After the bw-circuit-ui bump to `989f9541de610d2a742b36867c12df61d36b0c24`
 (Lite #1122, B27 part faces) both consumers' CUI declarations follow it, so the
@@ -1306,3 +1365,47 @@ memory inspection, resume and pane retention. Dedicated supplier support does
 not provide mode-aware disassembly, step-over/out, architectural checkpoint or
 reverse execution. ZIP selection in PR992 remains a separate acceptance task;
 ISO/CD/ATAPI and general DOSBox compatibility are outside this claim.
+
+## Finite inventory bootstrap checkpoint — 2026-10-26
+
+The [once-selected finite V7 inventory](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40352829291)
+failed Chromium dependency setup before inventory observation. Its failure is
+retained and the event is spent. The [distinct F8 lane](../lanes/2026-10-26-x86-finite-v8-browser-bootstrap.md)
+starts disabled and reuses the existing official-Ubuntu mirror preparation
+helper unchanged, with explicit Git/workspace source admission before package
+setup. Historical readers, supplier identities and limits remain separate.
+
+This bootstrap source change adds no GUI feature or successful installed graph.
+Fresh source/Build and F8 original qualification are required before the
+separate actual-V8 HDD/JSON export, fresh reload/readback and forward-debug
+acceptance. Those actual GUI results remain pending; no whole-OS, physical or
+performance result follows from bootstrap or synthetic controls.
+
+## Reviewed F8 source arming — 2026-10-26
+
+The preceding bootstrap checkpoint records disabled Phase A. A separately
+reviewed source commit now arms only the F8 producer, independent reader and
+workflow route. F7 execution stays retired; its failed original and historical
+reader are retained. Fixed supplier epochs, the unchanged mirror helper and
+all limits are held. Source controls pass, but final exact-head source/Build
+qualification and separate one-shot F8 admission remain pending. Actual V8
+GUI export/reload and forward-debug acceptance remain unselected and unproved.
+
+## Finite V9 resolver-role source checkpoint — 2026-10-27
+
+The [once-selected V8 inventory](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40422314383)
+passed source and trusted setup, then refused `/etc/resolv.conf` because its
+selected alias role did not match the observed regular file. Its independent
+negative reader joined the event with qualification false. Preserve that
+failure and the earlier V7 setup failure; both events are spent.
+
+The [distinct V9 continuation](../lanes/2026-10-27-x86-finite-v9-resolver-role.md)
+has a disabled source candidate selecting only that path as a regular file.
+Historical V8 wire meanings and strict alias checks remain held. Source controls
+and pin-role separation do not qualify a new hosted inventory. Separate reviewed
+arming, exact-head source/Build admission, one V9 event and independent original
+reading precede native/runtime joins and the still-pending actual-V8 FreeDOS
+export/reload and forward-debug GUI acceptance.
+
+Current source status: [separately reviewed V9 arming](../lanes/2026-10-27-x86-finite-v9-resolver-role.md#separate-v9-source-arming-checkpoint--2026-10-27)
+is armed but unselected; final source CI, Build admission and actual events remain pending.

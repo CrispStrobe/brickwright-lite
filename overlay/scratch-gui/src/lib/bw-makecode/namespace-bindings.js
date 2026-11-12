@@ -7,7 +7,45 @@ import {parseCallableType, mapCallableType, renderCallableType} from './callable
  * members are lowered. Escapes, computed access and unresolved/private members
  * retain an explicit diagnostic instead of acquiring a guessed binding.
  */
-export const lowerNamespaceBindings = (program, {spriteKinds = false, textSpriteInitializer = false, namedFunctionValues = false} = {}) => {
+const isPlainKindCreate = init => init?.type === 'Call' && init.callee?.type === 'Member' &&
+    init.callee.object?.type === 'Identifier' && init.callee.object.name === 'SpriteKind' &&
+    init.callee.name === 'create' && !(init.args || []).length;
+
+/**
+ * A MakeCode tutorial keeps its kinds in a hidden file next to main.ts, so the same
+ * `export const Name = SpriteKind.create()` can be declared in both. MakeCode itself rejects the
+ * second one; the program's evident meaning is one kind. A repeat is dropped only when it is an
+ * identical, argument-free SpriteKind.create() of a name an earlier SpriteKind block already
+ * declared; any other repeat still fails as "declared more than once".
+ */
+const mergeRepeatedSpriteKinds = program => {
+    const seen = new Set(), warnings = [];
+    let changed = false;
+    const body = (program.body || []).map(st => {
+        if (st.type !== 'Namespace' || st.name !== 'SpriteKind') return st;
+        const kept = st.body.filter(inner => {
+            if (inner.type !== 'Declaration' || inner.kind !== 'const' || !inner.exported || inner.decls.length !== 1) return true;
+            const [decl] = inner.decls;
+            if (!isPlainKindCreate(decl.init)) return true;
+            if (!seen.has(decl.name)) { seen.add(decl.name); return true; }
+            const warning = `SpriteKind.${decl.name} is declared again with the same SpriteKind.create(); MakeCode rejects the repeat, so it is read as the one kind`;
+            if (!warnings.includes(warning)) warnings.push(warning);
+            return false;
+        });
+        if (kept.length === st.body.length) return st;
+        changed = true;
+        return {...st, body: kept};
+    });
+    return changed ? {program: {...program, body}, warnings} : {program, warnings: []};
+};
+
+export const lowerNamespaceBindings = (program, options = {}) => {
+    const merged = options.spriteKinds ? mergeRepeatedSpriteKinds(program) : {program, warnings: []};
+    const lowered = lowerNamespaceBindingsOnce(merged.program, options);
+    return merged.warnings.length ? {...lowered, warnings: [...merged.warnings, ...(lowered.warnings || [])]} : lowered;
+};
+
+const lowerNamespaceBindingsOnce = (program, {spriteKinds = false, textSpriteInitializer = false, namedFunctionValues = false} = {}) => {
     // Ordinary programs already have their binding behavior in the translator.
     // Do not impose namespace declaration rules on them (including collected
     // block-generated projects that redeclare a top-level sprite variable).

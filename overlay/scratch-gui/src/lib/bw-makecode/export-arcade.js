@@ -1,7 +1,53 @@
+import {createProjectFrameDeltaNumber,currentFrameDeltaReporter} from './project-frame-delta-number.js';
+import {EXTERNAL_NAME} from './external-references.js';
+import {createProjectMathNormalResults} from './project-math-normal-results.js';
+import {arrayMenuLiteral,isArrayMenuSelector,isKnownArrayMenuOperation} from './array-menu-literal.js';
+import {createProjectJsonSnapshot,isProjectJsonSnapshot} from './project-json-snapshot.js';
+import {sourceValueOperation} from './source-value-operator-helpers.js';
+import {nativeArrayAddHelperSource,runtimeDispatchAddHelperSource} from './native-array-binary-helper-source.js';
+// Refusals that only say an operand domain or an Array effect is unproved.
+// Each is decided at run time by the dispatch helper; every other native
+// addition refusal (supplied tags, ambiguous/changed source identity, a
+// refused named-helper source proof) still refuses the export.
+const RUNTIME_DISPATCH_ADDITION_REASONS=new Set([
+    'native addition requires initialized primitive or proved flat Array operands',
+    'native addition cannot prove the named getter index has primitive coercion',
+    'native addition cannot prove the canonical parser result is primitive',
+    'native addition has no private shape model for this named mutator',
+    'native helper does not join this actual Array operand position',
+    'native addition cannot prove unary conversion has no opaque coercion effects',
+    'native addition source graph contains unresolved producer constraints',
+    'native addition requires flat primitive allocation contents and no foreign escapes',
+    'native addition Array escapes through an unproved callback return',
+    'native addition Array-returning function escapes its actual callers',
+    'native addition Array escapes through an object literal',
+    'native addition Array escapes through a containing Array',
+    'native addition cannot prove host Number conversion has no opaque coercion effects',
+    'native addition cannot prove constructor, generic or spread call effects',
+    'native addition cannot prove a foreign member call effect',
+    'native addition SDK or builtin callee binding differs',
+    'native addition cannot prove an Array method writer or escape',
+    'native addition Array escapes through a member call',
+    'native addition cannot prove an actual callee effect',
+    'native addition Array escapes through an unproved callee',
+    'native addition builtin binding has an actual writer',
+    'native addition cannot prove a global or nonnumeric indexed writer',
+    'native addition cannot prove an indexed Array writer',
+    'native addition Array has an unproved property writer',
+    'native addition Array escapes through an object or indexed writer',
+    'native addition cannot prove an updated Array slot',
+    'native addition cannot prove a deleted Array property'
+]);
+const runtimeDispatchAdditionReason=reason=>typeof reason==='string'&&RUNTIME_DISPATCH_ADDITION_REASONS.has(reason);
+import {inspectNativeAdditionExportDomains} from './native-array-binary-domain.js';
+import {GENERATED_HELPER_PROFILES,mapGeneratedSourceArray} from './generated-helper-recognition.js';
+import {animationAssetArray} from './animation-asset-array.js';
+import {ownedAnimationLiteral,unusedAnimationLookups} from './static-animation-resource-emission.js';
 import {createOrdinaryExportSymbols} from './ordinary-export-symbols.js';
 import {createArrayReferenceExportAuthority} from './array-reference-export-authority.js';
 import {throwExportOwners} from './throw-export-owners.js';
 import {prepareProcedureConstraintExport} from './procedure-constraint-export.js';
+import {createClosedOrdinaryProjectEntry} from './closed-ordinary-project-entry.js';
 import {validateProcedureConstraintSource} from './procedure-constraint-source.js';
 import {createSdkImageLiteralResources} from './sdk-image-literal-resources.js';
 import {proveNamedFunctionSource} from './named-function-source.js';
@@ -11,17 +57,22 @@ import {classCallableSourceGate} from './class-callable-source-gate.js';
 import {classCallableDefaultProjectGate} from './class-callable-default-project-gate.js';
 import {sdkFontInputAuthority} from './sdk-font-input-authority.js';
 import {parseMakeCodeTs} from './ts-import.js';
+import {analyseSourceValueProducers} from './source-value-producers.js';
+import {dormantSpriteDeclarations} from './dormant-sprite-declarations.js';
 import {callableSourceGate} from './callable-source-gate.js';
-import {inspectCallableExportGraph,createCallableLexicalEmitter,renderCallableSignature,validateCallableCurrentBodyTypes,callableReflectionOperand,callableReflectionVariable} from './callable-export-graph.js';
+import {inspectCallableExportGraph,createCallableLexicalEmitter,renderCallableSignature,validateCallableCurrentBodyTypes,callableReflectionOperand,callableReflectionVariable,callableCurrentInputType} from './callable-export-graph.js';
 import {namedArrayItemExportAuthority} from './named-array-item-export-authority.js';
 import {NAMED_ARRAY_GET_SOURCE} from './named-array-item-helpers.js';
 import {sourceReferenceProject} from './source-reference-project.js';
-import {scalarExportFlow} from './scalar-export-flow.js';
+import {scalarExportFlow,closedRemovalScalarAddition} from './scalar-export-flow.js';
 import {sourceScalarProject} from './source-scalar-project.js';
+import {createImageConsumerAbiExport} from './image-consumer-abi-export.js';
 import {prepareObjectClassExport} from './object-class-export.js';
+import {createCreatedFieldExportReceivers} from './created-field-export-receivers.js';
 import {STRING_ARRAY_SETTINGS_PATH,STRING_ARRAY_SETTINGS_SOURCE} from './string-array-settings.generated.js';
 import {LEGACY_CHARACTER_NATIVE_IDENTITY} from './legacy-character-source-admission.generated.js';
 const LEGACY_CHARACTER_REVISION=LEGACY_CHARACTER_NATIVE_IDENTITY.revision;
+const provenanceDescriptor=Object.getOwnPropertyDescriptor,provenanceOwn=Object.hasOwn,provenanceKeys=Reflect.ownKeys,provenanceArray=Array.isArray;
 // Serialized current-graph eligibility only, never a runtime completion receipt.
 // Expression emission and formal/caller inference must use the same exact proof.
 function currentSceneClockNumber(blocks,block) {
@@ -94,8 +145,76 @@ function currentSceneClockNumber(blocks,block) {
  * @module
  */
 import {LEGACY_PARSE_SOURCE, LEGACY_JSON_SOURCE, ARRAY_ACCESS_SOURCE} from './legacy-array-values.js';
-import {createAnimationFrameArrayProducers} from './animation-frame-array-producers.js';
-import {encodeAnimationJres, nativeAnimationNameBase, isNativeAnimationName} from './animation-jres.js';
+import {createAnimationFrameArrayProducers, constantStringVariable} from './animation-frame-array-producers.js';
+import {encodeAnimationJres, decodeAnimationJres, nativeAnimationNameBase, isNativeAnimationName} from './animation-jres.js';
+
+const ADDITION_VIEW_METADATA=new Set(['originalBody','parameterDefaults','paramTypes','typeParameters','returnType',
+    'assertedType','ordinaryParameterDefaultNames','bwProcedureConstraintSource']);
+// Whether anything in the program binds or reads the name `assets` other than as the root of an asset tag.
+function programShadowsAssets(program) {
+    let shadowed=false;
+    const scan=node=>{
+        if(!node||typeof node!=='object')return;
+        if(Array.isArray(node)){for(const child of node)scan(child);return;}
+        if(node.type==='Identifier'&&node.name==='assets'||
+            ['FunctionDeclaration','FunctionExpression','Class','Enum','Namespace','ForOf','ForIn'].includes(node.type)&&node.name==='assets'||
+            node.params?.includes('assets')||node.type==='Declaration'&&node.decls.some(decl=>decl.name==='assets'))shadowed=true;
+        for(const [key,value]of Object.entries(node))if(!ADDITION_VIEW_METADATA.has(key))scan(value);
+    };
+    scan(program);
+    return shadowed;
+}
+// The export proof's view of the asset references THIS emitter wrote by name because the project does not carry the
+// asset. Only a Template whose exact text the emitter recorded as such, in a program where `assets` is not otherwise
+// bound or read, is read as an inert literal (like an img tag); every other assets.* spelling stays unproved.
+function nativeAdditionNamedAssetView(program, emitted) {
+    if(!emitted.size||programShadowsAssets(program))return program;
+    const rewrite=node=>{
+        if(!node||typeof node!=='object')return node;
+        if(Array.isArray(node))return mapGeneratedSourceArray(node,rewrite);
+        if(node.type==='Template'&&typeof node.value==='string'&&!node.value.includes('${')&&
+            ['assets.image','assets.tile','assets.animation','assets.song'].includes(node.tag)&&emitted.has(`${node.tag}\`${node.value}\``))
+            return Object.fromEntries(Object.entries(node).map(([key,value])=>[key,key==='tag'?'img':value]));
+        return Object.fromEntries(Object.entries(node).map(([key,value])=>[key,ADDITION_VIEW_METADATA.has(key)?value:rewrite(value)]));
+    };
+    return rewrite(program);
+}
+// This view is used only for the fresh parse of this emitter's complete,
+// immutable assembled source. It never accepts a caller's AST/proof flag and
+// never replaces emitted text. Only this emitter's actual encoded resources
+// supply literal image Arrays; arbitrary tag spellings remain unproved.
+function nativeAdditionAnimationView(program, resources) {
+    const metadata=new Set(['originalBody','parameterDefaults','paramTypes','typeParameters','returnType',
+        'assertedType','ordinaryParameterDefaultNames','bwProcedureConstraintSource']);
+    let shadowed=false;
+    const scan=node=>{
+        if(!node||typeof node!=='object')return;
+        if(Array.isArray(node)){for(const child of node)scan(child);return;}
+        if(node.type==='Identifier'&&node.name==='assets'||
+            ['FunctionDeclaration','FunctionExpression','Class','Enum','Namespace','ForOf','ForIn'].includes(node.type)&&node.name==='assets'||
+            node.params?.includes('assets')||node.type==='Declaration'&&node.decls.some(decl=>decl.name==='assets'))shadowed=true;
+        for(const [key,value]of Object.entries(node))if(!metadata.has(key))scan(value);
+    };
+    scan(program);
+    if(shadowed)return program;
+    const animations=new Map();
+    for(const resource of resources){
+        const id=resource.nativeId;
+        if(typeof id!=='string'||animations.has(id)){animations.set(id,null);continue;}
+        const animation=decodeAnimationJres(resource.nativeEntry,{key:`myAnimations.${id}`});
+        animations.set(id,animation.id===`myAnimations.${id}`?animation:null);
+    }
+    const rewrite=node=>{
+        if(!node||typeof node!=='object')return node;
+        if(Array.isArray(node))return mapGeneratedSourceArray(node,rewrite);
+        if(node.type==='Template'&&node.tag==='assets.animation'){
+            const animation=typeof node.value==='string'&&animations.get(node.value);
+            return animation?animationAssetArray(animation):node;
+        }
+        return Object.fromEntries(Object.entries(node).map(([key,value])=>[key,metadata.has(key)?value:rewrite(value)]));
+    };
+    return rewrite(program);
+}
 import {ANIMATION_COMPANION_PATH, encodeAnimationCompanion} from './animation-companion.js';
 import {validateDocument} from '../bw-artwork-bundle.js';
 import {TileAssetExporter} from './tile-assets.js';
@@ -117,6 +236,7 @@ const BUFFER_FORMAT_NAMES = ['Int8LE','UInt8LE','Int16LE','UInt16LE','Int32LE','
 const BACKGROUND_EFFECTS = ['confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none', 'dissolve', 'melt', 'slash', 'splatter'];
 import {ARCADE_PALETTE, imageToSvg} from './arcade-assets.js';
 import {helperSource, analyseTone} from './arcade-runtime.js';
+import {startupFirstWriteVariables} from './startup-first-write-globals.js';
 
 /**
  * Why the mouse stays a refusal: Arcade hardware has a d-pad and A/B, no
@@ -138,17 +258,18 @@ const REGISTERED_HAT_KINDS = {
     arcade_whenRegisteredInstanceDestroyed:'instanceDestroyed',
     arcade_whenRegisteredLegacyWall:'legacyWall',
     arcade_whenRegisteredMultiplayerButton:'multiplayerButton',
-    arcade_whenRegisteredCreated:'created', arcade_whenRegisteredWall:'wall', arcade_whenRegisteredTile:'tile',
+    arcade_whenRegisteredCreated:'created', arcade_whenRegisteredWall:'wall', arcade_whenRegisteredTile:'tile', arcade_whenRegisteredTilemapEvent:'tilemapEvent',
     arcade_whenRegisteredUpdate:'update', arcade_whenRegisteredInterval:'interval', arcade_whenRegisteredButton:'button',
     arcade_whenRegisteredPaint:'paint', arcade_whenRegisteredShade:'shade',
     arcade_whenRegisteredKindDestroyed:'destroyed', arcade_whenRegisteredOverlap:'overlap',
     arcade_whenRegisteredScenePush:'scenePush', arcade_whenRegisteredScenePop:'scenePop',
-    arcade_whenRegisteredForever:'forever', arcade_whenRegisteredLifeZero:'lifeZero', arcade_whenRegisteredCountdown:'countdown'
+    arcade_whenRegisteredForever:'forever', arcade_whenRegisteredLifeZero:'lifeZero', arcade_whenRegisteredScore:'score', arcade_whenRegisteredCountdown:'countdown',
+    arcade_whenRegisteredExternal:'external'
 };
-const REGISTERED_COMMANDS = new Set(['arcade_registerMultiplayerConnection','arcade_registerControlEvent','arcade_startParallelHandler','arcade_registerLegacyWallHandler','arcade_registerMultiplayerButtonHandler','arcade_registerSpriteCreated','arcade_registerWallHandler','arcade_registerTileHandler',
+const REGISTERED_COMMANDS = new Set(['arcade_registerMultiplayerConnection','arcade_registerControlEvent','arcade_startParallelHandler','arcade_registerLegacyWallHandler','arcade_registerMultiplayerButtonHandler','arcade_registerSpriteCreated','arcade_registerWallHandler','arcade_registerTilemapEvent','arcade_registerTileHandler',
     'arcade_registerUpdateHandler','arcade_registerIntervalHandler','arcade_registerButtonHandler','arcade_registerPaintHandler','arcade_registerShadeHandler',
     'arcade_registerInstanceDestroyedHandler','arcade_registerDestroyedHandler','arcade_registerOverlapHandler','arcade_registerScenePushHandler','arcade_registerScenePopHandler',
-    'arcade_registerForeverHandler','arcade_registerLifeZeroHandler','arcade_registerCountdownHandler']);
+    'arcade_registerForeverHandler','arcade_registerLifeZeroHandler','arcade_registerScoreHandler','arcade_registerCountdownHandler','arcade_registerExternalHandler']);
 
 const KEY_BUTTON = {
     'left arrow': 'controller.left', 'right arrow': 'controller.right',
@@ -166,7 +287,182 @@ const RESERVED = new Set(['score', 'life', 'info', 'game', 'scene', 'sprites', '
     'if', 'else', 'while', 'for', 'return', 'true', 'false', 'null', 'new', 'this', 'pause', 'forever',
     '__bwSdkCharCode','__bwSdkConcat','__bwScratchTimerStart','__bwScratchTimer','__bwResetScratchTimer', 'SpriteKind', 'SpriteFlag', 'ControllerButtonEvent', 'DialogLayout', 'Image', 'Buffer', 'NumberFormat', 'console', 'control', 'assets', 'images', 'image', 'hex', 'img', 'undefined', 'bwStringArraySettings']);
 
+const arraySourceDescriptor=Object.getOwnPropertyDescriptor,arraySourceKeys=Reflect.ownKeys,
+    arraySourcePrototype=Object.getPrototypeOf,arraySourceOwn=Object.hasOwn,arraySourceIsArray=Array.isArray,
+    arraySourceQuote=JSON.stringify,arraySourceFinite=Number.isFinite,arraySourceSame=Object.is,
+    arraySourceCreate=Object.create,arraySourceApply=Reflect.apply,
+    arraySourceWeakGet=WeakMap.prototype.get,arraySourceWeakSet=WeakMap.prototype.set;
+
+// Optional owned-JSON evidence for a direct AST caller. Read data descriptors
+// only: getters, toJSON, functions, shared objects, sparse/extended Arrays and non-JSON values
+// cannot manufacture a different project for the reset proof. Keep the actual
+// physical input identities so artwork callbacks cannot renew this evidence.
+function arrayExportSource(project) {
+    try{
+        const records=[],recorded=new WeakSet(),parts=[];
+        const realm=[Object.prototype,Array.prototype].map(value=>({value,prototype:arraySourcePrototype(value),
+            entries:arraySourceKeys(value).map(key=>[key,arraySourceDescriptor(value,key)])}));
+        let size=0,nodes=0,live=true;
+        const append=text=>{size+=text.length;if(size>8*1024*1024)throw Error('bounded source');parts.push(text);};
+        const encode=(value,depth=0)=>{
+            if(value===null){append('null');return;}
+            if(typeof value==='string'||typeof value==='boolean'){
+                if(typeof value==='string'&&value.length>8*1024*1024)throw Error('bounded source');
+                append(arraySourceQuote(value));return;
+            }
+            if(typeof value==='number'){
+                if(!arraySourceFinite(value)||arraySourceSame(value,-0))throw Error('non-JSON source');
+                append(arraySourceQuote(value));return;
+            }
+            if(!value||typeof value!=='object'||depth>128||recorded.has(value))throw Error('non-JSON source');
+            const array=arraySourceIsArray(value),prototype=arraySourcePrototype(value);
+            if(prototype!==null&&prototype!==(array?Array.prototype:Object.prototype))throw Error('non-JSON source');
+            const keys=arraySourceKeys(value),entries=keys.map(key=>[key,arraySourceDescriptor(value,key)]);
+            if(++nodes>100000)throw Error('bounded source');
+            recorded.add(value);records.push({value,prototype,entries});
+            if(entries.some(([key,row])=>typeof key!=='string'||key==='toJSON'||!row||!arraySourceOwn(row,'value')))throw Error('non-JSON source');
+            if(array){
+                const length=arraySourceDescriptor(value,'length')?.value;
+                if(!Number.isSafeInteger(length)||length<0||keys.length!==length+1)throw Error('non-JSON source');
+                append('[');
+                for(let i=0;i<length;i++){
+                    const row=arraySourceDescriptor(value,String(i));
+                    if(!row||!arraySourceOwn(row,'value')||!row.enumerable)throw Error('non-JSON source');
+                    if(i)append(',');encode(row.value,depth+1);
+                }
+                append(']');
+            }else{
+                append('{');
+                for(let i=0;i<entries.length;i++){
+                    const [key,row]=entries[i];if(!row.enumerable)throw Error('non-JSON source');
+                    if(i)append(',');append(arraySourceQuote(key));append(':');encode(row.value,depth+1);
+                }
+                append('}');
+            }
+        };
+        const current=()=>{
+            if(live)try{
+                for(let batch=0;batch<2&&live;batch++){
+                    const rows=batch===0?realm:records;
+                    for(let at=0;at<rows.length&&live;at++){
+                        const record=rows[at],keys=arraySourceKeys(record.value);
+                        if(arraySourcePrototype(record.value)!==record.prototype||keys.length!==record.entries.length){live=false;break;}
+                        for(let i=0;i<keys.length;i++){
+                            const entry=record.entries[i],key=entry[0],before=entry[1],now=arraySourceDescriptor(record.value,keys[i]);
+                            if(key!==keys[i]||!now||now.enumerable!==before.enumerable||now.configurable!==before.configurable||
+                                arraySourceOwn(now,'value')!==arraySourceOwn(before,'value')||
+                                (arraySourceOwn(before,'value')?now.writable!==before.writable||!arraySourceSame(now.value,before.value):
+                                    now.get!==before.get||now.set!==before.set)){live=false;break;}
+                        }
+                    }
+                }
+            }catch{live=false;}
+            return live;
+        };
+        encode(project);
+        return current()?{json:parts.join(''),current}:null;
+    }catch{return null;}
+}
+
 class ArcadeEmitter {
+    mathNumberResult(target,node) {
+        if(isProjectJsonSnapshot(this.project))return this.mathNormalResults.isNumberResult(target,node);
+        // The direct API keeps the original live objects for artwork callbacks.
+        // Its numeric proof uses only the constructor's descriptor-checked data
+        // copy; caller objects cannot enroll in the private JSON issuer.
+        if(!this.arrayOwnedSource?.current())return false;
+        try{
+            if(this.mathOwnedSnapshot===undefined){
+                const snapshot=createProjectJsonSnapshot(this.arrayOwnedSource.json);
+                this.mathOwnedSnapshot={snapshot,authority:createProjectMathNormalResults(snapshot)};
+            }
+            const targets=arraySourceDescriptor(this.project,'targets')?.value;
+            const count=arraySourceDescriptor(targets,'length')?.value;
+            let index=-1,id=null;
+            for(let i=0;i<count;i++)if(arraySourceDescriptor(targets,i)?.value===target){if(index!==-1)return false;index=i;}
+            if(index<0)return false;
+            const blocks=arraySourceDescriptor(target,'blocks')?.value;
+            const names=arraySourceKeys(blocks),size=arraySourceDescriptor(names,'length').value;
+            for(let i=0;i<size;i++){
+                const key=arraySourceDescriptor(names,i).value;
+                if(typeof key==='string'&&arraySourceDescriptor(blocks,key)?.value===node){if(id!==null)return false;id=key;}
+            }
+            const actual=this.mathOwnedSnapshot.snapshot.targets[index],value=id!==null&&actual?.blocks?.[id];
+            if(!value||!this.mathOwnedSnapshot.authority.isNumberResult(actual,value)||!this.arrayOwnedSource.current())return false;
+            this.mathOwnedSourceUsed=true;return true;
+        }catch{
+            // Keep the ordinary refusal when optional owned evidence is absent.
+            return false;
+        }
+    }
+    // The same owned-copy bridge for the saved frame delta reporter, so the
+    // direct API and JSON export select the same declaration types.
+    frameDeltaNumberResult(target,node) {
+        if(isProjectJsonSnapshot(this.project))return this.frameDeltaNumber.isNumberResult(target,node);
+        if(!this.arrayOwnedSource?.current())return false;
+        try{
+            if(this.frameDeltaOwnedSnapshot===undefined){
+                const snapshot=createProjectJsonSnapshot(this.arrayOwnedSource.json);
+                this.frameDeltaOwnedSnapshot={snapshot,authority:createProjectFrameDeltaNumber(snapshot)};
+            }
+            const targets=arraySourceDescriptor(this.project,'targets')?.value;
+            const count=arraySourceDescriptor(targets,'length')?.value;
+            let index=-1,id=null;
+            for(let i=0;i<count;i++)if(arraySourceDescriptor(targets,i)?.value===target){if(index!==-1)return false;index=i;}
+            if(index<0)return false;
+            const blocks=arraySourceDescriptor(target,'blocks')?.value;
+            const names=arraySourceKeys(blocks),size=arraySourceDescriptor(names,'length').value;
+            for(let i=0;i<size;i++){
+                const key=arraySourceDescriptor(names,i).value;
+                if(typeof key==='string'&&arraySourceDescriptor(blocks,key)?.value===node){if(id!==null)return false;id=key;}
+            }
+            const actual=this.frameDeltaOwnedSnapshot.snapshot.targets[index],value=id!==null&&actual?.blocks?.[id];
+            if(!value||!this.frameDeltaOwnedSnapshot.authority.isNumberResult(actual,value)||!this.arrayOwnedSource.current())return false;
+            this.frameDeltaOwnedSourceUsed=true;return true;
+        }catch{
+            return false;
+        }
+    }
+    // The same owned-copy bridge for closed execution-root reachability, so
+    // an uncalled procedure is unreachable through both export routes.
+    isUnreachable(target,node) {
+        if(isProjectJsonSnapshot(this.project))return this.closedOrdinaryEntry.isUnreachable(target,node);
+        if(!this.arrayOwnedSource?.current())return false;
+        try{
+            if(this.entryOwnedSnapshot===undefined){
+                const snapshot=createProjectJsonSnapshot(this.arrayOwnedSource.json);
+                this.entryOwnedSnapshot={snapshot,authority:createClosedOrdinaryProjectEntry(snapshot)};
+            }
+            const targets=arraySourceDescriptor(this.project,'targets')?.value;
+            const count=arraySourceDescriptor(targets,'length')?.value;
+            let index=-1,id=null;
+            for(let i=0;i<count;i++)if(arraySourceDescriptor(targets,i)?.value===target){if(index!==-1)return false;index=i;}
+            if(index<0)return false;
+            const blocks=arraySourceDescriptor(target,'blocks')?.value;
+            const names=arraySourceKeys(blocks),size=arraySourceDescriptor(names,'length').value;
+            for(let i=0;i<size;i++){
+                const key=arraySourceDescriptor(names,i).value;
+                if(typeof key==='string'&&arraySourceDescriptor(blocks,key)?.value===node){if(id!==null)return false;id=key;}
+            }
+            const actual=this.entryOwnedSnapshot.snapshot.targets[index],value=id!==null&&actual?.blocks?.[id];
+            if(!value||!this.entryOwnedSnapshot.authority.isUnreachable(actual,value)||!this.arrayOwnedSource.current())return false;
+            this.entryOwnedSourceUsed=true;return true;
+        }catch{
+            return false;
+        }
+    }
+    closedOrdinaryEntryCurrent() {
+        return this.closedOrdinaryEntry.current()&&(!this.entryOwnedSourceUsed||
+            this.arrayOwnedSource.current()&&this.entryOwnedSnapshot.authority.current());
+    }
+    frameDeltaNumbersCurrent() {
+        return this.frameDeltaNumber.current()&&(!this.frameDeltaOwnedSourceUsed||
+            this.arrayOwnedSource.current()&&this.frameDeltaOwnedSnapshot.authority.current());
+    }
+    mathNumbersCurrent() {
+        return this.mathNormalResults.current()&&(!this.mathOwnedSourceUsed||
+            this.arrayOwnedSource.current()&&this.mathOwnedSnapshot.authority.current());
+    }
     sdkFontOperand(block,input='FONT') {
         const types=this.sdkFontInputs.inputTypes(this.target,block,input);
         if(!this.sdkFontInputs.accepts(this.target,block,input,'Font')){this.note('SDK Font operand requires an actual typed Font factory or binding: '+block.opcode+' '+[...(types||[])].join('|'));return false;}
@@ -183,19 +479,28 @@ class ArcadeEmitter {
         }
         return `controller.player${player}.${button}`;
     }
-    constructor (project, opts) {
+    constructor (project, opts, snapshotCallbacks = false) {
+        this.snapshotCallbacks = snapshotCallbacks;
         this.project = project;this.sdkFontInputs=sdkFontInputAuthority(project);
+        this.closedOrdinaryEntry=createClosedOrdinaryProjectEntry(project);
+        this.mathNormalResults=createProjectMathNormalResults(project);
+        this.frameDeltaNumber=createProjectFrameDeltaNumber(project);
         this.opts = opts;
         // Capture once before any artwork callback. Resource emission and Array
         // proof consume the same privately branded normalized resource objects.
         this.animationFrameProducers = createAnimationFrameArrayProducers(opts);
         this.arrayReceiverAuthority = createArrayReferenceExportAuthority(project, opts, this.animationFrameProducers);
+        this.arrayOwnedSource=isProjectJsonSnapshot(project)?null:arrayExportSource(project);
+        this.arrayOwnedSnapshot=null;this.arrayOwnedSourceUsed=false;
+        this.createdFieldWriteSites=[];
+        this.arrayProofChecks=arraySourceCreate(null);this.arrayProofCheckCount=0;this.arrayProofInputs=new WeakMap();
         this.unsupported = [];
         // Diagnose each physical current clock reporter without rendering its
         // consumer. A malformed ordinary caller can be rejected before its
         // arguments are emitted; that must not hide this independent refusal.
         // This is validation only: it creates no Number fact or emission state.
         for (const target of project.targets) for (const block of Object.values(target.blocks || {})) {
+            if(block?.opcode==='arcade_frameDeltaTime'&&!currentFrameDeltaReporter(target.blocks,block))this.note('Frame delta Number: current zero-input reporter or physical socket differs');
             if (block?.opcode === 'arcade_sceneMillis' && !currentSceneClockNumber(target.blocks, block)) {
                 this.note('Scene clock Number: current zero-input reporter or unique parent differs');
             }
@@ -284,6 +589,9 @@ class ArcadeEmitter {
         this.soundCache = new Map();
         this.songAssets = new Map();
         this.valueOperationHelpers = new Map();
+        this.nativeAdditionSites = [];
+        this.unsupportedDetails = [];
+        this.refusalEvidence = null;
         this.namedArrays = new Map();
         this.legacyValueHelpers = new Map();
         this.templateNames = new Set();
@@ -293,14 +601,18 @@ class ArcadeEmitter {
         this.handleTemplateVars = new Map();
         this.frameArrays = new Map();
         this.authoredAnimationArrays = new Map();
+        // Qualified asset spellings written by name because the project does not carry the asset.
+        this.namedMissingAssets = new Set();
         this.usesAnimationResources = false;
         this.sharedImageArrays = new Map();
         this.imageVars = new Set();
         this.handleVars = new Set();
         this.customSpriteKinds = new Set();
         this.boundSpriteKinds = new Set();
+        this.sdkKindNames = new Set(['Player', 'Projectile', 'Food', 'Enemy', 'Text']);
         this.hasTextKindLibrary = false;
         this.eventLocationName = null;
+        this.eventTilemapName = null;
         this.eventHandles = null;
         this.eventKind = null;
         this.destroyedCallbacks = new Map();
@@ -319,7 +631,8 @@ class ArcadeEmitter {
         this.analyse();
         const palettes = this.project.targets.map(target => {
             const costume = target.costumes[target.currentCostume || 0];
-            const palette = costume && opts.costumePalette?.(target, costume);
+            const palette = costume && (snapshotCallbacks ?
+                opts.costumePalette?.(target,costume,snapshotAssetContext(project,target,costume)) : opts.costumePalette?.(target,costume));
             const svg = costume && opts.costumeSvg?.(target, costume);
             const indexed = svg && svgToPixels(svg, isPalette(palette) ? palette : ARCADE_PALETTE);
             return indexed?.palette || (isPalette(palette) ? palette : ARCADE_PALETTE);
@@ -398,7 +711,7 @@ class ArcadeEmitter {
                         intervalMs: resource.frames[0].durationMs, frames: images});
                     usedNames.add(nativeName);
                     if (nativeName !== resource.name) this.warn(`Animation name ${JSON.stringify(resource.name)} mapped to ${JSON.stringify(nativeName)} for native export`);
-                    this.authoredAnimationArrays.set(resource.id, {...resource, nativeId, nativeEntry, document,
+                    this.authoredAnimationArrays.set(resource.id, {...resource, sourceResource:resource, nativeId, nativeEntry, document,
                         variable: this.animationSymbol(`__bwAnimationFrames${this.authoredAnimationArrays.size}`),
                         literals: images.map(image => toImgLiteral(image))});
                 } catch (error) { this.note(error.message); }
@@ -409,13 +722,41 @@ class ArcadeEmitter {
     authoredAnimation (b) {
         this.usesAnimationResources = true;
         this.prepareAuthoredAnimations();
+        // Only the actual JSON entry can skip input evaluation. The descriptor
+        // gate also excludes inherited slots/getters on otherwise frozen data.
+        if(this.snapshotCallbacks&&isProjectJsonSnapshot(this.project)&&!this.currentCallableContext&&!this.currentClassConstructor&&
+            this.functionSymbols?.current()&&!this.functionNames().includes('assets')&&ownedAnimationLiteral(this.project,this.target,b)){
+            const allocation=this.animationFrameProducers.resolve(this.target,b,{targets:this.project.targets,monitors:this.project.monitors});
+            const resource=allocation&&!allocation.shared&&ownedAnimationLiteral(this.project,this.target,b)?
+                this.animationFrameProducers.freshResource(this.target,b,{targets:this.project.targets,monitors:this.project.monitors}):null;
+            const emitted=resource&&this.authoredAnimationArrays.get(resource.id);
+            if(emitted?.sourceResource===resource&&this.animationFrameProducers.isCurrent()&&
+                ownedAnimationLiteral(this.project,this.target,b))
+                return `assets.animation\`${emitted.nativeId}\``;
+        }
         let id = this.literalInput(b, 'RESOURCE');
         const menu = this.block(b.inputs?.RESOURCE?.[1]);
         if (menu?.opcode === 'arcade_menu_animationAssets') id = menu.fields?.animationAssets?.[0];
         if (id !== null && !this.authoredAnimationArrays.has(id)) this.note(`Animation resource unavailable: ${id}`);
         const method = b.opcode === 'arcade_animationAssetFrames' ? this.animationFunctionNames.frames :
             b.opcode === 'arcade_animationAssetFreshFrames' ? this.animationFunctionNames.fresh : this.animationFunctionNames.interval;
-        return `${method}("" + ${this.arrayValue(b, 'RESOURCE')})`;
+        // A string literal resource is already a String: pass it as is, so the
+        // lookup's `id: string` formal keeps a String producer on reimport
+        // (`"" + "<id>"` reimports as a generic addition typed any).
+        const resource = this.arrayValue(b, 'RESOURCE');
+        if (/^"(?:[^"\\\n]|\\.)*"$/.test(resource)) return `${method}(${resource})`;
+        // Likewise a global whose actual writers are all String, or a never-
+        // written global holding a saved string (the producers' own rule): its final
+        // declaration is checked after declarations, and a global not
+        // declared string goes back to the `"" + key` form.
+        const raw = b.inputs?.RESOURCE?.[1], variableId = Array.isArray(raw) && raw[0] === 12 ? raw[2] || raw[1] : null;
+        if (variableId && (this.primitiveVariableTypes.get(variableId) === 'string' ||
+            constantStringVariable(this.target, raw, {targets: this.project.targets, monitors: this.project.monitors}) !== null) &&
+            /^[A-Za-z_$][\w$]*$/.test(resource)) {
+            this.directStringArguments.add(`${method}(${resource})`);
+            return `${method}(${resource})`;
+        }
+        return `${method}("" + ${resource})`;
     }
 
     /** Record what kind of value a variable is given, for its declaration. */
@@ -443,6 +784,30 @@ class ArcadeEmitter {
     na () {
         this.usedNa = true;
         return '_na';
+    }
+
+    nativeAdditionSite (block, helper) {
+        const own=(object,key)=>{
+            if(!object||typeof object!=='object')return undefined;
+            const descriptor=provenanceDescriptor(object,key);
+            return descriptor&&provenanceOwn(descriptor,'value')?descriptor.value:undefined;
+        };
+        const targets=own(this.project,'targets');
+        if(!provenanceArray(targets))return null;
+        let target;
+        for(let i=0;i<own(targets,'length');i++)if(own(targets,String(i))===this.target){target=this.target;break;}
+        if(!target)return null;
+        const blocks=own(target,'blocks');if(!blocks||blocks!==this.blocks)return null;
+        const blockId=provenanceKeys(blocks).find(id=>typeof id==='string'&&own(blocks,id)===block);
+        if(blockId===undefined)return null;
+        const inputs=own(block,'inputs'),link=name=>{
+            const slot=own(inputs,name),id=provenanceArray(slot)?own(slot,'1'):null;
+            return typeof id==='string'?id:'UNAVAILABLE';
+        };
+        const targetName=own(target,'name'),opcode=own(block,'opcode');
+        return {helper,target:typeof targetName==='string'?targetName:'UNAVAILABLE',blockId,
+            opcode:typeof opcode==='string'?opcode:'UNAVAILABLE',operands:['LEFT','RIGHT'],
+            operandBlocks:{LEFT:link('LEFT'),RIGHT:link('RIGHT')}};
     }
 
     note (what) {
@@ -558,8 +923,8 @@ class ArcadeEmitter {
         return guards;
     }
 
-    tokenLine () {
-        return this.tokened() ? ['    const _t = _tok()'] : [];
+    tokenLine (target = this.target) {
+        return this.tokened(target) ? ['    const _t = _tok()'] : [];
     }
 
     kindOf (name) { return `_kind_${ident(name)}`; }
@@ -700,6 +1065,7 @@ class ArcadeEmitter {
             this.editedSavedReferenceIds.set(entry[0], initial);
             this.note(`Source reference ${name}: saved resource tag differs from its standard variable value`);
         }
+        if (entry) this.globalVariableIds.set(ts, entry[0]);
         if (['string', 'number', 'boolean'].includes(typeof initial) &&
             (typeof initial !== 'number' || Number.isFinite(initial))) {
             this.initialGlobals.set(ts, initial);
@@ -825,7 +1191,30 @@ class ArcadeEmitter {
         return this.spriteVar.get(this.target.name) || null;
     }
 
+    /** The fixed qualified name of a block that keeps a name whose source is not in the project, else null. */
+    externalName (b) {
+        const name=this.literalInput(b,'NAME');
+        return typeof name==='string' && EXTERNAL_NAME.test(name)?name:null;
+    }
+
+    /** The exported argument expressions of an external call's `arcade function argument` chain, or null. */
+    externalArgumentValues (b) {
+        const values=[],seen=new Set();let tail=b.inputs?.ARGS,block=this.block(tail?.[1]);
+        while(block?.opcode==='arcade_functionArgument'){
+            if(seen.has(block))return null;seen.add(block);
+            values.push(this.arrayValue(block,'VALUE'));tail=block.inputs?.REST;block=this.block(tail?.[1]);
+        }
+        const empty=Array.isArray(tail?.[1])?String(tail[1][1])==='[]':block?.fields?.TEXT?.[0]==='[]';
+        return empty?values:null;
+    }
+
+    externalCallText (b) {
+        const name=this.externalName(b),values=name&&this.externalArgumentValues(b);
+        return name&&values?`${name}(${values.join(', ')})`:null;
+    }
+
     literalInput (b, name) {
+        if(isArrayMenuSelector(b,name))return arrayMenuLiteral(this.target,b,name);
         const slot = b.inputs?.[name]?.[1];
         return Array.isArray(slot) && [10, 11].includes(slot[0]) ? String(slot[1]) : null;
     }
@@ -929,7 +1318,30 @@ class ArcadeEmitter {
 
     referenceArrayValue (b, name='ARRAY') {
         // The constructor owns this snapshot; callbacks cannot renew its authority.
-        const authority=this.arrayReceiverAuthority.validateInput(this.target,b,name);
+        let authority=this.arrayReceiverAuthority.validateInput(this.target,b,name);
+        let selectedProof=this.arrayReceiverAuthority,selectedTarget=this.target,selectedNode=b;
+        if(!authority.ok&&authority.reason==='requires an actual initialized Array producer and compatible all writers'&&this.arrayOwnedSource?.current()){
+            try{
+                if(!this.arrayOwnedSnapshot){
+                    const snapshot=createProjectJsonSnapshot(this.arrayOwnedSource.json);
+                    this.arrayOwnedSnapshot={snapshot,authority:createArrayReferenceExportAuthority(snapshot,this.opts,this.animationFrameProducers)};
+                }
+                const index=this.project.targets.indexOf(this.target),id=Object.keys(this.target.blocks).find(key=>this.target.blocks[key]===b);
+                const {snapshot,authority:owned}=this.arrayOwnedSnapshot,target=snapshot.targets[index],node=target?.blocks?.[id];
+                const result=node&&owned.validateInput(target,node,name);
+                if(result?.ok&&this.arrayOwnedSource.current()){
+                    authority=result;this.arrayOwnedSourceUsed=true;selectedProof=owned;selectedTarget=target;selectedNode=node;
+                }
+            }catch{ /* Preserve the actual primary refusal if optional evidence is unavailable. */ }
+        }
+        if(authority.ok){
+            let names=arraySourceApply(arraySourceWeakGet,this.arrayProofInputs,[selectedNode]);
+            if(!names){names=arraySourceCreate(null);arraySourceApply(arraySourceWeakSet,this.arrayProofInputs,[selectedNode,names]);}
+            if(!arraySourceOwn(names,name)){
+                names[name]=true;
+                this.arrayProofChecks[this.arrayProofCheckCount++]={authority:selectedProof,target:selectedTarget,node:selectedNode,name};
+            }
+        }
         if(!authority.ok)this.note(`Array reference ${b.opcode} ${name}: ${authority.reason}`);
         const value=this.value(b,name);
         const needsArrayAccess = (block, input, seen = new Set()) => {
@@ -1008,6 +1420,14 @@ class ArcadeEmitter {
         if (['Player','Projectile','Food','Enemy'].includes(name)) return `SpriteKind.${name}`;
         if (name==='Text' && this.hasTextKindLibrary) {this.requiresTextSpritePackage=true;return 'SpriteKind.Text';}
         if (this.boundSpriteKinds.has(name)) return `SpriteKind.${name}`;
+        // A kind the source names but never defines (a package's kind, or a snippet's context) keeps
+        // its name: it is declared like an unassigned bound kind, so SpriteKind.<name> still reads
+        // undefined, as in the source, and a re-import still sees the same named kind.
+        if (/^[A-Za-z_]\w*$/.test(name) && !this.sdkKindNames.has(name)) {
+            this.boundSpriteKinds.add(name);
+            this.note(`Arcade sprite kind name ${JSON.stringify(name)} has no binding in the project; exported as an undefined SpriteKind member`);
+            return `SpriteKind.${name}`;
+        }
         this.note(`Arcade sprite kind name ${JSON.stringify(name)} needs an explicit numeric binding`);
         return this.na();
     }
@@ -1077,7 +1497,7 @@ class ArcadeEmitter {
         const input = b.inputs && b.inputs[name];
         if (!input) return fallback;
         const slot = input[1];
-        const numeric = ['operator_equals','operator_gt','operator_lt','operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_round','arcade_truncateNumber','arcade_signNumber','arcade_randomNumber','arcade_mathBinary','operator_mathop','operator_random','planetemaths_min','planetemaths_max'].includes(b.opcode);
+        const numeric = ['operator_equals','operator_gt','operator_lt','operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_round','arcade_truncateNumber','arcade_signNumber','arcade_mathUnary','arcade_randomNumber','arcade_mathBinary','operator_mathop','operator_random','planetemaths_min','planetemaths_max'].includes(b.opcode);
         if (Array.isArray(slot)) {
             const [type, text] = slot;
             if (type === 12 || type === 13) {
@@ -1190,7 +1610,7 @@ class ArcadeEmitter {
     isBoolean (b) {
         return !!b && ['arrays_valueTruthy','arrays_valueCompare','arrays_referenceRemove','arrays_referenceTruthy', 'arrays_contains', 'operator_and', 'operator_or', 'operator_not', 'operator_gt', 'operator_lt', 'operator_equals',
             'sensing_touchingobject', 'sensing_keypressed', 'sensing_mousedown', 'data_listcontainsitem',
-            'arcade_percentChance','arcade_settingsExists', 'arcade_spriteDataReadBoolean', 'arcade_bufferIsReadOnly', 'arcade_bufferEquals', 'arcade_spriteOverlaps', 'arcade_imagesOverlap', 'arcade_tileIs', 'arcade_spriteTileKindAt', 'arcade_imageEquals', 'arcade_tileIsWall', 'arcade_isHittingTile', 'arcade_hasLife', 'arcade_hasPlayerScore', 'arcade_characterMatchesRule'].includes(b.opcode);
+            'arcade_percentChance','arcade_settingsExists', 'arcade_spriteDataReadBoolean', 'arcade_bufferIsReadOnly', 'arcade_bufferEquals', 'arcade_spriteOverlaps', 'arcade_imagesOverlap', 'arcade_tileIs', 'arcade_tilemapIsWall', 'arcade_spriteTileKindAt', 'arcade_imageEquals', 'arcade_tileIsWall', 'arcade_isHittingTile', 'arcade_hasLife', 'arcade_hasPlayerScore', 'arcade_characterMatchesRule'].includes(b.opcode);
     }
 
     menuField (b, input, field) {
@@ -1224,7 +1644,7 @@ class ArcadeEmitter {
         case 'operator_round': return `Math.round(${v('NUM')})`;
         case 'operator_random': return `randint(${v('FROM')}, ${v('TO')})`;
         case 'arcade_randomNumber': return 'Math.random()';
-        case 'arcade_mathBinary': {const operation=String(directMenuValue(b,'OP',this.blocks));if(!['min','max','randomRange'].includes(operation)){this.note('Arcade math requires a fixed supported operation');return 'undefined';}return `Math.${operation}(<any>${this.mathValue(b,'A')}, <any>${this.mathValue(b,'B')})`;}
+        case 'arcade_mathBinary': {const operation=String(directMenuValue(b,'OP',this.blocks));if(!['min','max','randomRange','atan2'].includes(operation)){this.note('Arcade math requires a fixed supported operation');return 'undefined';}return `Math.${operation}(<any>${this.mathValue(b,'A')}, <any>${this.mathValue(b,'B')})`;}
         case 'arcade_percentChance': return `Math.percentChance(<any>${this.mathValue(b,'PERCENTAGE')})`;
         case 'arcade_clampNumber': return `Math.clamp(<any>${this.mathValue(b,'MIN')}, <any>${this.mathValue(b,'MAX')}, <any>${this.mathValue(b,'VALUE')})`;
         // Planète Maths: the importer's spelling of Math.min/max/pow (they
@@ -1332,6 +1752,17 @@ class ArcadeEmitter {
             if (this.isClonable()) args.unshift('self');
             return `${fn}(${args.join(', ')})`;
         }
+        case 'arcade_externalValue':
+        case 'arcade_externalImage': {
+            const name=this.externalName(b);
+            if(name)this.namedMissingAssets.add(name);
+            return name || this.na();
+        }
+        case 'arcade_externalImageCall':
+        case 'arcade_externalCall': {
+            const call=this.externalCallText(b);
+            return call===null?this.na():call;
+        }
         case 'arcade_createSpriteKind':return 'SpriteKind.create()';
         case 'arcade_spriteKindValue': {
             const name=this.literalInput(b,'NAME');
@@ -1339,7 +1770,20 @@ class ArcadeEmitter {
             return this.namedKind(name);
         }
         case 'arrays_stringFromCharCode':return `${this.use('sdkStrings','__bwSdkCharCode')}(${this.arrayValue(b,'CODE')})`;
-        case 'arrays_stringConcat':return `${this.use('sdkStrings','__bwSdkConcat')}(<any>${this.arrayValue(b,'TEXT')}, ${this.arrayValue(b,'OTHER')})`;
+        case 'arrays_stringConcat':{
+            // `__bwSdkConcat(left, right)` is exactly `left.concat(right)`. A
+            // receiver that is a string literal, or a global whose actual
+            // writers are all String and whose final declaration is string
+            // (otherwise restored to the helper after declarations), is called directly: the helper's
+            // `<any>` cast would hide its String producer from a reimport. The
+            // argument keeps the helper's `any` parameter type.
+            const input=b.inputs?.TEXT?.[1],reporter=typeof input==='string'?this.blocks[input]:null;
+            const id=Array.isArray(input)&&input[0]===12?input[2]||input[1]:reporter?.opcode==='data_variable'?reporter.fields?.VARIABLE?.[1]||reporter.fields?.VARIABLE?.[0]:null;
+            const text=this.arrayValue(b,'TEXT');
+            if(/^"(?:[^"\\\n]|\\.)*"$/.test(text))return `${text}.concat(<any>${this.arrayValue(b,'OTHER')})`;
+            if(id&&this.primitiveVariableTypes.get(id)==='string'&&/^[A-Za-z_$][\w$]*$/.test(text)){this.directConcatGlobals.add(text);return `${text}.concat(<any>${this.arrayValue(b,'OTHER')})`;}
+            return `${this.use('sdkConcat','__bwSdkConcat')}(<any>${text}, ${this.arrayValue(b,'OTHER')})`;
+        }
         case 'arrays_stringCharCodeAt':return `(<string>${this.arrayValue(b,'TEXT')}).charCodeAt(<any>${this.arrayValue(b,'INDEX')})`;
         case 'arrays_namedReference': return this.namedArray(b);
         case 'arrays_parseLegacyValue': return this.legacyArrayInput(b);
@@ -1374,17 +1818,22 @@ class ArcadeEmitter {
         }
         case 'arcade_getscore':return 'info.score()';
         case 'arrays_specialValue':return (this.field(b,'KIND') || this.literalInput(b,'KIND'))==='null'?'null':'undefined';
+        case 'arcade_sourceValueBinary':
+        case 'arcade_sourceValueUnary':
         case 'arrays_valueCompare':
         case 'arrays_valueBinary':
         case 'arrays_valueUnary': {
-            const op=this.field(b,'OP') || this.literalInput(b,'OP'),unary=b.opcode==='arrays_valueUnary',compare=b.opcode==='arrays_valueCompare';
+            const op=this.field(b,'OP') || this.literalInput(b,'OP'),unary=['arrays_valueUnary','arcade_sourceValueUnary'].includes(b.opcode),compare=b.opcode==='arrays_valueCompare',source=['arcade_sourceValueBinary','arcade_sourceValueUnary'].includes(b.opcode);
             const names={'+':'Add','-':'Subtract','*':'Multiply','/':'Divide','%':'Remainder','**':'Power','&':'BitAnd','|':'BitOr','^':'BitXor','<<':'ShiftLeft','>>':'ShiftRight','>>>':'UnsignedShiftRight','~':'BitNot','==':'Equal','!=':'NotEqual','===':'StrictEqual','!==':'StrictNotEqual','<':'Less','>':'Greater','<=':'LessEqual','>=':'GreaterEqual'};
+            if(source&&!sourceValueOperation(b)){this.note(`unsupported Arcade source value operation ${op}`);return this.na();}
             if(!names[op] || unary && !['+','-','~'].includes(op)){this.note(`unsupported value operation ${op}`);return this.na();}
+            if(source&&(unary||['&','|','^','<<','>>','>>>'].includes(op))&&!this.sourceBitwiseExportOperands?.has(b)){this.note('Arcade source bitwise operation requires actual Array or primitive operand producers');return this.na();}
+            if(!source&&!compare&&(unary?op==='~':['&','|','^','<<','>>','>>>'].includes(op))&&!this.nativeBitwiseExportOperands?.has(b)&&!this.isUnreachable(this.target,b)&&!this.callablePrimitiveOperands(b,unary?['VALUE']:['LEFT','RIGHT'])){this.note('Native bitwise operation requires actual primitive operand producers');return this.na();}
             // A qualified class-callable graph can retain primitive Number
             // addition directly. Generic Any helpers lose the Arrow's actual
             // result signature on source reparse; declarations alone cannot
             // select this path, and unproved operands keep the old helper.
-            if(!unary&&!compare&&op==='+'&&this.callableExports?.get(this.target)?.graph.plan.version===2){
+            if(!source&&!unary&&!compare&&op==='+'&&this.callableExports?.get(this.target)?.graph.plan.version===2){
                 try {
                     const provider=this.objectClassExport.classCallableProvider(this.target),
                         left=provider.currentInputType(b,'LEFT'),right=provider.currentInputType(b,'RIGHT');
@@ -1392,7 +1841,13 @@ class ArcadeEmitter {
                         return `(${this.arrayValue(b,'LEFT')} + ${this.arrayValue(b,'RIGHT')})`;
                 }catch(error){this.note(error.message);}
             }
-            const key=(unary?'Unary':compare?'Compare':'Binary')+names[op];
+            // A genuine removal reporter returns a scalar even when its
+            // receiver contains nested/cyclic Arrays. No join is needed for
+            // this closed scalar calculation. Variables/captures are refused
+            // by this separate proof; inferred writer flow is not authority.
+            if(!source&&!unary&&!compare&&op==='+'&&closedRemovalScalarAddition(this.blocks,b))
+                return `(<any>(${this.arrayValue(b,'LEFT')}) + <any>(${this.arrayValue(b,'RIGHT')}))`;
+            const key=(source?(unary?'SourceUnary':'SourceBinary'):unary?'Unary':compare?'Compare':'Binary')+names[op];
             if(!this.valueOperationHelpers.has(key)){
                 let name='__bw'+key;
                 const occupied=new Set([...this.globals.values(),...this.functionNames(),...this.spriteVar.values(),...this.artVar.values(),...this.valueOperationHelpers.values()].map(x=>typeof x==='string'?x:x.name));
@@ -1400,12 +1855,28 @@ class ArcadeEmitter {
                 this.valueOperationHelpers.set(key,{name,source:unary?`function ${name}(value: any): number { return ${op==='-'?'-1 * value':op==='~'?'~value':'+value'} }`:`function ${name}(left: any, right: any): ${compare?'boolean':op==='+'?'any':'number'} { return left ${op} right }`});
             }
             const helper=this.valueOperationHelpers.get(key).name;
+            if(key==='BinaryAdd'&&this.snapshotCallbacks&&isProjectJsonSnapshot(this.project)){
+                // Raw caller objects receive no additional provenance reads.
+                // Only own descendant edges of the actual parsed/frozen JSON
+                // root can supply these diagnostic emission candidates.
+                try {
+                    const site=this.nativeAdditionSite(b,helper);
+                    if(site)this.nativeAdditionSites.push(site);
+                }catch { /* Collection cannot replace the original export outcome. */ }
+            }
             return unary?`${helper}(${this.arrayValue(b,'VALUE')})`:`${helper}(${this.arrayValue(b,'LEFT')}, ${this.arrayValue(b,'RIGHT')})`;
         }
         case 'arrays_valueTruthy':return `!!(${this.arrayValue(b,'VALUE')})`;
 
         case 'arrays_referenceTruthy':return `!!${this.referenceArrayValue(b)}[${v('INDEX')}]`;
-        case 'arrays_referenceItem':return `${this.referenceArrayValue(b)}[${v('INDEX')}]`;
+        case 'arrays_referenceItem': {
+            // MakeCode refuses a non-number indexer: a variable that is typed `any`
+            // (mixed writers, or items of an array it cannot type) is read as a number.
+            let index = v('INDEX');
+            const kinds = this.kinds.get(index);
+            if (kinds && (kinds.has('any') || kinds.size > 1)) index = `<number>${index}`;
+            return `${this.referenceArrayValue(b)}[${index}]`;
+        }
         // A BW query can search for a value outside the array's element type.
         // Erase only the needle's static view; keep the array, its aliases and
         // the SDK's strict lookup/removal semantics unchanged.
@@ -1594,7 +2065,10 @@ class ArcadeEmitter {
             const text = literal !== null ? JSON.stringify(String(literal)) : v('TEXT');
             return b.opcode === 'arcade_parseInteger' ? `parseInt(${text})` : `parseInt(${text}, ${v('RADIX')})`;
         }
-        case 'arcade_frameDeltaTime': return 'game.eventContext().deltaTime';
+        case 'arcade_frameDeltaTime': {
+            if(!currentFrameDeltaReporter(this.blocks,b)){this.note('Frame delta Number: current zero-input reporter or physical socket differs');return this.na();}
+            return 'game.eventContext().deltaTime';
+        }
         case 'arcade_musicTempo': return 'music.tempo()';
         case 'arcade_characterRule': {
             // The rule word holds the original's Predicate names.
@@ -1648,8 +2122,8 @@ class ArcadeEmitter {
             if (!['x', 'y', 'width', 'height', 'value', 'count'].includes(property)) { this.note(`Unsupported seven segment property in ${b.opcode}`); return this.na(); }
             return `${v('DISPLAY')}.${property}`;
         }
-        case 'arcade_imageProperty': return `${v('IMAGE')}.${this.field(b,'PROPERTY')}`;
-        case 'arcade_imagePixel': return `${v('IMAGE')}.getPixel(${v('X')}, ${v('Y')})`;
+        case 'arcade_imageProperty': {const image=v('IMAGE'),typed=this.imageConsumerAbi?.accepts(this.target,b);return `${typed?`(<Image>(${image}))`:image}.${this.field(b,'PROPERTY')}`;}
+        case 'arcade_imagePixel': {const image=v('IMAGE'),typed=this.imageConsumerAbi?.accepts(this.target,b);return `${typed?`(<Image>(${image}))`:image}.getPixel(${v('X')}, ${v('Y')})`;}
         case 'arcade_createImageSprite':
         case 'arcade_spawnImageSprite':
             if (!this.spawnAssignment && b.opcode === 'arcade_spawnImageSprite') this.note('Arcade positioned image spawn expression needs an assigned handle');
@@ -1666,7 +2140,8 @@ class ArcadeEmitter {
             }
             if (!this.sharedImageArrays.has(key)) {
                 const frames = Array.from({length: count}, (_,i) => this.frame(target, start + i));
-                let name = `__bwFrames_shared${this.sharedImageArrays.size+1}`;
+                // Named after the template so a re-import labels the artwork carrier as it was.
+                let name = `__bwFrames_${ident(template)}`;
                 const used = new Set([...this.globals.values(), ...[...this.frameArrays.values(), ...this.sharedImageArrays.values()].map(a=>a.name)]);
                 while (used.has(name)) name += '_';
                 this.sharedImageArrays.set(key, {name,frames});
@@ -1728,6 +2203,11 @@ class ArcadeEmitter {
         case 'arcade_backgroundColor': return 'scene.backgroundColor()';
         case 'arcade_truncateNumber': return `Math.trunc(${v('NUM')})`;
         case 'arcade_signNumber': return `Math.sign(${v('NUM')})`;
+        case 'arcade_mathUnary': {
+            const operation = String(directMenuValue(b, 'OP', this.blocks));
+            if (operation !== 'truncate' && operation !== 'sign') { this.note('Arcade math requires a fixed supported operation'); return 'undefined'; }
+            return `Math.${operation === 'truncate' ? 'trunc' : 'sign'}(${v('NUM')})`;
+        }
         case 'arcade_createAnimation': this.requiresAnimationPackage=true;return `animation.createAnimation(${this.arrayValue(b,'ACTION')}, ${this.arrayValue(b,'INTERVAL')})`;
         case 'arcade_animationProperty': {
             this.requiresAnimationPackage=true;
@@ -1749,6 +2229,31 @@ class ArcadeEmitter {
         case 'arcade_spriteTileKindAt': return `${v('ID')}.tileKindAt(${this.arrayValue(b,'DIRECTION')}, ${v('IMAGE')})`;
         case 'arcade_isHittingTile': return `${v('ID')}.isHittingTile(${this.arrayValue(b,'DIRECTION')})`;
         case 'arcade_tileIsWall': return `tiles.tileAtLocationIsWall(${v('LOCATION')})`;
+        case 'arcade_tileAtLocation': return `tiles.tileImageAtLocation(${v('LOCATION')})`;
+        case 'arcade_tileNeighbor': return `${v('LOCATION')}.getNeighboringLocation(${this.arrayValue(b,'DIRECTION')})`;
+        case 'arcade_spriteTileLocation': return `${v('ID')}.tilemapLocation()`;
+        case 'arcade_tilemapValue': {
+            const raw=this.literalInput(b,'DATA');let data=null;
+            try{data=JSON.parse(raw);}catch(e){/* named below */}
+            const source=tilemapSource(data, (image, index) => this.tileAssets.register(image, index));
+            if(!source){this.note('Arcade tilemap value export requires valid fixed tile data, wall layer and scale');return 'null';}
+            return source;
+        }
+        case 'arcade_tilemapProperty': return `${v('DATA')}.${this.field(b,'PROPERTY')}`;
+        case 'arcade_tilemapTile': return `${v('DATA')}.getTile(${v('COLUMN')}, ${v('ROW')})`;
+        case 'arcade_tilemapIsWall': return `${v('DATA')}.isWall(${v('COLUMN')}, ${v('ROW')})`;
+        case 'arcade_tilemapTileImage': return `${v('DATA')}.getTileImage(${v('INDEX')})`;
+        case 'arcade_tilemapTileset': return `${v('DATA')}.getTileset()`;
+        case 'arcade_tileLocationTilemap': return `${v('LOCATION')}.tileMap`;
+        case 'arcade_sceneTilemapProperty': {
+            const property=this.field(b,'PROPERTY');
+            if(!['data','scale','enabled','areaWidth','areaHeight'].includes(property)){this.note(`Arcade scene tilemap property ${property} is unsupported`);return 'null';}
+            return `${v('MAP')}.${property}${['areaWidth','areaHeight'].includes(property)?'()':''}`;
+        }
+        case 'arcade_eventTilemapData':
+            if(this.eventTilemapName)return this.eventTilemapName;
+            this.note('Arcade event tilemap data outside a tilemap event callback');return this.na();
+        case 'arcade_randomTileOfType': return `tiles.getRandomTileByType(${v('IMAGE')})`;
         case 'arcade_spritesOfKind': return `sprites.allOfKind(${this.kindExpr(b, 'KIND')})`;
         case 'arcade_spriteCount': return `sprites.allOfKind(${this.kindExpr(b, 'KIND')}).length`;
         case 'arcade_ask': return `game.ask(${this.arrayValue(b,'TITLE')}, ${this.arrayValue(b,'SUBTITLE')})`;
@@ -2005,12 +2510,41 @@ class ArcadeEmitter {
         case 'arcade_placeOnLegacyTile':this.requiresLegacyTilemapPackage=true;push(`scene.place(${v('TILE')}, ${v('ID')})`);return;
         case 'arcade_placeOnRandomLegacyTile':this.requiresLegacyTilemapPackage=true;push(`scene.placeOnRandomTile(${v('ID')}, ${v('INDEX')})`);return;
         case 'arcade_setTilemap': {
+            // A variable (or list) primitive is a TileMapData value, not literal map text.
+            if(!Array.isArray(b.inputs?.DATA?.[1]) || [12,13].includes(b.inputs.DATA[1][0])){push(`tiles.setTilemap(${v('DATA')})`);return;}
             const raw=this.literalInput(b,'DATA');let data=null;
             if(raw==='null' || raw===''){push('tiles.setTilemap(null)');return;}
             try{data=JSON.parse(raw);}catch(e){/* named below */}
             const source=tilemapSource(data, (image, index) => this.tileAssets.register(image, index));
             if(!source){this.note('Arcade tile map export requires valid fixed tile data, wall layer and scale');return;}
             push(`tiles.setTilemap(${source})`);return;
+        }
+        case 'arcade_setTilemapTile': push(`${v('DATA')}.setTile(${v('COLUMN')}, ${v('ROW')}, ${v('INDEX')})`);return;
+        case 'arcade_setTilemapWall': push(`${v('DATA')}.setWall(${v('COLUMN')}, ${v('ROW')}, ${this.condition(b,'WALL')})`);return;
+        case 'arcade_setTilemapScale': push(`${v('DATA')}.scale = ${v('VALUE')}`);return;
+        case 'arcade_registerTilemapEvent': {
+            const token=this.literalInput(b,'TOKEN'),event=this.field(b,'EVENT');
+            const callback=token && this.registeredCallback(token);
+            if(!callback || callback.kind!=='tilemapEvent' || !['Loaded','Unloaded'].includes(event))push(`// ${this.note('Arcade tilemap event registration has no matching callback')}`);
+            else if(this.tilemapListenerUse(token).named) {
+                const name=this.tilemapListenerFunction(token,callback);
+                if(name){this.usedRegisteredCallbacks.add(token);push(`tiles.addEventListener(tiles.TileMapEvent.${event}, ${name})`);}
+                else push(`// ${this.note('A removable tilemap listener must not capture locals; it exports as a named function')}`);
+            } else {
+                this.usedRegisteredCallbacks.add(token);
+                push(`tiles.addEventListener(tiles.TileMapEvent.${event}, function (${callback.parameter}: tiles.TileMapData) {\n${callback.script.join('\n')}\n})`);
+            }return;
+        }
+        case 'arcade_unregisterTilemapEvent': {
+            const token=this.literalInput(b,'TOKEN'),event=this.field(b,'EVENT');
+            if(!token || !['Loaded','Unloaded'].includes(event)){push(`// ${this.note('tiles.removeEventListener requires a fixed event and handler')}`);return;}
+            const callback=this.registeredCallback(token);
+            // No handler script: nothing can have registered this token, so PXT removes nothing.
+            if(!callback || callback.kind!=='tilemapEvent'){push('// tiles.removeEventListener: no listener is registered under this handler');return;}
+            const name=this.tilemapListenerFunction(token,callback);
+            if(name){this.usedRegisteredCallbacks.add(token);push(`tiles.removeEventListener(tiles.TileMapEvent.${event}, ${name})`);}
+            else push(`// ${this.note('A removable tilemap listener must not capture locals; it exports as a named function')}`);
+            return;
         }
         case 'arcade_setTileAt': push(`tiles.setTileAt(${v('LOCATION')}, ${v('IMAGE')})`);return;
         case 'arcade_setWallAt': push(`tiles.setWallAt(${v('LOCATION')}, ${this.condition(b,'WALL')})`);return;
@@ -2026,7 +2560,13 @@ class ArcadeEmitter {
         case 'arcade_declareSourceScalar':case 'arcade_declareSourceReference':return;
         case 'arcade_setObjectField':{
             if(this.objectClassExport.inputTypes(this.target,b,'OBJECT').has('__bwSDK_Font'))this.note('SDK Font field mutation is not qualified by the read slice');
-        }if(this.currentClassConstructor&&this.objectClassExport?.parameterPropertyBlocks.has(b))return;push(`;${this.objectClassExport.receiver(b,true)}.${this.objectFieldName(b)} = ${this.arrayValue(b,'VALUE')}`);return;
+        }if(this.currentClassConstructor&&this.objectClassExport?.parameterPropertyBlocks.has(b))return;{
+            const statement=`;${this.objectClassExport.receiver(b,true)}.${this.objectFieldName(b)} = ${this.arrayValue(b,'VALUE')}`;
+            // Class bodies subsequently rewrite their lexical receiver to this.
+            // They keep their existing validator; do not join pre-rewrite text.
+            if(!this.currentClassName)this.createdFieldWriteSites.push({target:this.target,block:b,statement});
+            push(statement);return;
+        }
         case 'data_setvariableto': {
             const scratchName = this.field(b, 'VARIABLE');
             const info = this.infoVariable(scratchName);
@@ -2054,7 +2594,7 @@ class ArcadeEmitter {
                 this.handleVars.add(name);
             } else {
                 const arrayType=this.arrayVariableTypes.get(b.fields?.VARIABLE?.[1] || b.fields?.VARIABLE?.[0]);
-                const image = ['arcade_spriteImage', 'arcade_frameImage', 'arcade_backgroundImage', 'arcade_createImage', 'arcade_cloneImage'].includes(valueBlock?.opcode) || this.imageVars.has(val) ||
+                const image = ['arcade_spriteImage', 'arcade_frameImage', 'arcade_backgroundImage', 'arcade_createImage', 'arcade_cloneImage', 'arcade_tileAtLocation', 'arcade_tilemapTileImage'].includes(valueBlock?.opcode) || this.imageVars.has(val) ||
                     this.imageVariableIds.has(b.fields?.VARIABLE?.[1] || b.fields?.VARIABLE?.[0]) ||
                     (valueBlock?.opcode === 'arcade_callFunction' && this.imageReturnFunctions.has(`${this.target.isStage?'':this.target.name}:${this.literalInput(valueBlock,'NAME')}`));
                 if (image) this.imageVars.add(name);
@@ -2206,6 +2746,16 @@ class ArcadeEmitter {
                 push(`carnival.customGameOverExpanded(${v('MESSAGE')}, ${effect==='unset'?'undefined':`effects.${effect}`}, ${hasSound?v('SOUND'):'undefined'}, ${scoring==='unset'?'undefined':`carnival.ScoreTypes.${scoring}`}, ${hasScore?v('SCORE'):'undefined'})`);
             }));return;
         }
+        case 'arcade_carnivalAddLabel': {
+            const area=this.field(b,'AREA');
+            if(!['Top','Mid','Bottom'].includes(area)){push(`// ${this.note('Carnival label needs a Top, Mid or Bottom location')}`);return;}
+            this.requiresCarnivalPackage=true;
+            // The colour is optional in MakeCode: the flag says whether it was written.
+            const flag=this.boolValue(b,'HAS_COLOR'),call=color=>`carnival.addLabelTo(${v('LABEL')}, carnival.Areas.${area}${color?`, ${v('COLOR')}`:''})`;
+            if(flag==='true'||flag==='false')push(call(flag==='true'));
+            else {push(`if (${flag}) {`);push(call(true));push('} else {');push(call(false));push('}');}
+            return;
+        }
         case 'arcade_carnivalCountdown':
         case 'arcade_carnivalGameOver': {
             this.requiresCarnivalPackage=true;
@@ -2249,8 +2799,8 @@ class ArcadeEmitter {
             push(`effects.${effect}.startScreenEffect(${args.join(', ')})`);
             return;
         }
-        case 'arcade_playMusic': case 'arcade_playSoundEffect': {
-            const music = b.opcode === 'arcade_playMusic';
+        case 'arcade_play': case 'arcade_playMusic': case 'arcade_playSoundEffect': {
+            const music = b.opcode !== 'arcade_playSoundEffect';
             const mode = this.musicField(b, 'MODE', music ? 'music.PlaybackMode' : 'SoundExpressionPlayMode');
             if (!mode) { push(`// ${this.note(`Unsupported Arcade play mode ${this.field(b, 'MODE')}`)}`); return; }
             push(music ? `music.play(${v('PLAYABLE')}, ${mode})` : `music.playSoundEffect(${v('EFFECT')}, ${mode})`);
@@ -2442,9 +2992,19 @@ class ArcadeEmitter {
             } else {
                 this.currentLocalNames.add(name);
                 const valueBlock = this.block(typeof b.inputs?.VALUE?.[1] === 'string' ? b.inputs.VALUE[1] : null);
-                this.spawnAssignment = ['arcade_spawnSprite', 'arcade_spawnProjectile', 'arcade_spawnImageProjectile', 'arcade_spawnImageSprite', 'arcade_createSprite', 'arcade_createImageSprite'].includes(valueBlock?.opcode);
-                const value = this.arrayValue(b,'VALUE');
+                this.spawnAssignment = this.spawnProducerOpcodes.includes(valueBlock?.opcode);
+                let value = this.arrayValue(b,'VALUE');
                 this.spawnAssignment = false;
+                // The importer's placeholder for a sprite producer it could not build.
+                const spriteProducer = this.spawnProducerOpcodes.includes(valueBlock?.opcode);
+                const writes = this.currentLocalNames.localWrites || (this.currentLocalNames.localWrites = new Map());
+                // The importer stores a literal 0 where it could not build a sprite producer.
+                const placeholder = !spriteProducer && value === '0';
+                if (placeholder && this.localUsedAsSprite(name)) value = 'null';
+                // Remember what kind of value this procedure writes, so the declaration can tell a
+                // sprite-only local from one that also holds a primitive.
+                const kind = spriteProducer || placeholder ? 'sprite' : 'other';
+                writes.set(name, writes.has(name) && writes.get(name) !== kind ? 'mixed' : kind);
                 push(`${name} = ${value}`);
                 if (['arcade_spawnSprite', 'arcade_spawnImageSprite'].includes(valueBlock?.opcode)) {
                     push(`${name}.setPosition(${this.value(valueBlock, 'X')}, ${this.value(valueBlock, 'Y')})`);
@@ -2456,6 +3016,12 @@ class ArcadeEmitter {
         case 'arcade_changePlayerScore': {const api=this.infoPlayerApi(b);if(api)push(`${api}.${b.opcode==='arcade_setPlayerScore'?'setScore':'changeScoreBy'}(${this.arrayValue(b,'VALUE')})`);return;}
         case 'arcade_setLife':
         case 'arcade_changeLife': {const api=this.infoPlayerApi(b);if(api)push(`${api}.${b.opcode==='arcade_setLife'?'setLife':'changeLifeBy'}(${this.arrayValue(b,'VALUE')})`);return;}
+        case 'arcade_externalCommand': {
+            const call=this.externalCallText(b);
+            if(call===null)push(`// ${this.note('Arcade external command needs a qualified name and a fixed argument chain')}`);
+            else push(call);
+            return;
+        }
         case 'arcade_pushScene': push('game.pushScene()');return;
         case 'arcade_popScene': push('game.popScene()');return;
         case 'arcade_setButtonRepeatProperty': {const receiver=this.controllerRepeatReceiver(b);if(receiver)push(`${receiver}.${b.fields.PROPERTY[0]} = (${this.arrayValue(b,'VALUE')} as any)`);return;}
@@ -2479,21 +3045,37 @@ class ArcadeEmitter {
         case 'arcade_startParallelHandler':
         case 'arcade_registerForeverHandler':
         case 'arcade_registerLifeZeroHandler':
-        case 'arcade_registerCountdownHandler': {
-            const kinds={arcade_registerMultiplayerConnection:'multiplayerConnection',arcade_registerControlEvent:'controlEvent',arcade_startParallelHandler:'parallel',arcade_registerMultiplayerButtonHandler:'multiplayerButton',arcade_registerUpdateHandler:'update',arcade_registerPaintHandler:'paint',arcade_registerShadeHandler:'shade',arcade_registerIntervalHandler:'interval',
+        case 'arcade_registerScoreHandler':
+        case 'arcade_registerCountdownHandler':
+        case 'arcade_registerExternalHandler': {
+            const kinds={arcade_registerExternalHandler:'external',arcade_registerMultiplayerConnection:'multiplayerConnection',arcade_registerControlEvent:'controlEvent',arcade_startParallelHandler:'parallel',arcade_registerMultiplayerButtonHandler:'multiplayerButton',arcade_registerUpdateHandler:'update',arcade_registerPaintHandler:'paint',arcade_registerShadeHandler:'shade',arcade_registerIntervalHandler:'interval',
                 arcade_registerInstanceDestroyedHandler:'instanceDestroyed',arcade_registerButtonHandler:'button',arcade_registerDestroyedHandler:'destroyed',arcade_registerOverlapHandler:'overlap',
                 arcade_registerScenePushHandler:'scenePush',arcade_registerScenePopHandler:'scenePop',
-                arcade_registerForeverHandler:'forever',arcade_registerLifeZeroHandler:'lifeZero',arcade_registerCountdownHandler:'countdown'};
+                arcade_registerForeverHandler:'forever',arcade_registerLifeZeroHandler:'lifeZero',arcade_registerScoreHandler:'score',arcade_registerCountdownHandler:'countdown'};
             const kind=kinds[b.opcode],token=this.literalInput(b,'TOKEN'),callback=token && this.registeredCallback(token);
             if(!callback || callback.kind!==kind){push(`// ${this.note('Arcade registration has no matching callback')}`);return;}
             const signatures={multiplayerConnection:`${callback.parameter}: mp.Player`,multiplayerButton:`${callback.parameter}: mp.Player`,destroyed:`${callback.parameter}: Sprite`,overlap:`${callback.parameter}: Sprite, ${callback.second}: Sprite`};
-            const body=`function (${signatures[kind]||''}) {\n${callback.script.join('\n')}\n}`;
+            // A parallel handler is a separate run, as each flag script is in the
+            // first export: it takes its own run token, so `stop other scripts`
+            // keeps only the run that issued it and `stop all` ends each one.
+            const runToken=kind==='parallel'?this.tokenLine(this.registeredCallbackBlocks.get(token).target):[];
+            const body=`function (${signatures[kind]||''}) {\n${[...runToken,...callback.script].join('\n')}\n}`;
+            if(runToken.length)this.use('tok');
             const apis={parallel:'control.runInParallel',update:'game.onUpdate',paint:'game.onPaint',shade:'game.onShade',interval:'game.onUpdateInterval',destroyed:'sprites.onDestroyed',overlap:'sprites.onOverlap',
                 scenePush:'game.addScenePushHandler',scenePop:'game.addScenePopHandler',forever:'game.forever',
                 lifeZero:'info.onLifeZero',countdown:'info.onCountdownEnd'};
             const args=[];let api=apis[kind];
+            if(kind==='external'){
+                const name=this.externalName(b),values=this.externalArgumentValues(b);
+                if(!name || values===null){push(`// ${this.note('Arcade external callback registration needs a qualified name and a fixed argument chain')}`);return;}
+                this.usedRegisteredCallbacks.add(token);push(`${name}(${[...values,body].join(', ')})`);return;
+            }
             if(kind==='instanceDestroyed')api=`${this.arrayValue(b,'ID')}.onDestroyed`;
             if(kind==='lifeZero'){const playerApi=this.infoPlayerApi(b);if(!playerApi)return;api=playerApi+'.onLifeZero';}
+            if(kind==='score'){
+                if(!this.scoreThresholdExportOperands?.has(b)){this.note('Arcade score registration export requires an actual Number threshold producer');return;}
+                const playerApi=this.infoPlayerApi(b);if(!playerApi)return;api=playerApi+'.onScore';args.push(this.arrayValue(b,'SCORE'));
+            }
             if(kind==='interval')args.push(this.arrayValue(b,'INTERVAL'));
             if(kind==='destroyed' || kind==='overlap')args.push(this.kindExpr(b,'KIND'));
             if(kind==='overlap')args.push(this.kindExpr(b,'OTHER_KIND'));
@@ -3037,9 +3619,70 @@ class ArcadeEmitter {
         }
     }
 
-    localDeclaration (name, key) {
-        const type=this.localValueTypes.get(key)?.get(name) || 'any';
-        const initial=type==='mp.Player' || type==='Image' || type==='Sprite' || type==='tiles.Location' || type==='tiles.Tile' || type==='animation.Animation' || type==='SevenSegDigit' || type==='DigitCounter' || type==='Dart' || type==='Corgio' || type==='TextSprite' || type==='scene.Scene' || type==='ArcadePhysicsEngine' || type.endsWith('[]') ? 'null' : type==='string' ? '""' : type==='boolean' ? 'false' : '0';
+    // A qualified lexical callable graph proves the current type of each
+    // input of its own current-body blocks (captured cells included). Only a
+    // complete primitive proof of every operand is accepted; Arrays, class
+    // values, callables and unproved inputs keep the existing refusal.
+    callablePrimitiveOperands (block, names) {
+        const graph=this.callableExports?.get(this.target)?.graph;
+        if(!graph)return false;
+        return names.every(name=>{
+            let type=callableCurrentInputType(graph,block,name);
+            if(!type&&graph.plan?.version===2){try{type=this.objectClassExport.classCallableProvider(this.target).currentInputType(block,name);}catch(_){type=null;}}
+            return type?.kind==='named'&&['number','boolean','string'].includes(type.name);
+        });
+    }
+
+    // Sprite flags writers of an actual project. A direct (mutable) project
+    // graph has no owned frozen origin for its watchers, so its own query
+    // refuses them; the same query then runs once over an owned frozen JSON
+    // snapshot of this project taken now, mapped by target index and block id.
+    spriteFlagWriters (target, node) {
+        const direct=this.arrayReceiverAuthority.spriteFlagWriters(target,node);
+        if(direct||isProjectJsonSnapshot(this.project))return direct;
+        if(this.flagsSnapshot===undefined){
+            try {
+                const snapshot=createProjectJsonSnapshot(JSON.stringify(this.project));
+                this.flagsSnapshot={snapshot,authority:createArrayReferenceExportAuthority(snapshot,this.opts)};
+            } catch(_) {this.flagsSnapshot=null;}
+        }
+        if(!this.flagsSnapshot)return null;
+        const {snapshot,authority}=this.flagsSnapshot,targets=this.project.targets;
+        const index=targets.indexOf(target),id=index<0?null:Object.keys(target.blocks||{}).find(key=>target.blocks[key]===node);
+        const snapTarget=index<0?null:snapshot.targets[index],snapNode=id&&snapTarget?.blocks?.[id];
+        if(!snapNode)return null;
+        let rows;try{rows=authority.spriteFlagWriters(snapTarget,snapNode);}catch(_){return null;}
+        if(!rows)return null;
+        const mapped=[];
+        for(const row of rows){
+            const at=snapshot.targets.indexOf(row.target),key=at<0?null:Object.keys(row.target.blocks||{}).find(k=>row.target.blocks[k]===row.node);
+            const actual=at<0?null:targets[at],actualNode=key&&actual?.blocks?.[key];
+            if(!actualNode)return null;
+            mapped.push(Object.freeze({target:actual,node:actualNode,input:row.input}));
+        }
+        return Object.freeze(mapped);
+    }
+
+    /** A local that is the receiver (ID) of a sprite operation is a Sprite, even when
+     * the only value ever stored in it is an unsupported-producer placeholder. */
+    localUsedAsSprite (name) {
+        return Object.values(this.blocks || {}).some(block => {
+            if (!block || !/^arcade_/.test(block.opcode) || typeof block.inputs?.ID?.[1] !== 'string') return false;
+            const receiver = this.blocks[block.inputs.ID[1]];
+            return receiver?.opcode === 'arcade_getLocal' && this.literalInput(receiver, 'NAME') === name;
+        });
+    }
+
+    get spawnProducerOpcodes () {
+        return ['arcade_spawnSprite', 'arcade_spawnProjectile', 'arcade_spawnImageProjectile', 'arcade_spawnImageSprite', 'arcade_createSprite', 'arcade_createImageSprite'];
+    }
+
+    localDeclaration (name, key, procedureLocals = null) {
+        const classType=this.objectClassExport?.localDeclarationType?.(key,name);
+        let type=classType??this.localValueTypes.get(key)?.get(name)??'any';
+        // Only a local written solely from a sprite producer in this procedure and used as a sprite receiver.
+        if (classType === undefined && type === 'number' && procedureLocals?.localWrites?.get(name) === 'sprite' && this.localUsedAsSprite(name)) type = 'Sprite';
+        const initial=this.objectClassExport?.hasType?.(type)||type==='mp.Player' || type==='Image' || type==='Sprite' || type==='tiles.Location' || type==='tiles.TileMapData' || type==='tiles.Tile' || type==='animation.Animation' || type==='SevenSegDigit' || type==='DigitCounter' || type==='Dart' || type==='Corgio' || type==='TextSprite' || type==='scene.Scene' || type==='ArcadePhysicsEngine' || type.endsWith('[]') ? 'null' : type==='string' ? '""' : type==='boolean' ? 'false' : '0';
         return `    let ${name}: ${type} = ${initial}`;
     }
 
@@ -3049,26 +3692,62 @@ class ArcadeEmitter {
         return player===1?'info':`info.player${player}`;
     }
 
+    /** How a tilemap handler token is registered and removed across the project. PXT
+     * compares listeners by function identity, so a token that is removed, registered
+     * twice, or imported from a named procedure exports as one named function. */
+    tilemapListenerUse(token) {
+        if(!this.tilemapListenerUses){
+            this.tilemapListenerUses=new Map();
+            for(const target of this.project.targets || [])for(const block of Object.values(target.blocks || {})){
+                if(!['arcade_registerTilemapEvent','arcade_unregisterTilemapEvent'].includes(block?.opcode))continue;
+                const blocks=this.blocks,saved=this.target;this.blocks=target.blocks;this.target=target;
+                let key,captures;try{key=this.literalInput(block,'TOKEN');captures=block.opcode==='arcade_registerTilemapEvent'?this.literalInput(block,'CAPTURES'):'';}finally{this.blocks=blocks;this.target=saved;}
+                if(key===null)continue;
+                const use=this.tilemapListenerUses.get(key)||{registers:0,removes:0,captures:false};
+                if(block.opcode==='arcade_registerTilemapEvent')use.registers++;else use.removes++;
+                if(captures===null || String(captures||'').trim())use.captures=true;
+                this.tilemapListenerUses.set(key,use);
+            }
+            for(const [key,use] of this.tilemapListenerUses)use.named=key.startsWith('__bwTilemapFn_') || use.removes>0 || use.registers>1;
+        }
+        return this.tilemapListenerUses.get(token)||{registers:0,removes:0,captures:false,named:false};
+    }
+
+    tilemapListenerFunction(token,callback) {
+        this.tilemapListenerFunctions??=new Map();
+        if(this.tilemapListenerFunctions.has(token))return this.tilemapListenerFunctions.get(token);
+        let name=null;
+        if(!this.tilemapListenerUse(token).captures){
+            name=token.startsWith('__bwTilemapFn_')?ident(token):'__bwTilemapFn_'+ident(token);
+            const occupied=new Set([...this.globals.values(),...this.functionNames(),...this.spriteVar.values(),...[...this.tilemapListenerFunctions.values()].filter(Boolean)]);
+            while(occupied.has(name))name+='_';
+            this.generated.push(`function ${name}(${callback.parameter}: tiles.TileMapData) {\n${callback.script.join('\n')}\n}`);
+        }
+        this.tilemapListenerFunctions.set(token,name);
+        return name;
+    }
+
     registeredCallback(token) {
         if (this.registeredCallbacks.has(token)) return this.registeredCallbacks.get(token);
         const entry = this.registeredCallbackBlocks.get(token);
         if (!entry || this.compilingRegisteredCallbacks.has(token)) return null;
-        const saved = {target:this.target,blocks:this.blocks,eventHandles:this.eventHandles,eventLocationName:this.eventLocationName,eventKind:this.eventKind,eventPlayerName:this.eventPlayerName,currentLocalNames:this.currentLocalNames,implicitLoopYield:this.implicitLoopYield};
+        const saved = {target:this.target,blocks:this.blocks,eventHandles:this.eventHandles,eventLocationName:this.eventLocationName,eventKind:this.eventKind,eventTilemapName:this.eventTilemapName,eventPlayerName:this.eventPlayerName,currentLocalNames:this.currentLocalNames,implicitLoopYield:this.implicitLoopYield};
         this.compilingRegisteredCallbacks.add(token);
         this.target = entry.target;this.blocks = entry.target.blocks;
-        let parameter = `${entry.kind==='created'?'__bwCreatedSprite':['wall','tile'].includes(entry.kind)?'__bwTerrainSprite':'__bwEventSprite'}_${ident(token)}`;
+        let parameter = `${entry.kind==='tilemapEvent'?'__bwEventTilemap':entry.kind==='created'?'__bwCreatedSprite':['wall','tile'].includes(entry.kind)?'__bwTerrainSprite':'__bwEventSprite'}_${ident(token)}`;
         const text = JSON.stringify(entry.target.blocks);
         while (text.includes(parameter)) parameter += '_';
         let location=`__bwEventLocation_${ident(token)}`;while(text.includes(location))location+='_';
         let second=`__bwOtherSprite_${ident(token)}`;while(text.includes(second))second+='_';
         this.eventPlayerName=['multiplayerButton','multiplayerConnection'].includes(entry.kind)?parameter:null;
         this.eventLocationName=['wall','tile'].includes(entry.kind)?location:null;
+        this.eventTilemapName=entry.kind==='tilemapEvent'?parameter:null;
         this.eventHandles = entry.kind==='overlap'?[parameter,second]:['created','wall','tile','legacyWall','destroyed'].includes(entry.kind)?[parameter]:[];this.eventKind = this.registeredCallbackKinds.get(token);
         this.currentLocalNames = new Set();
         this.implicitLoopYield=true;
         const script = [];this.stmts(entry.block.next,1,script);
         const scope=`${entry.target.name}:script:${Object.keys(this.blocks).find(id=>this.blocks[id]===entry.block)}`;
-        script.unshift(...[...this.currentLocalNames].filter(name=>name!==parameter && name!==location && name!==second).map(name=>this.localDeclaration(name,scope)));
+        script.unshift(...[...this.currentLocalNames].filter(name=>name!==parameter && name!==location && name!==second).map(name=>this.localDeclaration(name,scope,this.currentLocalNames)));
         this.compilingRegisteredCallbacks.delete(token);
         Object.assign(this,saved);
         const result = {parameter,second,location,kind:entry.kind,script};this.registeredCallbacks.set(token,result);return result;
@@ -3078,10 +3757,11 @@ class ArcadeEmitter {
      * resource aliases. Constraint edges carry types through forwarded calls. */
     imageProcedureParameters () {
         const graphTextSpriteValues=new Set(),graphBufferValues=new Set(),graphPlayerValues=new Set(),graphAnimationValues=new Set(),graphSevensegDigitValues=new Set(),graphSevensegCounterValues=new Set(),graphDartValues=new Set(),graphCorgiValues=new Set(),graphSceneValues=new Set(),graphPhysicsEngineValues=new Set();
-        const dataProperties=[], parameters = new Map(), edges = [], images = new Set(), sprites = new Set(), tiles = new Set(), legacyTiles = new Set(), arrays = new Set(), numbers = new Set(), booleans=new Set(), strings=new Set(), anys=new Set(), specialTypes=[],valueOperations=[], elements=[],arrayCopies=[];
+        const dataProperties=[], parameters = new Map(), edges = [], images = new Set(), sprites = new Set(), tiles = new Set(), tilemaps = new Set(), legacyTiles = new Set(), arrays = new Set(), numbers = new Set(), booleans=new Set(), strings=new Set(), anys=new Set(), specialTypes=[],valueOperations=[], elements=[],arrayCopies=[];
         const definitions = [],captureLinks=[],callbackScopes=new Map(),callbackCaptureNames=new Map();
-        const inspectionOperatorProofs=new Map(),inspectionLeaves=new Map(),inspectionProducers=new Map(),inspectionOpaqueCells=new Set(),inspectionOperators=[],inspectionGlobalReaders=new Map(),inspectionVisited=new Set();
-        const throwInputs=new Map(),procedureInputs=[],inspectionInputs=new Map(),sourceTypeOfInputs=new Map(),sourceTypeOfClasses=new Map(),opaqueCells=new Set(),arrayLocalReaders=new Map();
+        const nativeBitwisePrimitiveResults=new Set();
+        const inspectionOperatorProofs=new Map(),inspectionLeaves=new Map(),inspectionProducers=new Map(),inspectionOpaqueCells=new Set(),inspectionOperators=[],spriteFlagResults=new Map(),spriteFlagWriterInputs=new Map(),inspectionGlobalReaders=new Map(),inspectionVisited=new Set();
+        const throwInputs=new Map(),procedureInputs=[],inspectionInputs=new Map(),scoreThresholdInputs=new Map(),nativeBitwiseInputs=new Map(),sourceBitwiseInputs=new Map(),sourceBitwiseConstructorResults=new Set(),sourceTypeOfInputs=new Map(),sourceTypeOfClasses=new Map(),opaqueCells=new Set(),arrayLocalReaders=new Map();
         const inputBlock = (blocks, b, name) => {
             const input=b.inputs?.[name]?.[1];
             if(Array.isArray(input) && input[0]===12) return {opcode:'data_variable',fields:{VARIABLE:[input[1],input[2]]}};
@@ -3090,6 +3770,7 @@ class ArcadeEmitter {
             return blocks[input];
         };
         const literal = (blocks, b, name) => {
+            if(isArrayMenuSelector(b,name))return arrayMenuLiteral({blocks},b,name);
             if(b.fields?.[name])return String(b.fields[name][0]);
             const input = b.inputs?.[name]?.[1];
             return Array.isArray(input) ? String(input[1]) : String(blocks[input]?.fields?.TEXT?.[0] || '');
@@ -3209,14 +3890,47 @@ class ArcadeEmitter {
                 if(['arcade_bufferToHex','arcade_bufferToText','arcade_bufferToBase64'].includes(value.opcode)){const id=Symbol('buffer text');strings.add(id);return id;}
                 if(['arcade_bufferIsReadOnly','arcade_bufferEquals'].includes(value.opcode)){const id=Symbol('buffer readonly');booleans.add(id);return id;}
                 if(currentSceneClockNumber(blocks,value)) {const id=Symbol('current scene clock Number');numbers.add(id);inspectionLeaves.set(id,'number');return id;}
+                if(value.opcode==='arcade_frameDeltaTime'){
+                    const id=Symbol('current saved frame delta Number');
+                    if(this.frameDeltaNumberResult(target,value)){numbers.add(id);inspectionLeaves.set(id,'number');}
+                    else {anys.add(id);inspectionOpaqueCells.add(id);}
+                    return id;
+                }
+                if(value.opcode==='arcade_mathBinary'){
+                    const id=Symbol('closed math normal result');
+                    if(this.mathNumberResult(target,value)){numbers.add(id);inspectionLeaves.set(id,'number');}
+                    else {anys.add(id);inspectionOpaqueCells.add(id);}
+                    return id;
+                }
                 if(value.opcode==='bw_numberLiteral' || value.opcode==='math_number') {const id=Symbol('number value');numbers.add(id);inspectionLeaves.set(id,'number');return id;}
                 if(value.opcode==='bw_stringLiteral') {const id=Symbol('string value');strings.add(id);inspectionLeaves.set(id,'string');return id;}
-                if(['arrays_valueBinary','arrays_valueUnary'].includes(value.opcode)) {
+                if(['arrays_valueBinary','arrays_valueUnary','arcade_sourceValueBinary','arcade_sourceValueUnary'].includes(value.opcode)) {
                     const id=`${key}:value-operation:${Object.keys(blocks).find(id=>blocks[id]===value)}`;
+                    const source=['arcade_sourceValueBinary','arcade_sourceValueUnary'].includes(value.opcode),operation=source&&sourceValueOperation(value);
+                    if(source&&!operation){inspectionOpaqueCells.add(id);anys.add(id);return id;}
+                    // A valid fixed source bitwise opcode returns Number or
+                    // refuses; this signature lends no domain to its operands.
+                    if(operation&&(operation.unary||['&','|','^','<<','>>','>>>'].includes(operation.op))){numbers.add(id);inspectionLeaves.set(id,'number');return id;}
                     const operands=(value.opcode==='arrays_valueUnary'?['VALUE']:['LEFT','RIGHT']).map(name=>ref(inputBlock(blocks,value,name)));
-                    if(value.opcode==='arrays_valueBinary' && literal(blocks,value,'OP')==='+')valueOperations.push([id,...operands]);
+                    // Preserve the original operand/caller inventory before
+                    // consuming an independent occurrence result. No variable,
+                    // Array or generic arithmetic signature supplies this fact.
+                    if(value.opcode==='arrays_valueBinary'&&this.mathNumberResult(target,value)){
+                        numbers.add(id);inspectionLeaves.set(id,'number');return id;
+                    }
+                    // The canonical native bitwise adapter returns a Number or
+                    // decoded Undefined on conversion failure. This is only a
+                    // primitive result union, never a Number-only fact or a
+                    // licence for its operands (every operation keeps its gate).
+                    const nativeUnary=value.opcode==='arrays_valueUnary',nativeInputs=nativeUnary?['VALUE']:['LEFT','RIGHT'];
+                    if(!source&&value.mutation==null&&value.shadow===false&&value.topLevel===false&&value.next==null&&
+                        Object.keys(value.fields||{}).join(',')==='OP'&&Object.keys(value.inputs||{}).sort().join(',')===nativeInputs.slice().sort().join(',')&&
+                        (nativeUnary?literal(blocks,value,'OP')==='~':['&','|','^','<<','>>','>>>'].includes(literal(blocks,value,'OP'))))nativeBitwisePrimitiveResults.add(id);
+                    if(value.opcode==='arcade_sourceValueBinary'&&literal(blocks,value,'OP')==='+')anys.add(id);
+                    else if(value.opcode==='arrays_valueBinary' && literal(blocks,value,'OP')==='+')valueOperations.push([id,...operands]);
                     else numbers.add(id);
-                    inspectionOperatorProofs.set(id,{type:literal(blocks,value,'OP')==='+'&&value.opcode==='arrays_valueBinary'?null:'number',operands,numeric:literal(blocks,value,'OP')!=='+'||value.opcode==='arrays_valueUnary'});
+                    const dynamicPlus=literal(blocks,value,'OP')==='+'&&['arrays_valueBinary','arcade_sourceValueBinary'].includes(value.opcode);
+                    inspectionOperatorProofs.set(id,{type:dynamicPlus?null:'number',operands,numeric:literal(blocks,value,'OP')!=='+'||value.opcode==='arrays_valueUnary',numberPlus:dynamicPlus&&operands.length===2});
                     return id;
                 }
                 if(value.opcode==='arrays_specialValue'){const id=Symbol('special value');specialTypes.push([id,literal(blocks,value,'KIND')]);inspectionLeaves.set(id,literal(blocks,value,'KIND'));return id;}
@@ -3234,15 +3948,31 @@ class ArcadeEmitter {
                 }
                 if (value.opcode === 'data_variable'){const id=`variable:${value.fields.VARIABLE[1] || value.fields.VARIABLE[0]}`;if(!inspectionGlobalReaders.has(id))inspectionGlobalReaders.set(id,new Set());inspectionGlobalReaders.get(id).add(target);return id;}
                 if(value.opcode==='arcade_eventLocation'){const id=Symbol('event tile location');tiles.add(id);return id;}
+                if(['arcade_tilemapValue','arcade_eventTilemapData'].includes(value.opcode) || value.opcode==='arcade_sceneTilemapProperty' && value.fields?.PROPERTY?.[0]==='data'){const id=`${key}:tilemap:${Object.keys(blocks).find(id=>blocks[id]===value)}`;tilemaps.add(id);return id;}
+                // The scene's tiles.TileMap: an SDK object exported untyped.
+                if(value.opcode==='arcade_tileLocationTilemap'){const id=Symbol('scene TileMap');anys.add(id);return id;}
+                if(value.opcode==='arcade_sceneTilemapProperty'){const id=Symbol('scene TileMap property');(value.fields?.PROPERTY?.[0]==='enabled'?booleans:numbers).add(id);return id;}
+                if(value.opcode==='arcade_tilemapTileset'){const id=`${key}:image-array:${Object.keys(blocks).find(id=>blocks[id]===value)}`;arrays.add(id);return id;}
                 if(value.opcode==='arcade_legacyTileLocation'){const id=Symbol('legacy tile');legacyTiles.add(id);return id;}
                 if(value.opcode==='arcade_legacyTilesOfType'){const id=Symbol('legacy tiles');arrays.add(id);return id;}
+                if(['arcade_tileNeighbor','arcade_spriteTileLocation','arcade_randomTileOfType'].includes(value.opcode)){const id=`${key}:tile:${Object.keys(blocks).find(id=>blocks[id]===value)}`;tiles.add(id);return id;}
                 if(value.opcode==='arcade_tileLocation'){const id=`${key}:tile:${Object.keys(blocks).find(id=>blocks[id]===value)}`;tiles.add(id);return id;}
                 if(value.opcode==='arcade_tilesOfType'){const id=`${key}:tile-array:${Object.keys(blocks).find(id=>blocks[id]===value)}`;arrays.add(id);return id;}
                 if(['arcade_getLife','arcade_getPlayerScore'].includes(value.opcode)){const id=Symbol('player life');numbers.add(id);return id;}
+                if(value.opcode==='arcade_spriteProperty' && value.fields?.PROPERTY?.[0]==='flags'){
+                    const id=Symbol('closed Sprite flags primitive'),writers=this.spriteFlagWriters(target,value);
+                    if(writers){spriteFlagResults.set(id,{target,node:value,writers});return id;}
+                    inspectionOpaqueCells.add(id);return id;
+                }
                 if(value.opcode==='arcade_spriteProperty' && value.fields?.PROPERTY?.[0]==='data'){
                     const id=Symbol('sprite data');dataProperties.push([ref(inputBlock(blocks,value,'ID')),id]);return id;
                 }
-                if(value.opcode==='arcade_spriteProperty' && ['fx','fy','sx','sy','scale','rotation','rotationDegrees'].includes(value.fields?.PROPERTY?.[0])){const id=Symbol('sprite numeric property');numbers.add(id);return id;}
+                // The plain geometry accessors are Numbers only for a receiver that is not a procedure parameter: a parameter's Sprite
+        // type is itself an unproven obligation here (a malformed flags receiver must keep its visible refusal).
+        const geometryReceiverOk=!/^argument_reporter/.test(inputBlock(blocks,value,'ID')?.opcode||'argument_reporter');
+                if(value.opcode==='arcade_spriteProperty' && ['fx','fy','sx','sy','scale','rotation','rotationDegrees'].includes(value.fields?.PROPERTY?.[0])||
+                    value.opcode==='arcade_spriteProperty' && geometryReceiverOk && value.mutation==null && Object.keys(value.fields||{}).join(',')==='PROPERTY' &&
+                    ['x','y','vx','vy','ax','ay','left','right','top','bottom','width','height'].includes(value.fields?.PROPERTY?.[0])){const id=Symbol('sprite numeric property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_tileHitFrom'){const id=Symbol('hit tile index');numbers.add(id);return id;}
                 if(['arcade_cameraProperty','arcade_cameraDrawOffset'].includes(value.opcode)){const id=Symbol('camera numeric property');numbers.add(id);return id;}
                 if(['arcade_tileLocationProperty','arcade_legacyTileProperty'].includes(value.opcode)){const id=Symbol('tile numeric property');numbers.add(id);return id;}
@@ -3277,13 +4007,17 @@ class ArcadeEmitter {
                 if(value.opcode==='arcade_spritesOfKind'){const id=`${key}:sprite-array:${Object.keys(blocks).find(id=>blocks[id]===value)}`;arrays.add(id);return id;}
                 if (['arrays_createReference','arrays_referenceSlice','arrays_referenceConcat','arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom'].includes(value.opcode)) {
                     const id=`${key}:array-value:${Object.keys(blocks).find(id=>blocks[id]===value)}`;
-                    if(['arrays_createReference','arrays_referenceSlice','arrays_referenceConcat'].includes(value.opcode))arrays.add(id);return id;
+                    if(['arrays_createReference','arrays_referenceSlice','arrays_referenceConcat'].includes(value.opcode))arrays.add(id);
+                    // Canonical createReference returns an Array or its
+                    // legacy error fallback String. Retain only that union for
+                    // source bitwise use, never an Array-only/input/body loan.
+                    if(value.opcode==='arrays_createReference')sourceBitwiseConstructorResults.add(id);return id;
                 }
                 if (['arcade_playerSprite','arcade_spawnSprite','arcade_spawnProjectile','arcade_spawnImageSprite','arcade_spawnImageProjectile','arcade_eventSprite', 'arcade_createSprite', 'arcade_createImageSprite'].includes(value.opcode)) {
                     const id = `${key}:sprite:${Object.keys(blocks).find(id => blocks[id] === value)}`;
                     sprites.add(id);return id;
                 }
-                if (['arcade_createImage','arcade_cloneImage','arcade_spriteImage','arcade_frameImage','arcade_backgroundImage'].includes(value.opcode)) {
+                if (['arcade_createImage','arcade_cloneImage','arcade_spriteImage','arcade_frameImage','arcade_backgroundImage','arcade_tileAtLocation','arcade_tilemapTileImage'].includes(value.opcode)) {
                     const id = `${key}:image:${Object.keys(blocks).find(id => blocks[id] === value)}`;
                     images.add(id);return id;
                 }
@@ -3299,6 +4033,7 @@ class ArcadeEmitter {
             const seen = new Set();
             const visit = id => {
                 if (typeof id !== 'string' || seen.has(id) || !blocks[id]) return;
+                if(this.isUnreachable(target,blocks[id]))return;
                 seen.add(id);const block = blocks[id];inspectionVisited.add(block);
                 if(block.opcode==='arcade_throwValue'){
                     const operand=inputBlock(blocks,block,'VALUE');
@@ -3309,7 +4044,14 @@ class ArcadeEmitter {
                     const operand=actual?.opcode==='text'&&actual.shadow&&!Object.keys(actual.inputs||{}).length&&typeof actual.fields?.TEXT?.[0]==='string'?{opcode:'bw_stringLiteral',value:actual.fields.TEXT[0]}:actual;
                     procedureInputs.push({block,obligation,value:ref(operand)});
                 }
+                if(['arcade_setSpriteProperty','arcade_setSpriteFlag','arcade_setSpriteStayInScreen','arcade_setSpriteAutoDestroy','arcade_setSpriteBounceOnWall','arcade_setSpriteGhostThroughSprites'].includes(block.opcode))spriteFlagWriterInputs.set(block,ref(inputBlock(blocks,block,block.opcode==='arcade_setSpriteProperty'?'VALUE':'ON')));
                 if(block.opcode==='arcade_inspectValue')inspectionInputs.set(block,{value:ref(inputBlock(blocks,block,'VALUE')),limit:ref(inputBlock(blocks,block,'LIMIT'))});
+                if(block.opcode==='arcade_registerScoreHandler')scoreThresholdInputs.set(block,ref(inputBlock(blocks,block,'SCORE')));
+                if(block.opcode==='arrays_valueUnary'&&literal(blocks,block,'OP')==='~'||block.opcode==='arrays_valueBinary'&&['&','|','^','<<','>>','>>>'].includes(literal(blocks,block,'OP')))
+                    nativeBitwiseInputs.set(block,(block.opcode==='arrays_valueUnary'?['VALUE']:['LEFT','RIGHT']).map(name=>ref(inputBlock(blocks,block,name))));
+                const sourceOperation=sourceValueOperation(block);
+                if(sourceOperation&&(sourceOperation.unary||['&','|','^','<<','>>','>>>'].includes(sourceOperation.op)))
+                    sourceBitwiseInputs.set(block,sourceOperation.inputs.map(name=>ref(inputBlock(blocks,block,name))));
                 if(block.opcode==='arcade_sourceTypeOf'){
                     const operand=inputBlock(blocks,block,'VALUE');
                     sourceTypeOfInputs.set(block,operand?ref(operand):null);
@@ -3345,9 +4087,11 @@ class ArcadeEmitter {
                 if(block.opcode.startsWith('arrays_') && block.inputs?.NAME){const id='named-array:'+literal(blocks,block,'NAME');arrays.add(id);const value=Symbol('named array element');anys.add(value);elements.push([id,value]);}
                 if(block.inputs?.TILE){const tile=ref(inputBlock(blocks,block,'TILE'));if(tile)legacyTiles.add(tile);}
                 if(block.inputs?.LOCATION){const location=ref(inputBlock(blocks,block,'LOCATION'));if(location)tiles.add(location);}
+                if(block.inputs?.DATA && /^arcade_(tilemap(Property|Tile|IsWall|TileImage|Tileset)|setTilemap(Tile|Wall|Scale))$/.test(block.opcode)){const data=ref(inputBlock(blocks,block,'DATA'));if(data)tilemaps.add(data);}
                 if(['arcade_tileLocation','arcade_legacyTileLocation'].includes(block.opcode))for(const name of ['COLUMN','ROW']){const number=ref(inputBlock(blocks,block,name));if(number)numbers.add(number);}
                 if(block.opcode==='arcade_legacyTilesOfType'){const array=ref(block),item=Symbol('legacy tile element');legacyTiles.add(item);elements.push([array,item]);}
                 if(block.opcode==='arcade_tilesOfType'){const array=ref(block),item=Symbol('tile collection element');tiles.add(item);elements.push([array,item]);}
+                if(block.opcode==='arcade_tilemapTileset'){const array=ref(block),item=Symbol('tileset element');images.add(item);elements.push([array,item]);}
                 if(block.opcode==='arcade_spritesOfKind'){const array=ref(block),item=Symbol('sprite collection element');sprites.add(item);elements.push([array,item]);}
                 if(block.opcode==='arrays_createReference'){
                     const array=ref(block);let current=inputBlock(blocks,block,'VALUES');
@@ -3361,7 +4105,12 @@ class ArcadeEmitter {
                     const array=ref(inputBlock(blocks,block,'ARRAY'));if(array)arrays.add(array);
                     const index=ref(inputBlock(blocks,block,'INDEX'));if(index)numbers.add(index);
                     if(['arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom'].includes(block.opcode))elements.push([array,ref(block)]);
-                    if(block.opcode==='arrays_mutateReference' && ['push','unshift','insertAt','set'].includes(literal(blocks,block,'OP')))elements.push([array,ref(inputBlock(blocks,block,'VALUE'))]);
+                    if(isArrayMenuSelector(block,'OP')){
+                        const operation=literal(blocks,block,'OP');
+                        if(!isKnownArrayMenuOperation(block,operation)){
+                            const unknown=Symbol('unproved Array selector element');anys.add(unknown);opaqueCells.add(unknown);elements.push([array,unknown]);
+                        }else if(block.opcode==='arrays_mutateReference'&&['push','unshift','insertAt','set'].includes(operation))elements.push([array,ref(inputBlock(blocks,block,'VALUE'))]);
+                    }
                 }
                 if(REGISTERED_COMMANDS.has(block.opcode)){
                     const scope=callbackScopes.get(literal(blocks,block,'TOKEN'));
@@ -3406,7 +4155,7 @@ class ArcadeEmitter {
         }
         edges.push(...captureLinks);
         const graph=new ValueTypeGraph();
-        for(const [values,type] of [[graphTextSpriteValues,'TextSprite'],[graphBufferValues,'Buffer'],[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']])for(const value of values)graph.add(value,type);
+        for(const [values,type] of [[graphTextSpriteValues,'TextSprite'],[graphBufferValues,'Buffer'],[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[tilemaps,'TileMapData'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']])for(const value of values)graph.add(value,type);
         for(const [value,types] of sourceTypeOfClasses)for(const type of types)graph.add(value,this.objectClassExport.classes.has(type)?`class:${type}`:type);
         for(const cell of this.sourceScalarCells.values())graph.add(`variable:${cell.id}`,cell.type.toLowerCase());
         for(const cell of this.sourceReferenceCells.values()){
@@ -3463,20 +4212,42 @@ class ArcadeEmitter {
         let inspectionChanged;do{inspectionChanged=false;for(const [result,inputs]of inspectionOperators)if(inputs.some(value=>!value||inspectionOpaqueNodes.has(graph.node(value))||!graph.node(value).types.size||[...graph.node(value).types].some(type=>!['number','boolean','string','null','undefined'].includes(type)))){const node=graph.node(result);if(!inspectionOpaqueNodes.has(node)){inspectionOpaqueNodes.add(node);inspectionChanged=true;}}}while(inspectionChanged);
         this.inspectionExportOperands=new Set();
         const inspectionUndefinedCells=new Set([...this.sourceScalarCells.values()].filter(cell=>cell.type==='Any').map(cell=>`variable:${cell.id}`));
-        const inspectionTypes=(value,allowed,seen=new Set(),origins=null)=>{
-            if(!value)return false;if(inspectionLeaves.has(value)){const type=inspectionLeaves.get(value);if(type==='Player'&&allowed.includes(type))origins?.add(value);return allowed.includes(type);}
+        const admittedSpriteFlags=new Set();
+        const inspectionTypes=(value,allowed,seen=new Set(),origins=null,allowSpriteFlags=false)=>{
+            if(!value)return false;
+            // Flags never lend a Number-only fact. Actual closed writers must
+            // first qualify below; only a complete primitive domain can use it.
+            if(allowSpriteFlags&&admittedSpriteFlags.has(value)&&['number','boolean','string','null','undefined'].every(type=>allowed.includes(type))){
+                const entry=spriteFlagResults.get(value),current=this.spriteFlagWriters(entry.target,entry.node);
+                return !!current&&current.length===entry.writers.length&&current.every((row,index)=>row.target===entry.writers[index].target&&row.node===entry.writers[index].node&&row.input===entry.writers[index].input);
+            }
+            // Only the source-bitwise allowed domain contains BOTH alternatives.
+            // Primitive-only/native and Array-only consumers gain no fact here.
+            if(sourceBitwiseConstructorResults.has(value)&&allowed.includes('array')&&allowed.includes('string'))return true;
+            // Both alternatives must be accepted. A Number-only constraint
+            // must still prove its own actual operand tree independently.
+            if(nativeBitwisePrimitiveResults.has(value)&&allowed.includes('number')&&allowed.includes('undefined'))return true;
+            if(inspectionLeaves.has(value)){const type=inspectionLeaves.get(value);if(type==='Player'&&allowed.includes(type))origins?.add(value);return allowed.includes(type);}
             const operation=inspectionOperatorProofs.get(value);if(operation){
+                // A dynamic `+` whose own two operands are each proved Number
+                // adds (PXT and JS never concatenate two Numbers). This uses
+                // only its actual operands, not the flow-insensitive annotation
+                // node the result shares with other cells (an Any copy target).
+                if(operation.numberPlus&&allowed.includes('number')&&!seen.has(value)){
+                    const next=new Set([...seen,value]);
+                    if(operation.operands.every(operand=>inspectionTypes(operand,['number'],next,null,allowSpriteFlags)))return true;
+                }
                 const output=operation.type?[operation.type]:[...graph.node(value).types];
                 if(!output.length||!output.every(type=>allowed.includes(type)))return false;
                 if(seen.has(value))return true;const next=new Set([...seen,value]);
                 const evidence=operation.requirePlayer?new Set():origins;
-                return operation.operands.every(operand=>inspectionTypes(operand,operation.domain||(operation.numeric?['number','undefined']:['number','boolean','string','null','undefined']),next,evidence))&&(!operation.requirePlayer||evidence.size>0);
+                return operation.operands.every(operand=>inspectionTypes(operand,operation.domain||(operation.numeric?['number','undefined']:['number','boolean','string','null','undefined']),next,evidence,allowSpriteFlags))&&(!operation.requirePlayer||evidence.size>0);
             }
             const node=graph.node(value);
             if(allowed.includes('Player')){
                 const producers=inspectionProducers.get(value);
                 if(inspectionOpaqueNodes.has(node)||seen.has(value)||!producers?.size)return false;
-                const next=new Set([...seen,value]);return [...producers].every(producer=>inspectionTypes(producer,allowed,next,origins));
+                const next=new Set([...seen,value]);return [...producers].every(producer=>inspectionTypes(producer,allowed,next,origins,allowSpriteFlags));
             }
             if(inspectionOpaqueNodes.has(node))return false;
             if(!node.types.size||[...node.types].some(type=>type!=='any'&&!allowed.includes(type))){
@@ -3486,7 +4257,7 @@ class ArcadeEmitter {
                 const producers=inspectionProducers.get(value);
                 if(anys.has(value)||seen.has(value)||!producers?.size)return false;
                 const next=new Set([...seen,value]);
-                return [...producers].every(producer=>inspectionTypes(producer,allowed,next,origins));
+                return [...producers].every(producer=>inspectionTypes(producer,allowed,next,origins,allowSpriteFlags));
             }
             if(!node.types.has('any'))return true;
             // An Any declaration resets a real scalar cell to Undefined. It
@@ -3496,8 +4267,30 @@ class ArcadeEmitter {
             const producers=inspectionProducers.get(value);
             if(!producers?.size)return inspectionUndefinedCells.has(value)&&allowed.includes('undefined');
             if(seen.has(value))return true;const next=new Set([...seen,value]);
-            return [...producers].every(producer=>inspectionTypes(producer,allowed,next,origins));
+            return [...producers].every(producer=>inspectionTypes(producer,allowed,next,origins,allowSpriteFlags));
         };
+        // Start from independently primitive actual writers. Self-dependent
+        // flags cycles remain refused in this narrow slice, not assumed closed.
+        for(const [value,entry]of spriteFlagResults){
+            if(!entry.writers.every(row=>inspectionTypes(spriteFlagWriterInputs.get(row.node),['number','boolean','string','null','undefined'])))continue;
+            const current=this.spriteFlagWriters(entry.target,entry.node);
+            if(current&&current.length===entry.writers.length&&current.every((row,index)=>row.target===entry.writers[index].target&&row.node===entry.writers[index].node&&row.input===entry.writers[index].input))admittedSpriteFlags.add(value);
+        }
+        // Source result signatures above never prove their operands. Follow
+        // every actual directed writer/capture through the same closed graph.
+        this.sourceBitwiseExportOperands=new Set();
+        for(const [block,operands]of sourceBitwiseInputs)if(operands.every(value=>inspectionTypes(value,['array','number','boolean','string','null','undefined'],new Set(),null,true)))this.sourceBitwiseExportOperands.add(block);
+        this.scoreThresholdExportOperands=new Set();
+        for(const [block,value]of scoreThresholdInputs)if(inspectionTypes(value,['number']))this.scoreThresholdExportOperands.add(block);
+        this.nativeBitwiseExportOperands=new Set();
+        // Nonreachability comes only from the closed physical execution-root
+        // census. Managed/callable entries deny that proof; their JSON catalogs
+        // cannot be treated as ordinary unmentioned procedure names.
+        for(const [block,operands]of nativeBitwiseInputs){
+            const target=this.project.targets.find(t=>Object.values(t.blocks||{}).includes(block));
+            if(operands.every(value=>inspectionTypes(value,['number','boolean','string','null','undefined'],new Set(),null,true))||
+                target&&this.isUnreachable(target,block))this.nativeBitwiseExportOperands.add(block);
+        }
         for(const expected of this.procedureConstraints?.allObligations||[]){
             const actual=procedureInputs.find(item=>item.block===expected.block&&item.obligation===expected.obligation);
             if(!actual||actual.obligation.type!=='Any'&&!inspectionTypes(actual.value,[actual.obligation.type.toLowerCase()]))this.note('Procedure parameter constraint: actual current caller or writer requires '+expected.obligation.type);
@@ -3515,7 +4308,7 @@ class ArcadeEmitter {
         // type is determined by declarations, writes, copies and aliases.
         // Element and alias joins can make a nested array visible to reads or
         // procedure results that had no annotation of their own.
-        const inferred=new Map([[graphTextSpriteValues,'TextSprite'],[graphBufferValues,'Buffer'],[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']]);
+        const inferred=new Map([[graphTextSpriteValues,'TextSprite'],[graphBufferValues,'Buffer'],[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[tilemaps,'TileMapData'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']]);
         for(const [key] of graph.nodes)for(const [values,type] of inferred)if(graph.has(key,type))values.add(key);
         this.spriteReturnFunctions = new Set([...parameters.keys()].filter(key=>graph.arrayType(`${key}:result`)==='Sprite'));
         this.spriteVariableIds = new Set([...sprites].filter(key=>typeof key==='string' && key.startsWith('variable:') && graph.arrayType(key)==='Sprite').map(key=>key.slice(9)));
@@ -3525,7 +4318,7 @@ class ArcadeEmitter {
         this.mixedValueArrayLocalBlocks=new Set([...arrayLocalReaders].filter(([,cell])=>graph.has(cell,'array') && graph.arrayType(cell)==='any').map(([block])=>block));
         this.mixedValueVariableIds=new Set([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && (graph.node(key).types.size>1 || graph.has(key,'any')) && graph.arrayType(key)==='any').map(key=>key.slice(9)));
         this.booleanVariableIds=new Set([...booleans].filter(key=>typeof key==='string' && key.startsWith('variable:') && graph.arrayType(key)==='boolean').map(key=>key.slice(9)));
-        this.primitiveVariableTypes=new Map([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && ['Buffer','mp.Player','string','tiles.Location','tiles.Tile','animation.Animation','SevenSegDigit','DigitCounter','Dart','Corgio','TextSprite','scene.Scene','ArcadePhysicsEngine'].includes(graph.arrayType(key))).map(key=>[key.slice(9),graph.arrayType(key)]));
+        this.primitiveVariableTypes=new Map([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && ['Buffer','mp.Player','string','tiles.Location','tiles.TileMapData','tiles.Tile','animation.Animation','SevenSegDigit','DigitCounter','Dart','Corgio','TextSprite','scene.Scene','ArcadePhysicsEngine'].includes(graph.arrayType(key))).map(key=>[key.slice(9),graph.arrayType(key)]));
         this.valueReturnTypes=new Map([...parameters.keys()].map(key=>[key,graph.arrayType(`${key}:result`)]));
         this.localValueTypes=new Map();
         for(const key of graph.nodes.keys()){
@@ -3539,11 +4332,159 @@ class ArcadeEmitter {
         return new Map([...parameters].map(([key,keys]) => [key,keys.map(value => arrayType(value))]));
     }
 
+    // Dormant declarations still have to type-check in MakeCode. The live
+    // producer graph deliberately skips these bodies; do not seed that graph
+    // from a declaration requirement. This separate result is used only for
+    // an otherwise-any formal at the final signature rendering site.
+    inferUnreachableSpriteParameterTypes(target,definition,proto,names,emittedFunction) {
+        const denied=()=>new Map();
+        if(!this.isUnreachable(target,definition))return denied();
+        let original,argumentIds;
+        try{
+            original=JSON.parse(proto.mutation.argumentnames);
+            argumentIds=JSON.parse(proto.mutation.argumentids);
+        }catch{return denied();}
+        if(!Array.isArray(original)||!Array.isArray(argumentIds)||original.length!==names.length||
+            argumentIds.length!==names.length||original.some(name=>typeof name!=='string'||!name)||
+            argumentIds.some(id=>typeof id!=='string'||!id)||new Set(original).size!==original.length||
+            new Set(argumentIds).size!==argumentIds.length||new Set(names).size!==names.length||
+            original.some((name,i)=>ident(name)!==names[i]))return denied();
+        const blocks=target.blocks||{},entries=Object.entries(blocks);
+        const protoIds=entries.filter(([,node])=>node===proto).map(([id])=>id);
+        if(protoIds.length!==1)return denied();
+        const declarationReaders=new Set(),eligible=names.map(()=>false),uses=names.map(()=>0);
+        for(let i=0;i<argumentIds.length;i++){
+            const readerId=proto.inputs?.[argumentIds[i]]?.[1],reader=blocks[readerId];
+            if(!reader||reader.parent!==protoIds[0]||reader.shadow!==true||
+                !['argument_reporter_string_number','argument_reporter_boolean'].includes(reader.opcode)||
+                reader.fields?.VALUE?.[0]!==original[i])return denied();
+            declarationReaders.add(reader);
+            eligible[i]=reader.opcode==='argument_reporter_string_number';
+        }
+        const owned=node=>{
+            const seen=new Set();
+            for(let current=node;current&&!seen.has(current);current=blocks[current.parent]){
+                if(current===definition)return true;
+                seen.add(current);
+            }
+            return false;
+        };
+        // Use the emitter's actual NAME ingress. Editor fields or a retained
+        // shadow cannot override the inline input that is really emitted.
+        const fixedName=node=>this.literalInput(node,'NAME');
+        const flagsReceiver=(id,node)=>{
+            const parent=blocks[node.parent],property=parent?.fields?.PROPERTY;
+            return parent?.opcode==='arcade_spriteProperty'&&parent.mutation==null&&
+                parent.shadow===false&&parent.topLevel===false&&parent.next==null&&
+                Object.keys(parent.fields||{}).join(',')==='PROPERTY'&&
+                Array.isArray(property)&&property[0]==='flags'&&
+                (property.length===1||property.length===2&&property[1]===null)&&
+                Object.keys(parent.inputs||{}).join(',')==='ID'&&
+                Array.isArray(parent.inputs.ID)&&[1,2,3].includes(parent.inputs.ID[0])&&parent.inputs.ID[1]===id;
+        };
+        const invalidateName=name=>{
+            for(let i=0;i<names.length;i++)if(name===original[i]||ident(name)===names[i])eligible[i]=false;
+        };
+        const globalUse=name=>{
+            if(typeof name!=='string')return false;
+            if(this.infoVariable(name))return true; // emitted SDK use is checked below
+            const local=Object.values(target.variables||{}).some(value=>value[0]===name);
+            const owner=local?target:this.project.targets.find(value=>value.isStage)||target;
+            if(local&&this.isClonable(target)&&!this.isGlobalVar(name)){
+                invalidateName('self');return true;
+            }
+            // The body has already been emitted. Read its actual allocated
+            // spelling without invoking lookupVar/varName and mutating state.
+            const emitted=this.globals.get(`${owner.isStage?'':owner.name}:${name}`);
+            if(typeof emitted!=='string')return false;
+            for(let i=0;i<names.length;i++)if(emitted===names[i])eligible[i]=false;
+            return true;
+        };
+        for(const [id,node]of entries){
+            if(node===definition||node===proto||declarationReaders.has(node)||!owned(node))continue;
+            if(node.fields?.VARIABLE&&!globalUse(node.fields.VARIABLE[0]))return denied();
+            for(const slot of Object.values(node.inputs||{})){
+                const value=slot?.[1];
+                if(Array.isArray(value)&&[12,13].includes(value[0])&&!globalUse(value[1]))return denied();
+            }
+            if(node.opcode.startsWith('arrays_')&&node.inputs?.NAME){
+                const named=this.namedArrays.get(this.literalInput(node,'NAME'));
+                for(let i=0;i<names.length;i++)if(named===names[i])eligible[i]=false;
+            }
+            if(['arcade_setLocal','arcade_declareLocal'].includes(node.opcode)){
+                const name=fixedName(node);
+                if(!name||!/^[A-Za-z_]\w*$/.test(name))return denied();
+                invalidateName(name);
+            }
+            let index=-1;
+            if(/^argument_reporter_/.test(node.opcode)){
+                const value=node.fields?.VALUE;
+                if(!Array.isArray(value)||typeof value[0]!=='string')return denied();
+                index=original.indexOf(value[0]);
+                if(index<0)return denied();
+                if(node.opcode!=='argument_reporter_string_number')eligible[index]=false;
+            }else if(node.opcode==='arcade_getLocal'){
+                const name=fixedName(node);
+                if(!name||!/^[A-Za-z_]\w*$/.test(name))return denied();
+                index=original.indexOf(name);
+                // A different source spelling that collides after emission is
+                // not the formal's actual lexical cell.
+                if(index<0){invalidateName(name);continue;}
+            }
+            if(index<0)continue;
+            if(!this.isUnreachable(target,node)||!flagsReceiver(id,node))eligible[index]=false;
+            else uses[index]++;
+        }
+        if(!eligible.some((value,i)=>value&&uses[i]>0))return denied();
+        // Count actual emitted lexical reads as well. A generated loop local,
+        // helper name or injected parameter must not capture a physical formal
+        // read. Binding identity, not a spelling or annotation, selects the cell.
+        let program,fn,graph;
+        try{
+            program=parseMakeCodeTs(emittedFunction);
+            if(program.body.length!==1||program.body[0].type!=='FunctionDeclaration')return denied();
+            fn=program.body[0];
+            if(!fn.body.length||new Set(fn.params).size!==fn.params.length)return denied();
+            graph=analyseSourceValueProducers(program,{unboundIsOpaque:true});
+        }catch{return denied();}
+        const bindings=new Map(),counts=names.map(()=>0),parents=new WeakMap();
+        for(let i=0;i<names.length;i++)if(eligible[i]){
+            const kinds=graph.bindingKindsAt(fn.body[0],names[i]);
+            if(kinds.size!==1||!kinds.has('parameter')||graph.declarationCountAt(fn.body[0],names[i])!==1){eligible[i]=false;continue;}
+            const binding=graph.bindingOf(fn.body[0],names[i]);
+            if(!binding){eligible[i]=false;continue;}
+            bindings.set(binding,i);
+        }
+        const metadata=new Set(['originalBody','paramTypes','parameterDefaults','typeParameters','returnType','source']);
+        const visit=(node,parent=null)=>{
+            if(!node||typeof node!=='object')return;
+            parents.set(node,parent);
+            if(node.type==='Identifier'){
+                const index=bindings.get(graph.bindingOf(node));
+                if(index!==undefined){
+                    const outer=parents.get(parent);
+                    if(parent?.type!=='Member'||parent.object!==node||parent.name!=='flags'||parent.optional||
+                        outer?.type==='Assignment'&&outer.left===parent||outer?.type==='Update'&&outer.argument===parent||
+                        outer?.type==='Unary'&&outer.op==='delete')eligible[index]=false;
+                    else counts[index]++;
+                }
+            }
+            for(const [key,value]of Object.entries(node))if(!metadata.has(key)){
+                if(Array.isArray(value))for(const child of value)visit(child,node);
+                else if(value&&typeof value==='object')visit(value,node);
+            }
+        };
+        visit(fn);
+        if(!this.isUnreachable(target,definition)||!this.closedOrdinaryEntryCurrent())return denied();
+        return new Map(names.flatMap((name,i)=>eligible[i]&&uses[i]>0&&counts[i]===uses[i]?[[i,'Sprite']]:[]));
+    }
+
     // ── images ───────────────────────────────────────────────────────────
     /** A costume as palette pixels: exact for pixel art, palette-matched otherwise. */
     image (target, costume = target.costumes[target.currentCostume || 0], index = target.currentCostume || 0) {
         const svg = costume && this.opts.costumeSvg ? this.opts.costumeSvg(target, costume) : null;
-        const candidate = costume && this.opts.costumePalette?.(target, costume);
+        const candidate = costume && (this.snapshotCallbacks ?
+            this.opts.costumePalette?.(target,costume,snapshotAssetContext(this.project,target,costume)) : this.opts.costumePalette?.(target,costume));
         const sourcePalette = isPalette(candidate) ? candidate : ARCADE_PALETTE;
         if (svg) {
             const px = svgToPixels(svg, sourcePalette);
@@ -3696,6 +4637,13 @@ class ArcadeEmitter {
     // ── the program ──────────────────────────────────────────────────────
     emit () {
         const out = [];
+        // Arcade values only: a saved default that no code can read before the
+        // start script's first assignment is not exported as a producer.
+        this.deadSavedInitials = this.arcadeValues ? startupFirstWriteVariables(this.project,
+            (target, id, name) => target.isStage ? this.isGlobalVar(name) : !this.isGlobalVar(name) && !this.isClonable(target)) : new Set();
+        this.directConcatGlobals = new Set();
+        this.directStringArguments = new Set();
+        this.globalVariableIds = new Map();
         this.collectKindBindings();
         // Scratch's Stage composites transparent backdrop pixels over white.
         // Native Arcade primitives own their scene defaults instead; do not
@@ -3705,6 +4653,7 @@ class ArcadeEmitter {
         const flagScripts = [];                             // green-flag scripts: {script, clonable, sv, plain}
         const handlers = [];
         const functions = [];
+        const ordinaryDeclarations = [];
         const stage = this.project.targets.find(t => t.isStage);
         this.hasHandles = this.project.targets.some(t => Object.values(t.blocks || {})
             .some(b => b?.opcode?.startsWith('arcade_') &&
@@ -3788,6 +4737,7 @@ class ArcadeEmitter {
         try{this.procedureConstraints=prepareProcedureConstraintExport(this.project);}catch(error){this.note(error.message);this.procedureConstraints=null;}
         this.objectClassExport=prepareObjectClassExport(this);
         this.prepareCallableExport();
+        this.imageConsumerAbi=createImageConsumerAbiExport({project:this.project,provider:this.objectClassExport});
         const imageParameterTypes = this.imageProcedureParameters();
         const scalarFlow=scalarExportFlow(this.project,block=>this.isBoolean(block),this.sourceScalarCells);
         for(const [key,parameters] of scalarFlow.definitions) {
@@ -3867,9 +4817,10 @@ class ArcadeEmitter {
                     if(entry?.graph.plan.version===3&&b.opcode==='arcade_whenSourceStarts')this.currentCallableContext=entry.emitter.moduleContext(b);
                     const lines = emitBody();
                     const locals = [...this.currentLocalNames].filter(name => !parameters.includes(name));
+                    const procedureLocals = this.currentLocalNames;
                     this.currentLocalNames = saved;this.currentCallableContext=savedContext;
                     const scope = `${t.name}:script:${Object.keys(this.blocks).find(id => this.blocks[id] === b)}`;
-                    return [...locals.map(name => this.localDeclaration(name, scope)), ...lines];
+                    return [...locals.map(name => this.localDeclaration(name, scope, procedureLocals)), ...lines];
                 };
                 const plainBody = parameters => scoped(() => this.body(b.next, this.stopGuards(), this.tokenLine()), parameters);
                 // An Arcade event hat gets its event's sprites as parameters.
@@ -3961,8 +4912,20 @@ class ArcadeEmitter {
                         continue;
                     }
                     if(this.objectClassExport.procedures.has(key))continue;
+                    // A refused prototype has no actual owned export symbol.
+                    // Retain its diagnostic instead of emitting a null function,
+                    // but still compile the body (output discarded) so its own
+                    // refusals, e.g. inspection proofs, are reported as before.
+                    const fn = this.functionName(t,proto.mutation.proccode);
+                    if(!fn){
+                        const saved=this.currentLocalNames;this.currentLocalNames=new Set();
+                        try{this.body(b.next,[],[],!this.managedValueProcedures.has(key));}catch(error){this.note(error.message);}
+                        finally{this.currentLocalNames=saved;}
+                        continue;
+                    }
                     const types = imageParameterTypes.get(key) || [];
-                    const params = names.map((n, i) => `${n}: ${this.procedureConstraints?.annotation(t,proto.mutation.proccode,i) || types[i] || 'any'}`);
+                    const declaredTypes=names.map((n,i)=>this.procedureConstraints?.annotation(t,proto.mutation.proccode,i) || this.objectClassExport.procedureParameterType?.(key,n));
+                    const params=names.map((n,i)=>`${n}: ${declaredTypes[i] || types[i] || 'any'}`);
                     // It runs in its caller's thread, so it checks the caller's run token.
                     if (this.tokened()) params.unshift('_t: number');
                     if (clonable) {
@@ -3977,20 +4940,41 @@ class ArcadeEmitter {
                     }
                     script = this.body(b.next, [...this.stopGuards(), ...(clonable ? ['_gone(self)'] : [])], [], !this.managedValueProcedures.has(key));
                     const locals = [...this.currentLocalNames].filter(name => !names.includes(name));
+                    const procedureLocals = this.currentLocalNames;
                     this.currentLocalNames = saved;this.currentCallableContext=savedContext;
-                    const fn = this.functionName(t,proto.mutation.proccode);
                     // A procedure that returns a value (arcade_returnValue) is typed by
                     // what flows out of it; one that falls off its end returns undefined, as in PXT.
                     const returning = line => /^\s*return [^\s/]/.test(line);
                     const returns = script.some(returning);
-                    const returnType = returns ? `: ${this.arrayReturnTypes.get(key) || (this.imageReturnFunctions.has(key) ? 'Image' :
+                    const returnType = returns ? `: ${this.objectClassExport.procedureResultType?.(key) || this.arrayReturnTypes.get(key) || (this.imageReturnFunctions.has(key) ? 'Image' :
                         this.spriteReturnFunctions.has(key) ? 'Sprite' : this.valueReturnTypes.get(key) || 'any')}` : '';
                     const tail = returns && !returning(script.at(-1) || '') ? ['    return undefined'] : [];
                     // A stop/clone guard exits with a bare \`return\`; in a function that
                     // returns a value PXT rejects that ("Not all code paths return a value").
                     const body = returns ? script.map(line => line.replace(/\breturn\s*$/, 'return undefined')) : script;
-                    const lines = [...locals.map(name => this.localDeclaration(name, key)), ...body, ...tail];
-                    functions.push(`function ${fn} (${params.join(', ')})${returnType} {\n${lines.join('\n')}\n}`);
+                    const localLines=locals.map(name=>this.localDeclaration(name,key,procedureLocals));
+                    const lines = [...localLines, ...body, ...tail];
+                    const dormantTypes=this.inferUnreachableSpriteParameterTypes(t,b,proto,names,
+                        `function ${fn} (${params.join(', ')})${returnType} {\n${lines.join('\n')}\n}`);
+                    const injected=params.length-names.length;
+                    for(const [i,type]of dormantTypes){
+                        // Explicit primitive constraints remain authoritative.
+                        // A dormant body still has to compile: retaining a
+                        // Number/String/Boolean formal beside `.flags` is a
+                        // declaration conflict, not permission to coerce it.
+                        if(['number','string','boolean'].includes(declaredTypes[i])){
+                            this.note(`Procedure parameter constraint: dormant flags receiver ${names[i]} requires a Sprite declaration, incompatible with ${declaredTypes[i]}`);
+                        }else if(!declaredTypes[i]&&(!types[i]||types[i]==='any'))params[injected+i]=`${names[i]}: ${type}`;
+                    }
+                    const declaration={target:t,definition:b,name:fn,resultType:returnType,
+                        localTypes:new Map(locals.map(name=>[name,this.objectClassExport?.localDeclarationType?.(key,name)??this.localValueTypes.get(key)?.get(name)??'any'])),
+                        index:functions.length,
+                        render:plan=>`function ${fn} (${params.join(', ')})${plan?.result?': Sprite':returnType} {\n${[
+                            ...locals.map((name,index)=>plan?.locals.has(name)?`    let ${name}: Sprite = null`:localLines[index]),
+                            ...body,...tail].join('\n')}\n}`};
+                    declaration.source=declaration.render();
+                    ordinaryDeclarations.push(declaration);
+                    functions.push(declaration.source);
                 } else if (/^(procedures_prototype|argument_|.*_menu$)/.test(b.opcode)) {
                     continue;
                 } else if (b.opcode === 'event_whenthisspriteclicked' || b.opcode === 'event_whenstageclicked') {
@@ -4028,14 +5012,28 @@ class ArcadeEmitter {
                 out.push(`let ${n}: any = ${edited === undefined ? 'undefined' : JSON.stringify(edited)}`);
                 continue;
             }
-            if(referenceCell){out.push(`let ${n}: ${referenceCell.type}`);continue;}
+            if(referenceCell){out.push(`let ${n}: ${this.objectClassExport?.variableDeclarationTypes?.get(n) ?? referenceCell.type}`);continue;}
             const sourceCell=[...this.sourceScalarCells.values()].find(cell=>cell.ts===n);
             if (sourceCell) {out.push(`let ${n}: ${sourceCell.type.toLowerCase()}`);continue;}
             if(this.objectClassExport?.sdkVariable?.(n)){out.push(`let ${n}: Image`);continue;}
+            const actualClassType=this.objectClassExport?.variableDeclarationTypes?.get(n);
+            if(actualClassType){
+                const reference=actualClassType.endsWith('[]')||this.objectClassExport.hasType(actualClassType);
+                const initial=reference?'null':this.initialGlobals.has(n)?JSON.stringify(this.initialGlobals.get(n)):'0';
+                out.push(`let ${n}: ${actualClassType} = ${initial}`);continue;
+            }
             const objectType=this.objectClassExport?.variableTypes.get(n);
             if(objectType && this.objectClassExport.hasType?.(objectType)){out.push(`let ${n}: ${objectType} = null`);continue;}
             if(['number','boolean','string'].includes(objectType)){out.push(`let ${n}: ${objectType} = ${objectType==='string'?'\"\"':objectType==='boolean'?'false':'0'}`);continue;}
+            // A dead saved default (see startup-first-write-globals.js) of a
+            // global whose actual writers the type graph proves String is not
+            // a producer: declare it string with the type's own default.
+            const variableId=this.globalVariableIds.get(n);
+            if(variableId&&this.deadSavedInitials.has(variableId)&&this.primitiveVariableTypes.get(variableId)==='string'){out.push(`let ${n} = ""`);continue;}
             const kinds = this.kinds.get(n) || new Set(['number']);
+            // A dead saved default of a mixed/any global is not a value either:
+            // declare it without an initializer (no root `= 0` producer).
+            const deadAny=!!variableId&&this.deadSavedInitials.has(variableId);
             // A variable given both text and numbers is `any` — Scratch's own
             // variables are untyped, and that is the honest translation.
             const arrayKind=[...kinds].find(kind=>kind.endsWith('[]'));
@@ -4046,18 +5044,28 @@ class ArcadeEmitter {
             const mixedInitialScalar = this.initialGlobals.has(n) &&
                 ['string', 'boolean', 'number'].some(kind => kinds.has(kind) && kind !== initialScalarType);
             out.push(arrayKind?`let ${n}: ${arrayKind} = null`:this.handleVars.has(n) ? `let ${n}: Sprite = null` :
-                kinds.size > 1 || kinds.has('any') || mixedInitialScalar ? `let ${n}: any = ${initial}` : kinds.has('string') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : '""'}` : kinds.has('boolean') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : 'false'}` : kinds.has('Buffer') ? `let ${n}: Buffer = null` : kinds.has('mp.Player') ? `let ${n}: mp.Player = null` : kinds.has('scene.Scene') ? `let ${n}: scene.Scene = null` : kinds.has('ArcadePhysicsEngine') ? `let ${n}: ArcadePhysicsEngine = null` : kinds.has('animation.Animation') ? `let ${n}: animation.Animation = null` : kinds.has('SevenSegDigit') ? `let ${n}: SevenSegDigit = null` : kinds.has('DigitCounter') ? `let ${n}: DigitCounter = null` : kinds.has('TextSprite') ? `let ${n}: TextSprite = null` : kinds.has('Dart') ? `let ${n}: Dart = null` : kinds.has('Corgio') ? `let ${n}: Corgio = null` : kinds.has('tiles.Tile') ? `let ${n}: tiles.Tile = null` : kinds.has('tiles.Location') ? `let ${n}: tiles.Location = null` : kinds.has('image') ? `let ${n}: Image = null` : `let ${n} = ${initial}`);
+                kinds.size > 1 || kinds.has('any') || mixedInitialScalar ? (deadAny ? `let ${n}: any` : `let ${n}: any = ${initial}`) : kinds.has('string') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : '""'}` : kinds.has('boolean') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : 'false'}` : kinds.has('Buffer') ? `let ${n}: Buffer = null` : kinds.has('mp.Player') ? `let ${n}: mp.Player = null` : kinds.has('scene.Scene') ? `let ${n}: scene.Scene = null` : kinds.has('ArcadePhysicsEngine') ? `let ${n}: ArcadePhysicsEngine = null` : kinds.has('animation.Animation') ? `let ${n}: animation.Animation = null` : kinds.has('SevenSegDigit') ? `let ${n}: SevenSegDigit = null` : kinds.has('DigitCounter') ? `let ${n}: DigitCounter = null` : kinds.has('TextSprite') ? `let ${n}: TextSprite = null` : kinds.has('Dart') ? `let ${n}: Dart = null` : kinds.has('Corgio') ? `let ${n}: Corgio = null` : kinds.has('tiles.Tile') ? `let ${n}: tiles.Tile = null` : kinds.has('tiles.Location') ? `let ${n}: tiles.Location = null` : kinds.has('tiles.TileMapData') ? `let ${n}: tiles.TileMapData = null` : kinds.has('image') ? `let ${n}: Image = null` : `let ${n} = ${initial}`);
         }
+        const stringGlobals=new Set(out.map(line=>/^let ([A-Za-z_$][\w$]*)(?:: string(?: = .*)?| = "(?:[^"\\]|\\.)*")$/.exec(line)?.[1]).filter(Boolean));
+        // A receiver whose final declaration is not string (for example a
+        // live saved default) keeps the original cast helper form.
+        const castConcat=[...this.directConcatGlobals].filter(name=>!stringGlobals.has(name));
+        if(castConcat.length)this.use('sdkConcat');
+        const castArguments=[...this.directStringArguments].filter(call=>!stringGlobals.has(/\(([^)]*)\)$/.exec(call)[1]));
+        const concatForm=chunk=>castArguments.reduce((text,call)=>text.split(call).join(call.replace(/\(([^)]*)\)$/,'("" + $1)')),
+            castConcat.reduce((text,name)=>text.split(`${name}.concat(<any>`).join(`__bwSdkConcat(<any>${name}, `),chunk));
+        const animationLookupDefinitions=new Map();
         if (this.usesAnimationResources) {
             const resources = [...this.authoredAnimationArrays.values()];
             for (const resource of resources) out.push(`let ${resource.variable}: Image[] = assets.animation\`${resource.nativeId}\``);
-            out.push(`function ${this.animationFunctionNames.frames} (id: string): Image[] {\n${resources.map(resource =>
+            animationLookupDefinitions.set(this.animationFunctionNames.frames,`function ${this.animationFunctionNames.frames} (id: string): Image[] {\n${resources.map(resource =>
                 `    if (id == ${JSON.stringify(resource.id)}) return ${resource.variable}`).join('\n')}\n    console.log("Animation resource unavailable: " + id)\n    return undefined\n}`);
-            out.push(`function ${this.animationFunctionNames.fresh} (id: string): Image[] {\n${resources.map(resource =>
+            animationLookupDefinitions.set(this.animationFunctionNames.fresh,`function ${this.animationFunctionNames.fresh} (id: string): Image[] {\n${resources.map(resource =>
                 `    if (id == ${JSON.stringify(resource.id)}) return assets.animation\`${resource.nativeId}\``).join('\n')}\n    console.log("Animation resource unavailable: " + id)\n    return undefined\n}`);
-            out.push(`function ${this.animationFunctionNames.interval} (id: string): number {\n${resources.map(resource =>
+            animationLookupDefinitions.set(this.animationFunctionNames.interval,`function ${this.animationFunctionNames.interval} (id: string): number {\n${resources.map(resource =>
                 `    if (id == ${JSON.stringify(resource.id)}) return ${resource.frames[0].durationMs}`).join('\n')}\n    console.log("Animation resource unavailable: " + id)\n    return undefined\n}`);
         }
+        out.push(...animationLookupDefinitions.values());
         for (const {name, frames} of [...this.frameArrays.values(), ...this.sharedImageArrays.values()]) {
             out.push(`let ${name}: Image[] = [${frames.map(frame => toImgLiteral(frame)).join(', ')}]`);
         }
@@ -4191,8 +5199,76 @@ class ArcadeEmitter {
             startup = flagScripts.map(({script, clonable, sv}) =>
                 `control.runInParallel(function () {\n${clonable ? `    const self = ${sv}\n` : ''}${script.join('\n')}\n})`);
         }
-        return [...helperSource(this.helpers), ...[...this.valueOperationHelpers.values()].map(helper => helper.source),
-            ...pre, ...generated, ...this.generated, ...functions, ...out, ...handlers, ...startup].join('\n') + '\n';
+        const dormantDeclarations=dormantSpriteDeclarations({project:this.project,records:ordinaryDeclarations,
+            isUnreachable:(target,node)=>this.isUnreachable(target,node),current:()=>this.closedOrdinaryEntryCurrent(),
+            literal:(target,node,name)=>this.literalInput(node,name),resolveCall:(target,node)=>this.functionSymbols.call(target,node),
+            namedArrays:this.namedArrays,globalName:(target,name)=>{
+                if(typeof name!=='string')return null;
+                const local=Object.values(target.variables||{}).some(value=>value[0]===name);
+                if(local&&this.isClonable(target)&&!this.isGlobalVar(name))return 'self';
+                const owner=local?target:this.project.targets.find(value=>value.isStage)||target;
+                return this.globals.get(`${owner.isStage?'':owner.name}:${name}`)||null;
+            }});
+        if(this.closedOrdinaryEntryCurrent())for(const [record,plan]of dormantDeclarations){
+            for(const conflict of plan.conflicts)this.note(conflict);
+            functions[record.index]=record.render(plan);
+        }
+        const assemble=definitions=>{
+            const chunks=[...helperSource(this.helpers),...definitions,
+                ...pre,...generated,...this.generated,...functions,...out,...handlers,...startup].map(concatForm);
+            const source=chunks.join('\n')+'\n';
+            // Final output may prepend these sources after emit(). Until they
+            // are included in one reference graph, retain every lookup when
+            // any such prefix is present. Do not infer absence from spelling.
+            if(!this.snapshotCallbacks||!isProjectJsonSnapshot(this.project)||this.tileAssets.entries.size||
+                this.requiresStringArraySettings||this.songAssets.size||!this.animationFrameProducers.isCurrent())return source;
+            const unused=unusedAnimationLookups(source,animationLookupDefinitions,
+                new Set([...this.authoredAnimationArrays.values()].map(resource=>resource.nativeId)));
+            return unused.size?chunks.filter(chunk=>!unused.has(chunk)).join('\n')+'\n':source;
+        };
+        const definitions=[...this.valueOperationHelpers.values()];
+        const addition=this.valueOperationHelpers.get('BinaryAdd');
+        if(addition){
+            // Analyse the complete emitted Program with the genuine native join
+            // body, not declaration annotations or an Array input connection.
+            // No user string or call is rewritten: final assembly selects the
+            // definition owned by this emitter after complete source proof.
+            const candidate=nativeArrayAddHelperSource(addition.name,true,true);
+            const draft=assemble(definitions.map(helper=>helper===addition?candidate:helper.source));
+            const additionProfile=this.callableExports.size?GENERATED_HELPER_PROFILES.metadata:GENERATED_HELPER_PROFILES.ordinary;
+            const proof=inspectNativeAdditionExportDomains(nativeAdditionNamedAssetView(nativeAdditionAnimationView(
+                parseMakeCodeTs(draft,additionProfile),this.authoredAnimationArrays.values()),this.namedMissingAssets),additionProfile);
+            // Array-free program with primitive/Opaque operands only: the
+            // ordinary helper below is main's pre-join export (operator
+            // decision 2026-10-27). Every other refusal is retained unchanged.
+            if(proof.reason&&proof.ordinaryFallback===true&&proof.current()){ /* ordinary helper */ }
+            // Owner decision 2026-10-30: an operand domain or Array effect the
+            // proof cannot establish no longer refuses the export. The helper
+            // decides per value at run time (Array.isArray -> the same join
+            // as the proven Array path, else ordinary `+`). Source-integrity
+            // refusals (supplied private tags, ambiguous or changed identity)
+            // keep refusing; proven paths below are unchanged.
+            else if(proof.reason&&runtimeDispatchAdditionReason(proof.reason))
+                return assemble(definitions.map(helper=>helper===addition?runtimeDispatchAddHelperSource(addition.name):helper.source));
+            else if(proof.reason){
+                this.note(proof.reason);
+                try {
+                    this.unsupportedDetails.push({reason:proof.reason,
+                        refusal:proof.refusal||{schema:'native-addition-refusal-v1',helper:addition.name,
+                            operand:'UNAVAILABLE',foundTypes:'UNAVAILABLE',initialization:'UNAVAILABLE',
+                            capturedScalar:'UNAVAILABLE',sourceCallOrdinal:'UNAVAILABLE'},
+                        physicalOrigin:'UNAVAILABLE',emissionCandidates:this.nativeAdditionSites.map(site=>({...site,operands:[...site.operands]}))});
+                    this.refusalEvidence={nativeAdditionDraft:draft};
+                }catch { /* Diagnostic failure must preserve the original reason. */ }
+            }
+            else if(!proof.helpers.has(addition.name)&&proof.current())
+                return assemble(definitions.map(helper=>helper===addition?runtimeDispatchAddHelperSource(addition.name):helper.source));
+            else if(!proof.helpers.has(addition.name))this.note('native addition requires its complete current helper body and actual caller proof');
+            else if(!proof.current())this.note('native helper source changed before export selection');
+            else if(proof.arrayHelpers?.has(addition.name))
+                return assemble(definitions.map(helper=>helper===addition?candidate:helper.source));
+        }
+        return assemble(definitions.map(helper=>helper.source));
     }
 }
 
@@ -4206,8 +5282,8 @@ class ArcadeEmitter {
  * @param {(stage) => object|null} [opts.stageBackground] a 160x120 palette image for the backdrop
  * @returns {{ts: string, files: object, unsupported: string[], warnings: string[]}}
  */
-export function projectToArcade (project, opts = {}) {
-    const e = new ArcadeEmitter(project, opts);
+function emitProjectToArcade (project, opts, snapshotCallbacks) {
+    const e = new ArcadeEmitter(project, opts, snapshotCallbacks);
     const projectTs = e.emit();
     e.prepareAuthoredAnimations();
     const songNamespace = e.animationSymbol('__bwSongAssets');
@@ -4285,16 +5361,158 @@ export function projectToArcade (project, opts = {}) {
     }
     if(e.procedureConstraints?.procedures().length){
         const selected=new Set(e.procedureConstraints.procedures().map(({target,code})=>e.functionName(target,code)));
-        try{for(const diagnostic of validateProcedureConstraintSource(parseMakeCodeTs(projectTs,{parameterDefaults:true,retainParentheses:true}),{onlyFunctions:selected,ordinaryPrimitiveSdkNumbers:true,sceneClockNumbers:true}))e.note(diagnostic);}catch(error){e.note(error.message);}
+        try{for(const diagnostic of validateProcedureConstraintSource(parseMakeCodeTs(projectTs,{parameterDefaults:true,retainParentheses:true}),{onlyFunctions:selected,ordinaryPrimitiveSdkNumbers:true,sceneClockNumbers:true,closedOrdinaryEntries:true}))e.note(diagnostic);}catch(error){e.note(error.message);}
     }
+    const createdFieldReceivers=e.createdFieldWriteSites.length&&[...e.objectClassExport.classes.values()].some(cls=>!cls.intrinsic)?createCreatedFieldExportReceivers({
+        sources:[ts,JSON.parse(files['pxt.json']).files.filter(name=>name.endsWith('.ts')).map(name=>files[name]).join('\n')],
+        sites:e.createdFieldWriteSites,current:()=>isProjectJsonSnapshot(e.project)||!!e.arrayOwnedSource?.current()
+    }):()=>null;
+    // Validate only after the complete class/handler program exists. Every
+    // existing producer/RHS/declaration equation still runs, even on refusal.
+    e.objectClassExport.validatePrimitiveExport(createdFieldReceivers);
+    if(!e.frameDeltaNumbersCurrent())e.note('Frame delta Number: current saved reporter proof environment changed during export');
+    if(!e.closedOrdinaryEntryCurrent())e.note('Arcade ordinary entry: current execution roots changed during export');
     // Host artwork callbacks can edit current project objects during rendering.
     // Stale owner/global/local inventories must never become a clean export.
     if(!e.functionSymbols?.current())e.note('Arcade ordinary symbol: current project or owner inventory changed during export');
+    if(e.arrayProofCheckCount){
+        let current=!e.arrayOwnedSourceUsed||e.arrayOwnedSource.current();
+        if(current)try{
+            for(let i=0;i<e.arrayProofCheckCount;i++){
+                const row=e.arrayProofChecks[i];
+                if(!row.authority.validateInput(row.target,row.node,row.name).ok){current=false;break;}
+            }
+        }catch{current=false;}
+        if(e.arrayOwnedSourceUsed&&!e.arrayOwnedSource.current())current=false;
+        if(!current)e.note('Array export source or owned proof environment changed after the snapshot was captured');
+    }
     // Host artwork callbacks can run after the last Array operand. Never
     // publish a clean export against a later document revision.
     if (!e.animationFrameProducers.isCurrent()) e.note('Animation resource documents changed during current export');
-    return {ts, files, unsupported: e.unsupported, warnings: e.warnings};
+    if(!e.mathNumbersCurrent())e.note('Arcade math normal result: current proof environment changed during export');
+    const result={ts, files, unsupported: e.unsupported, warnings: e.warnings};
+    if(e.unsupportedDetails.length){result.unsupportedDetails=e.unsupportedDetails;result.refusalEvidence=e.refusalEvidence;}
+    return result;
 }
 
 /** Re-exported for callers that build a background from pixels. */
 export {imageToSvg};
+
+/** Direct AST entry keeps its original callback receiver and two arguments. */
+export function projectToArcade(project,opts={}){return emitProjectToArcade(project,opts,false);}
+
+const freezeSnapshotContext=Object.freeze,snapshotIndexOf=Array.prototype.indexOf,snapshotApply=Reflect.apply;
+const snapshotAssetContext=(project,target,costume)=>freezeSnapshotContext({
+    targetIndex:snapshotApply(snapshotIndexOf,project.targets,[target]),
+    costumeIndex:snapshotApply(snapshotIndexOf,target.costumes,[costume])
+});
+
+/**
+ * Export an owned deeply frozen snapshot of actual serialized project JSON.
+ * Asset callbacks receive frozen records. costumePalette additionally receives
+ * a read-only {targetIndex,costumeIndex}; direct AST callback arity is unchanged.
+ */
+// Diagnostic serialization never calls an object's getters, toJSON or coercion.
+// Capture intrinsics before artwork callbacks can alter inherited methods.
+const refusalQuote=JSON.stringify,refusalKeys=Reflect.ownKeys,refusalDescriptor=Object.getOwnPropertyDescriptor,
+    refusalPrototype=Object.getPrototypeOf,refusalOwn=Object.hasOwn,refusalArray=Array.isArray,
+    refusalFinite=Number.isFinite,refusalIs=Object.is,refusalCreate=Object.create,
+    refusalDefine=Object.defineProperty,refusalFreeze=Object.freeze,refusalApply=Reflect.apply,
+    refusalCodeUnit=String.prototype.charCodeAt,refusalIndex=String,
+    refusalObjectPrototype=Object.prototype,refusalArrayPrototype=Array.prototype;
+const refusalLimit=8*1024*1024,refusalSize={},refusalShape={};
+const refusalUtf8=text=>{
+    let bytes=0;
+    for(let i=0;i<text.length;i++){
+        const unit=refusalApply(refusalCodeUnit,text,[i]);
+        if(unit<0x80)bytes++;
+        else if(unit<0x800)bytes+=2;
+        else if(unit>=0xd800&&unit<=0xdbff&&i+1<text.length){
+            const next=refusalApply(refusalCodeUnit,text,[i+1]);
+            if(next>=0xdc00&&next<=0xdfff){bytes+=4;i++;}else bytes+=3;
+        }else bytes+=3;
+    }
+    return bytes;
+};
+const observeRefusedJson=(input,result)=>{
+    const base={schema:'arcade-clean-export-observation-v1',origin:'owned-json-export',limitUtf8Bytes:refusalLimit};
+    let inputBytes;
+    try{
+        if(typeof input!=='string')throw refusalShape;
+        inputBytes=refusalUtf8(input);
+        if(inputBytes>refusalLimit)throw refusalSize;
+        let text='',bytes=0,nodes=0;
+        const active=refusalCreate(null),budget=refusalLimit-inputBytes;
+        const append=part=>{
+            bytes+=refusalUtf8(part);if(bytes>budget)throw refusalSize;text+=part;
+        };
+        const encode=(value,depth=0)=>{
+            if(value===null){append('null');return;}
+            if(typeof value==='string'||typeof value==='boolean'){append(refusalQuote(value));return;}
+            if(typeof value==='number'){
+                if(!refusalFinite(value)||refusalIs(value,-0))throw refusalShape;
+                append(refusalQuote(value));return;
+            }
+            if(typeof value!=='object'||depth>128||++nodes>20000)throw refusalShape;
+            for(let i=0;i<depth;i++)if(active[i]===value)throw refusalShape;
+            const prototype=refusalPrototype(value),array=refusalArray(value);
+            if(prototype!==null&&prototype!==(array?refusalArrayPrototype:refusalObjectPrototype))throw refusalShape;
+            active[depth]=value;
+            const keys=refusalKeys(value);
+            if(array){
+                const length=refusalDescriptor(value,'length');
+                if(!length||!refusalOwn(length,'value')||!refusalFinite(length.value)||
+                    length.value<0||length.value%1||keys.length!==length.value+1)throw refusalShape;
+                append('[');
+                for(let i=0;i<length.value;i++){
+                    const descriptor=refusalDescriptor(value,refusalIndex(i));
+                    if(!descriptor||!refusalOwn(descriptor,'value')||!descriptor.enumerable)throw refusalShape;
+                    if(i)append(',');encode(descriptor.value,depth+1);
+                }
+                append(']');
+            }else{
+                append('{');
+                for(let i=0;i<keys.length;i++){
+                    const key=keys[i],descriptor=refusalDescriptor(value,key);
+                    if(typeof key!=='string'||!descriptor||!refusalOwn(descriptor,'value')||!descriptor.enumerable)throw refusalShape;
+                    if(i)append(',');append(refusalQuote(key));append(':');encode(descriptor.value,depth+1);
+                }
+                append('}');
+            }
+            delete active[depth];
+        };
+        encode(result);
+        return refusalFreeze({...base,captureStatus:'COMPLETE',inputJson:input,resultJson:text,
+            inputUtf8Bytes:inputBytes,resultUtf8Bytes:bytes,totalUtf8Bytes:inputBytes+bytes});
+    }catch(error){
+        return refusalFreeze({...base,captureStatus:error===refusalSize?'UNAVAILABLE_SIZE':'UNAVAILABLE_SERIALIZATION',
+            ...(inputBytes===undefined?{}:{inputUtf8Bytes:inputBytes})});
+    }
+};
+
+export function projectJsonToArcade(json,opts={}){
+    // The GUI can request an observation of a later clean export. Keep the
+    // default successful API result shape unchanged, and never invoke an
+    // accessor or accept an inherited option while selecting this diagnostic.
+    let captureClean=false;
+    try{
+        const captureOption=opts&&typeof opts==='object'?refusalDescriptor(opts,'captureObservation'):null;
+        captureClean=!!captureOption&&refusalOwn(captureOption,'value')&&captureOption.value===true;
+    }catch{ /* Diagnostic option inspection cannot replace the original export. */ }
+    const result=emitProjectToArcade(createProjectJsonSnapshot(json),opts,true);
+    // The single original invocation has already completed. Capture its actual
+    // result, never reparse/re-export or replace its original exception.
+    if(typeof json==='string'&&(result.unsupported.length||captureClean))try{
+        const observation=observeRefusedJson(json,result),previous=refusalDescriptor(result,'refusalEvidence');
+        const old=previous&&refusalOwn(previous,'value')?previous.value:null;
+        const evidence=refusalCreate(old?refusalPrototype(old):refusalObjectPrototype);
+        if(old)for(const key of refusalKeys(old)){
+            const descriptor=refusalDescriptor(old,key);
+            if(typeof key!=='string'||!descriptor||!refusalOwn(descriptor,'value'))throw refusalShape;
+            refusalDefine(evidence,key,descriptor);
+        }
+        refusalDefine(evidence,'ownedJsonObservation',{value:observation,enumerable:true,writable:true,configurable:true});
+        refusalDefine(result,'refusalEvidence',{value:evidence,enumerable:true,writable:true,configurable:true});
+    }catch{ /* Evidence failure cannot replace the actual result/refusal. */ }
+    return result;
+}

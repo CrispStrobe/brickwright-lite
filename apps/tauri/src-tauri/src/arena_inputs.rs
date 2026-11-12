@@ -120,7 +120,14 @@ mod tests {
 
 /// Closed instruction ABI for our simulation guest; never executable/memory uploads.
 pub(crate) fn valid_program(value: &Value) -> bool {
-    if !keys(value, &["version", "instructions"]) || value["version"].as_u64() != Some(1) {
+    // v2 (firmware g_bw_program_instruction_abi 2) adds op 7, op 6 without waiting,
+    // and op 8, wait until every motor in a port bitmask is done.
+    let v2 = match value["version"].as_u64() {
+        Some(1) => false,
+        Some(2) => true,
+        _ => return false,
+    };
+    if !keys(value, &["version", "instructions"]) {
         return false;
     }
     let Some(code) = value["instructions"].as_array() else {
@@ -160,6 +167,8 @@ pub(crate) fn valid_program(value: &Value) -> bool {
             }
             4 => (0..n).contains(&a) && b == 0 && c == 0,
             6 => (0..=1).contains(&a) && (-36000..=36000).contains(&b) && (1..=1110).contains(&c),
+            7 if v2 => (0..=1).contains(&a) && (-36000..=36000).contains(&b) && (1..=1110).contains(&c),
+            8 if v2 => (1..=3).contains(&a) && b == 0 && c == 0,
             _ => false,
         };
         if !ok {
@@ -191,6 +200,34 @@ mod program_tests {
         assert!(!valid_program(
             &json!({"version":1,"instructions":[[0,0,0,0]],"address":0x20000000})
         ));
+    }
+
+    #[test]
+    fn version_two_adds_closed_motor_group_ops_only() {
+        let pair = json!([[7, 0, -360, 300], [7, 1, 360, 300], [8, 3, 0, 0], [0, 0, 0, 0]]);
+        assert!(valid_program(&json!({"version":2,"instructions":pair})));
+        assert!(!valid_program(&json!({"version":1,"instructions":pair})));
+        assert!(valid_program(
+            &json!({"version":2,"instructions":[[7,1,-36000,1],[6,0,36000,1110],[8,1,0,0],[8,2,0,0],[0,0,0,0]]})
+        ));
+        for row in [
+            json!([7, 2, 90, 300]),
+            json!([7, -1, 90, 300]),
+            json!([7, 0, 36001, 300]),
+            json!([7, 0, 90, 0]),
+            json!([7, 0, 90, 1111]),
+            json!([8, 0, 0, 0]),
+            json!([8, 4, 0, 0]),
+            json!([8, -1, 0, 0]),
+            json!([8, 3, 1, 0]),
+            json!([8, 3, 0, 1]),
+            json!([9, 0, 0, 0]),
+        ] {
+            assert!(!valid_program(&json!({"version":2,"instructions":[row,[0,0,0,0]]})));
+        }
+        for version in [json!(0), json!(3), json!("2"), json!(2.5)] {
+            assert!(!valid_program(&json!({"version":version,"instructions":[[0,0,0,0]]})));
+        }
     }
 }
 

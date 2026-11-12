@@ -99,3 +99,15 @@ test('mutation: one literal edited is red naming the step; a gate with no readin
     const missing = gates.filter(g => !without.steps[g.name]).map(g => g.name);
     assert.deepEqual(missing, [target.name]);
 });
+
+test('Cross Ratio budget has honest registered readings and the existing provisional derivation',()=>{
+ const name='Browser gate — Robot Lab Cross Ratio complete example';
+ const gate=gates.filter(g=>g.name===name);assert.equal(gate.length,1);
+ const entry=readings.steps[name];assert.ok(entry,'register the new gate canonically');
+ assert.equal(entry.n,entry.readings.length);
+ if(entry.n===0){
+  assert.deepEqual(entry,{n:0,p95:null,max:null,readings:[]});
+  assert.equal(derive(entry,gate[0].timeout).provisional,true);
+  assert.equal(derive(entry,gate[0].timeout).budget,8);
+ }
+});

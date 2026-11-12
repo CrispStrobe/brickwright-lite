@@ -1,9 +1,9 @@
 # Arcade native addition: actual refusal details and author feedback
 
 Owner: Arcade compatibility lane.
-Branch: `lane/arcade-refusal-details-claim-20261021`.
+Branch: `lane/arcade-refusal-details-source-20261021`.
 Base: `e260e1fef2c00b6f7c0dd7f1ada4b1bb2303602c`.
-Status: claim only; merge before implementation.
+Status: merged claim; complete 15-control diagnostics group passes; visible browser and compiler acceptance pending.
 
 ## Problem and existing reporting route
 
@@ -103,3 +103,62 @@ Preserve all earlier product/resource failures. No unchanged local retry,
 filtering, new shard or raised cap is justified by this claim; use the complete
 coherent hosted qualification. Historical project totals do not change without
 a complete admitted application assessment.
+
+
+## Source candidate boundary
+
+The candidate records the existing operand-refusal short circuit and retains
+its original reason. Exact source call ordinal and owning ordinary procedure
+come from the held helper/binding traversal; ranges and class/slot context are
+unavailable. Emission sites include actual physical IDs and input links, but are
+labelled candidates rather than a selected-block certificate. Other refusal
+branches without retained predicate observations report unavailable facts.
+
+The existing report panel receives export/run-specific outcomes and details;
+report-only ownership does not change downloads, compiler calls, player events
+or asset handling. The complete three-module diagnostics group passes all 15 controls with no
+skips or TODOs, using the genuine normal VM, Storage, JSZip and model roles.
+The additional visible browser journey and complete affected hosted/native/
+compiler gates remain pending. Prior failures, resource limits and historical totals remain.
+
+Physical emission candidates are collected only through the actual owned JSON
+root and its own descendant graph edges. Direct caller-object exports retain
+unavailable physical provenance and gain no new getter/Proxy observations from
+the collector. Collection failures cannot replace the original export outcome.
+
+The tracked pseudocode-importer component counterpart in `packages/scratch-gui`
+is synchronized byte for byte under the repository mirror protocol. It adds no
+separate behavior or dependency role.
+
+## Qualification boundary
+
+All 15 domain/report/conversion controls pass as complete modules, including
+queued React update ownership, observer failures, unchanged original source
+export and preserved asset/export errors. The original 13-pass/two-failure run
+is retained; its relative-import test context and unqualified positive fixture
+were repaired without changing a product guard. Unassigned scalar operands
+remain conservatively refused and need a separate semantics/entry proof before
+widening; a type annotation alone gives no authority. This result does not
+resolve the 158 hosted refusal sites or change the historical app count.
+
+## Hosted authoring follow-up — 22 October 2026
+
+The current official journey reached the real refusal details, operand and
+preservation/outcome wording checks, then its first report-collapse pointer click was
+blocked by the still-open Code actions menu. The verifier now closes that menu
+through its real summary after each export and asserts it closed. Original
+report assertions and normal pointer interactions remain intact. This source
+repair awaits the complete official authoring journey; it grants no browser or
+application-completion result. Asset-byte assertions after the blocked click
+were not reached and remain mandatory.
+
+## Next official observation and state-aware report reading
+
+The next candidate passes that menu interaction, real report collapse/reopen
+and current asset-byte checks. It later hides an automatically expanded report
+with a blind header toggle. The verifier now expands only when the report body
+is not visible, verifies details after expansion, and retains the actual text
+before the unchanged clean-report assertion. The retained clean project reports
+two actual Array producer refusals; these remain failures and require separate
+producer diagnosis. No forced clicks, longer timeouts, accepted baseline refusals
+or completed browser/application claim follows from this repair.

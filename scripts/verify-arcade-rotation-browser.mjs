@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import {openCodeActions as openCodeMenu, closeCodeActions as closeCodeMenu} from './lib-code-actions.mjs';
+import {pixelControl} from './lib-pixel-controls.mjs';
 // Real Code -> Blocks -> controller -> restart -> export/file reimport journey.
 // VM access below observes state/renderer only; it does not install or steer code.
 import assert from 'node:assert/strict';
@@ -65,8 +67,33 @@ try {
         null, {timeout: 60000});
     await page.evaluate(() => {
         const runtime = window.__brickwrightStore.getState().scratchGui.vm.runtime;
-        window.__bwRotationObservation = {blockErrors: [], diagnostics: []};
-        runtime.on('BLOCKS_ERROR', error => window.__bwRotationObservation.blockErrors.push(String(error)));
+        const ownDescriptor=Object.getOwnPropertyDescriptor,own=Object.hasOwn,define=Object.defineProperty;
+        const summaryFields=['rootIndex','rootLabel','keyKind','key','symbolPosition','comparison','changedField',
+            'actualType','savedType','actualFlag','savedFlag'];
+        const intrinsicSummary=error=>{try{
+            // No property getters, primitive calls, stack reads or coercion.
+            // Constraint signals wrap the newly-created native error as cause.
+            const direct=error&&(typeof error==='object'||typeof error==='function')?ownDescriptor(error,'bwArrayIntrinsicMismatch'):null;
+            const cause=error&&(typeof error==='object'||typeof error==='function')?ownDescriptor(error,'cause'):null;
+            const source=direct&&own(direct,'value')?direct:
+                cause&&own(cause,'value')&&cause.value&&typeof cause.value==='object'?ownDescriptor(cause.value,'bwArrayIntrinsicMismatch'):null;
+            if(!source||!own(source,'value')||!source.value||typeof source.value!=='object')return null;
+            const copy={};
+            for(let i=0;i<summaryFields.length;i++){
+                const key=summaryFields[i],descriptor=ownDescriptor(source.value,key);
+                if(!descriptor||!own(descriptor,'value'))return null;
+                const value=descriptor.value;
+                if(value!==null&&typeof value!=='string'&&typeof value!=='number'&&typeof value!=='boolean')return null;
+                define(copy,key,{value,enumerable:true});
+            }
+            return copy;
+        }catch(_observationFailure){return null;}};
+        window.__bwRotationObservation = {blockErrors: [], intrinsicRefusals: [], diagnostics: []};
+        runtime.on('BLOCKS_ERROR', error => {
+            const observation=window.__bwRotationObservation;
+            observation.intrinsicRefusals.push(intrinsicSummary(error));
+            observation.blockErrors.push(String(error));
+        });
         runtime.on('ARCADE_RUNTIME_DIAGNOSTIC', issue => window.__bwRotationObservation.diagnostics.push(issue));
     });
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
@@ -222,7 +249,7 @@ try {
     assert.match(decompiled, /\bdata\b/);
     assert.match(decompiled, /4096/);
     const actions = page.getByTestId('bw-code-actions');
-    if (!(await actions.getAttribute('open'))) await actions.locator('summary').click();
+    await openCodeMenu(page);
     const [download] = await Promise.all([
         page.waitForEvent('download', {timeout: 30000}),
         page.getByTestId('bw-makecode-arcade-export').click()
@@ -232,7 +259,7 @@ try {
     await download.saveAs(downloadedPath);
     const bytes = await fs.readFile(downloadedPath);
     assert.ok(bytes.length > 100, 'actual exported project downloaded');
-    if (!(await actions.getAttribute('open'))) await actions.locator('summary').click();
+    await openCodeMenu(page);
     await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
         name: 'arcade-rotation-export.mkcd', mimeType: 'application/octet-stream', buffer: bytes});
     await page.getByText(/Imported the Arcade game.*arcade-rotation-export\.mkcd/).first()
@@ -240,7 +267,7 @@ try {
     const reimportedCode = await editor.evaluate(element => element.cmTile.root.view.state.doc.toString());
     assert.match(reimportedCode, /rotationDegrees/);
     assert.doesNotMatch(reimportedCode, /# unsupported/i);
-    if (await actions.getAttribute('open')) await actions.locator('summary').click();
+    await closeCodeMenu(page);
     await apply();
     await flag.click();
     const reimported = await sample('reimported', 0, 'ready', 0);
@@ -339,7 +366,7 @@ let discardedReady=true`;
     if (!(await page.getByTestId('bw-pixel-canvas').isVisible())) await page.getByTestId('bw-pixel-toggle').click();
     const assignedCanvas = page.getByTestId('bw-pixel-canvas');
     await assignedCanvas.waitFor({state: 'visible'});
-    await page.getByTestId('bw-pixel-colour-9').click();
+    await (await pixelControl(page, 'bw-pixel-colour-9')).click();
     await page.getByTestId('bw-pixel-tool-pencil').click();
     const beforePaint = await assignedCanvas.evaluate(canvas => canvas.toDataURL());
     const assignedBox = await assignedCanvas.boundingBox();
@@ -397,7 +424,7 @@ let discardedReady=true`;
     await stop.click();
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
     // Loading an SB3 rebuilds the Code tab; open its real actions menu again.
-    if (!(await actions.getAttribute('open'))) await actions.locator('summary').click();
+    await openCodeMenu(page);
     // Handle both promises immediately so a timeout reaches the failure report.
     const [assignedExport] = await Promise.all([
         page.waitForEvent('download'),

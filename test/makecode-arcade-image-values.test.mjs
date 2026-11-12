@@ -60,6 +60,49 @@ let untouched=cloned.getPixel(0,0)`;
     await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,80);check(run);
 });
 
+test('Image addition exports and reopens without any unrelated Array',async()=>{
+    const source=`let original=image.create(1,1)
+original.fill(4)
+let first:any=original
+function echo(value:Image){return value}
+let alias:Image=echo(original)
+let copy=original.clone()
+let joined=first+2
+let text=first+""
+let pair=first+copy
+let same=first===alias
+let different=first!==copy
+alias.setPixel(0,0,7)
+let changed=original.getPixel(0,0)
+let untouched=copy.getPixel(0,0)`;
+    const expected=await runPxtCore(source,{images:true});
+    const names=['joined','text','pair','same','different','changed','untouched'];
+    const check=run=>{
+        const actual=vars(run);
+        for(const name of names)assert.deepEqual(actual[name],expected[name],name);
+        assert.equal(actual.first,actual.alias);
+        assert.notEqual(actual.first,actual.copy);
+        assert.deepEqual(run.errors,[]);
+        assert.deepEqual(run.creator.warnings,[]);
+    };
+    const imported=arcadeToPseudocode(source);
+    assert.deepEqual(imported.unsupported,[]);
+    const run=await runProgram(imported.code,{frames:80,uploads:imported.costumes,storage:true});
+    check(run);
+    for(const project of [run.creator.project,JSON.parse(JSON.stringify(run.creator.project))]){
+        const exported=projectToArcade(project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});
+        assert.deepEqual(exported.unsupported,[]);
+        assert.doesNotMatch(exported.ts,/\.join\(/,'Image addition must retain ordinary +');
+        const built=await compile('arcade',exported.files);
+        assert.equal(built.success,true,JSON.stringify({diagnostics:built.diagnostics,ts:exported.ts}));
+        const roundtrip=arcadeToPseudocode(exported.ts);
+        assert.deepEqual(roundtrip.unsupported,[]);
+        check(await runProgram(roundtrip.code,{frames:80,uploads:roundtrip.costumes,storage:true}));
+    }
+    await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));
+    run.vm.greenFlag();await stepFrames(run.vm,80);check(run);
+});
+
 test('image lookups reject ordinary ID text, foreign scopes and wrong resource kinds',()=>{
     const Arcade=loadExtensionClass('arcade'),a=createArcadeRuntimeMock(),b=createArcadeRuntimeMock();
     const first=new Arcade(a),other=new Arcade(b),image=first.createImage({WIDTH:2,HEIGHT:1}),foreign=other.createImage({WIDTH:2,HEIGHT:1});

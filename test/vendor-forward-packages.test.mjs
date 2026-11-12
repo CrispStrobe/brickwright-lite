@@ -170,3 +170,23 @@ test('actual forward BIOS comparison CLI accepts default mode and leaves provena
     assert.match(output, /the committed ROM is this source\. Nothing to do\./);
     files.forEach((file, i) => assert.deepEqual(readFileSync(path.join(root, file)), before[i], file));
 });
+
+test('forward re-admits every static provenance record before integrate and stages only tracked mirrors', () => {
+    const {calls, run, options} = record();
+    refreshForwardPackages(run, options);
+    const commands = calls.map(row => row.cmd);
+    const at = text => commands.findIndex(cmd => cmd.includes(text));
+    assert.ok(at('admit-static-provenance.mjs') > at('--verify-installed'), 'static admission follows the installed proof');
+    assert.ok(at('admit-static-provenance.mjs') < at('npm run integrate'), 'static admission precedes integrate/mirrors');
+    assert.ok(commands.includes("node scripts/admit-static-provenance.mjs --dir '/clones/engine'"));
+    const refused = record(cmd => cmd.includes('admit-static-provenance'));
+    assert.throws(() => refreshForwardPackages(refused.run, refused.options), /static provenance/);
+    assert.ok(!refused.calls.some(({cmd}) => cmd.includes('npm run integrate') || cmd.includes('notices')));
+    const records = ['static/dos/msdos200-base.provenance.json', 'static/roms/cpm-roms.provenance.json',
+        'static/roms/free-386-bios.provenance.json'];
+    const overlay = records.map(file => `overlay/scratch-gui/${file}`);
+    assert.deepEqual(selectForwardOutputs(overlay), [...overlay].sort());
+    assert.equal(forwardMirror(overlay[0]), `packages/scratch-gui/${records[0]}`);
+    assert.equal(forwardMirror(overlay[1]), `packages/scratch-gui/${records[1]}`);
+    assert.equal(forwardMirror(overlay[2]), null, 'the ignored free-386 mirror is never force-added');
+});

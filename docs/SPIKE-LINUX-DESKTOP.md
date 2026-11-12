@@ -86,6 +86,21 @@ persistent spawning thread also installs a parent-death signal, so abrupt deskto
 termination kills the direct simulator child. This additional crash protection
 does not cover forked descendants and is not qualified on other operating systems.
 
+The Linux owner-death tests retain immediate owner death after child admission
+and separately check a fresh delayed live-owner case. Both use the original
+three-second post-crash assertion. They bind the expected parent and group leader
+before holding a kernel process descriptor. They retain the original three-second
+termination assertion, refuse incomplete PID publication and observe termination
+through that held identity. Cleanup signals only the admitted direct child.
+A negative fixture reads back the supervisor's registered kill signal, clears it,
+then demonstrates survival through the same bound before exact cleanup. Linux
+source tests require pidfd support and `/usr/bin/python3`; the Python fixture runs
+isolated from inherited Python settings and adds no application dependency.
+The earlier [native test failure](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40765450230)
+is retained and remains unattributed; the observation repair does not establish
+its cause or change production launch behavior. See the
+[bounded claim](../lanes/2026-10-28-linux-owner-death-observation.md).
+
 Original LEGO images remain a private bring-up path, without a
 qualified Code-tab arena backend. See [NuttX](../SPIKE-NUTTX.md),
 [MicroPython](spike-micropython-gui.md) and

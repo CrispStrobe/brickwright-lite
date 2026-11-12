@@ -1,6 +1,6 @@
 # x86 finite V10 resolver-kind inventory and current GUI acceptance
 
-Owner: x86 coordinator. Status: UNARMED DRAFT [PR1540](https://github.com/CrispStrobe/brickwright-lite/pull/1540); execution disabled.
+Owner: x86 coordinator. Status: source-arming candidate [PR1540](https://github.com/CrispStrobe/brickwright-lite/pull/1540); actual selection and guest acceptance pending.
 Initial base: Lite main `8acc3b962803e360a0c561c696d097839046c1ab`.
 Current composition also preserves later Main changes.
 
@@ -111,6 +111,29 @@ request substitution/replay, post-ACK drift, inadequate remaining time and
 unconditional cleanup controls. No whole-OS, physical timing, Windows or release claim follows
 from a resolver metadata repair.
 
+## Source checkpoint
+
+The candidate implements the typed V10 inventory, separate same-job Actual-V9
+prelude, independent phase reader, immutable ACK admission and final original
+reader. New execution and reader switches remain false. The consumed V9 inventory
+and Actual-V8 execution routes are retired; their readers and original failures
+remain historical evidence. No new actual run or guest acceptance is claimed.
+
+Connected controls cover both resolver roles, source and runtime drift, ACK
+identity and replay, deadline accounting and cleanup. Workflow controls preserve
+isolated Python startup, upload ordering and action pins. The pin-history reader
+also includes first-parent merge diffs, with a real conflicting-merge regression;
+this recovers previously adopted pins without exempting current or unrecorded
+values. The owner-released sealed study repair is integrated without changing
+its original sources or pins; 83 affected synthetic and pin-policy controls pass.
+Hosted qualification and actual x86 acceptance remain pending.
+
+Next: compose current main, resolve all source-policy findings with their owners
+and pass enabled candidate checks. Then review arming separately, admit the exact
+Build checkout and native reference, and perform the one new same-job phase/ACK
+and actual FreeDOS/forward-debug acceptance described above. Source merge and
+application-level profiling remain pending that acceptance.
+
 ## Shared pin-policy integration
 
 The circuit-study owner released the sealed historical-role and synthetic
@@ -128,8 +151,9 @@ merge still requires every enabled final-head check and affected x86 acceptance.
 
 ## Published checkpoint and next action
 
-Draft PR1540 at `4257afa4052c4b14667ac4c54f482b2cc0cb1c40` contains the
-unarmed implementation and current-main composition. PR1318 is closed as
+The initial published checkpoint is
+`4257afa4052c4b14667ac4c54f482b2cc0cb1c40` in draft PR1540. Obtain the current
+PR head from GitHub before acting; this immutable checkpoint is historical. PR1318 is closed as
 superseded; its branch, body and original failures are preserved. All new
 execution/reader guards remain false. No actual guest result or merge is claimed.
 
@@ -143,3 +167,52 @@ Complete and independently review the external phase-admission, request/ACK and
 final-reader tooling before separately reviewing arming. Then admit the current
 Build and native reference, perform the single new same-job acceptance and audit
 its terminal result. Keep every qualification and merge condition above.
+
+## Job identity hardening
+
+The current candidate also requires each Actual-V9 job observation to identify
+the selected source commit and typed first run attempt. Producer admission and
+retained readback, plus independent phase/final selected and retained metadata,
+reject missing, Boolean or contradictory identities. Fourteen affected controls
+and all 34 pin-policy controls pass after independent review. Historical readers,
+method counts, execution flags and resource limits are unchanged. New reader
+bytes invalidate earlier controller bindings until separately reviewed; do not
+silently refresh a frozen controller or transfer a previous head's admission.
+
+## Bounded final-reader parts transport
+
+The candidate adds the distinct `--actual-v9-parts` reader entry and
+`bw.gui-hdd.actual-v9-parts-manifest.v1`. Use the closed eleven raw input roles
+with a canonical manifest of at most 64 KiB; manifest plus raw parts remains
+at most 4 MiB. This avoids Base64 expansion in the external transport without
+raising the request, archive or original-data limits. The assembled expectation
+still passes the unchanged final policy and original audit. Historical parts
+routes are unchanged, and the V9 reader guard stays false before input reads.
+
+The combined standalone suite now covers 185 methods, including four added
+parts controls; all earlier methods remain. Its wrapper and all 34 pin-policy
+controls pass. Manufactured large transport and small complete-reader parity
+are separate from actual guest qualification, which remains pending.
+
+
+## Source-arming candidate — 2026-10-29
+
+The candidate enables the two F10/Actual-V9 producer guards, the two matching
+reader guards and only the same-job Actual-V9 workflow gate. Its existing
+owned-actor, dispatch-input, first-attempt, source and admission conditions remain.
+The standalone F10 job and historical execution routes remain disabled.
+
+Two connected armed-entry controls bring the selected standalone methods from
+185 to 187. Earlier methods remain, including explicit disabled-before-input
+coverage. Focused Python, workflow, browser-source and body-profile controls
+pass. The complete standalone did not finish within its unchanged 60-second
+preparation bound; the complete pin suite also reported missing-checkout inputs.
+These failures remain recorded. Full exact-head source qualification and actual
+affected guest acceptance remain mandatory; no limit or assertion is waived.
+
+Private controller, one-pass, request/ACK and final-parts successors bind the
+reviewed armed source explicitly; previous versions remain historical. Source
+activation is not event admission. Select no actual event until complete source,
+Build, retained-reference and operational once-only control admission is finished.
+Only the new same-job FreeDOS persistence/export/reload, forward debugger and
+cleanup originals can close this lane. No measured speedup or full-OS claim follows.

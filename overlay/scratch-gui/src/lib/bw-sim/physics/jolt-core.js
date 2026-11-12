@@ -205,6 +205,29 @@ const withFloorSweeps = (ids, setQuality, discrete, linearCast, step) => {
     return result;
 };
 // FLOOR1436_GROUND_END
+/**
+ * Safety factor on the distance a floor point can close in one step (#1435): an idle speculative
+ * floor hit is dropped only when its gap is more than this many times that distance (plus the slop).
+ */
+export const FLOOR_SPECULATIVE_MARGIN = 2;
+/**
+ * Which floor hits the contact listener may drop as idle speculative points (#1435, see the
+ * listener in createPhysicsCore): the static ground body and the dynamic bodies of 2+ colliders
+ * (one convex collider gives at most a 4-point face, so Jolt never prunes its floor manifold).
+ * null when there is no such pair, or with experiments.floorSpeculativeFilter === false (A/B only).
+ */
+const floorSpeculativeFilterPlan = (mechanism, experiments, bodyMap, dtFixed) => {
+    if (experiments.floorSpeculativeFilter === false) return null;
+    const ground = mechanism.bodies.find(b => b.id === 'ground' && b.motion === 'static');
+    if (!ground || !bodyMap.has(ground.id)) return null;
+    const compounds = new Set();
+    for (const b of mechanism.bodies) {
+        if (b.motion === 'dynamic' && b.colliders.length > 1) compounds.add(bodyMap.get(b.id).bodyID.GetIndexAndSequenceNumber());
+    }
+    if (compounds.size === 0) return null;
+    return {groundIndex: bodyMap.get(ground.id).bodyID.GetIndexAndSequenceNumber(), compounds,
+        gravity: mechanism.gravity, margin: experiments.floorSpeculativeMargin ?? FLOOR_SPECULATIVE_MARGIN, dtFixed};
+};
 
 /**
  * Solver velocity iterations for an island holding a gear (Jolt's default is
@@ -262,6 +285,9 @@ const BELT_VELOCITY_STEPS = 4;
  * 77 µs per step with 30/5, 155 µs with 20, 207 µs with 30). Each motorised hinge therefore gets
  * MOTOR_POSITION_PER_EPS / ε of them, within [MOTOR_POSITION_STEPS, MOTOR_POSITION_STEPS_MAX]: the arm
  * (ε 0.011) 30, a SPIKE wheel (ε 0.048) 7, a chassis side (ε ≈ 0.8) the minimum.
+ * These figures are the legacy rotor's (on the bodies). A model with `0 !BW ROTOR_INERTIA native` keeps bare
+ * bodies, so ε and the steps are the bare ones; its rotor's conditioning lives in the velocity
+ * iterations instead and is a known limit (setRotorInertia, docs/SIM-LAB.md).
  */
 const MOTOR_VELOCITY_STEPS = 30;
 const MOTOR_POSITION_STEPS = 5;
@@ -358,6 +384,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     const problems = validateCompiledMechanism(compiled, { kinds });
     if (problems.length) throw new Error(problems.join('\n'));
     const mechanism = upgradeMechanismV1(compiled);
+    /** `0 !BW ROTOR_INERTIA native` (#1494): the engine's relative hinge rotor instead of body inertia. */
+    const nativeRotor = mechanism.rotor === 'native';
     /** joint id -> its actuator (CompiledMechanism v2): the motorised hinges */
     const actuatorOf = new Map(mechanism.actuators.map(a => [a.joint, a]));
     const dtFixed = 1 / stepHz;
@@ -1526,9 +1554,62 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     for (const [id, e] of bodyMap) bodyIdOfIndex.set(e.bodyID.GetIndexAndSequenceNumber(), id);
     let contactLog = null;
     let contactListener = null;
+    // Idle speculative floor points (#1435, docs/ROBOT-LAB-RESTING-CREEP.md "Fix"). With manifold
+    // reduction, every floor hit of a compound body is merged into one manifold, and Jolt prunes it to
+    // 4 points weighting each by |point separation|², clamped below at 1 mm². That weight has no sign:
+    // a collider hovering 1–2 mm above the floor (inside LEGO_SPECULATIVE_CONTACT_M) outweighs the
+    // touching supports and takes one of the 4 slots. Its point carries no load, a real support corner
+    // drops out, the support polygon no longer holds the centre of mass, and the frame rocks, sinks
+    // (0.6–1.7 mm) and creeps as the chosen points change from step to step. Such a hit is rejected
+    // here only when it cannot close this step even at gravity's extra speed (so its speculative
+    // constraint could not push), on a dynamic body of 2+ colliders against the static ground. A hit
+    // that can close is kept, as is every touching hit and every other body pair.
+    const floorFilter = floorSpeculativeFilterPlan(mechanism, experiments, bodyMap, dtFixed);
+    if (recordContacts || floorFilter) {
+        contactListener = new J.ContactListenerJS();
+        let validate = () => J.ValidateResult_AcceptAllContactsForThisBodyPair;
+        if (floorFilter) {
+            const {groundIndex, compounds, gravity, margin} = floorFilter;
+            validate = (body1Ptr, body2Ptr, baseOffsetPtr, resultPtr) => {
+                // Body 1 has the higher motion type: against the static ground it is the dynamic one.
+                const b2 = J.wrapPointer(body2Ptr, J.Body);
+                if (b2.GetID().GetIndexAndSequenceNumber() !== groundIndex) return J.ValidateResult_AcceptAllContactsForThisBodyPair;
+                const b1 = J.wrapPointer(body1Ptr, J.Body);
+                if (!compounds.has(b1.GetID().GetIndexAndSequenceNumber())) return J.ValidateResult_AcceptAllContactsForThisBodyPair;
+                const hit = J.wrapPointer(resultPtr, J.CollideShapeResult);
+                const gap = -hit.mPenetrationDepth;
+                if (!(gap > LEGO_PENETRATION_SLOP_M)) return J.ValidateResult_AcceptContact;
+                // Closing speed of the hit point along the contact axis (body 1 into the ground), m/s.
+                // [Value]/[Ref] results are binding-owned: read them at once, never destroy them.
+                const axis = hit.mPenetrationAxis;
+                const ax = axis.GetX(), ay = axis.GetY(), az = axis.GetZ();
+                const len = Math.hypot(ax, ay, az);
+                if (!(len > 0)) return J.ValidateResult_AcceptContact;
+                const nx = ax / len, ny = ay / len, nz = az / len;
+                const r = hit.mContactPointOn1; // relative to the base offset: body 1's centre of mass
+                const rx = r.GetX(), ry = r.GetY(), rz = r.GetZ();
+                const w = b1.GetAngularVelocity();
+                const wx = w.GetX(), wy = w.GetY(), wz = w.GetZ();
+                const v = b1.GetLinearVelocity();
+                // Jolt has already added this step's gravity to the velocity; take it out again. A
+                // resting body's supports cancel it, so what is left is how the point was moving.
+                const gf = b1.GetMotionProperties().GetGravityFactor() * dtFixed;
+                const vx = v.GetX() - gravity[0] * gf + wy * rz - wz * ry;
+                const vy = v.GetY() - gravity[1] * gf + wz * rx - wx * rz;
+                const vz = v.GetZ() - gravity[2] * gf + wx * ry - wy * rx;
+                const closing = Math.max(0, vx * nx + vy * ny + vz * nz);
+                return gap > margin * closing * dtFixed + LEGO_PENETRATION_SLOP_M
+                    ? J.ValidateResult_RejectContact : J.ValidateResult_AcceptContact;
+            };
+        }
+        contactListener.OnContactValidate = validate;
+        contactListener.OnContactAdded = () => {};
+        contactListener.OnContactPersisted = () => {};
+        contactListener.OnContactRemoved = () => {};
+        physicsSystem.SetContactListener(contactListener);
+    }
     if (recordContacts) {
         contactLog = { pairs: new Map(), manifolds: 0 };
-        contactListener = new J.ContactListenerJS();
         const note = (body1Ptr, body2Ptr) => {
             const b1 = J.wrapPointer(body1Ptr, J.Body);
             const b2 = J.wrapPointer(body2Ptr, J.Body);
@@ -1538,11 +1619,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             contactLog.pairs.set(key, (contactLog.pairs.get(key) || 0) + 1);
             contactLog.manifolds += 1;
         };
-        contactListener.OnContactValidate = () => J.ValidateResult_AcceptAllContactsForThisBodyPair;
         contactListener.OnContactAdded = (b1, b2) => note(b1, b2);
         contactListener.OnContactPersisted = (b1, b2) => note(b1, b2);
-        contactListener.OnContactRemoved = () => {};
-        physicsSystem.SetContactListener(contactListener);
     }
 
 
@@ -1571,7 +1649,11 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 if (e.isMotor) {
                     setMotorSettings(e, e.mode === 'torque' ? {limit: 1e6, damping: e.damping} : {limit: e.maxTorque});
                     e.hinge.SetMaxFrictionTorque(friction);
-                    if (rotorInertia !== e.rotorInertia) core.setRotorInertia(id, rotorInertia);
+                    // A native rotor's Jr, scalar speed and warm-start impulse are in Jolt's saved state:
+                    // restore metadata only (a setter would clear the restored impulse). The legacy
+                    // rotor is body inertia, which Jolt's state does not hold: put it back.
+                    if (nativeRotor) e.rotorInertia = rotorInertia;
+                    else if (rotorInertia !== e.rotorInertia) core.setRotorInertia(id, rotorInertia);
                 }
             }
         }
@@ -1860,6 +1942,15 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                             limitForceN: limit, linearVelocityMS: entry.velocity})};
                 };
                 for (const [id, e] of hingeMap) capture(id, e, e.hinge, true);
+                // A native rotor's own completed-step state (`0 !BW ROTOR_INERTIA native` only).
+                if (nativeRotor) for (const [id, e] of hingeMap) {
+                    if (!(e.rotorInertia > 0)) continue;
+                    const Jr = e.hinge.GetReflectedRotorInertia();
+                    const wr = e.hinge.GetRotorAngularVelocity();
+                    const rotorImpulseNmS = e.hinge.GetTotalLambdaRotor();
+                    Object.assign(dynamics[id], {rotorImpulseNmS, rotorTorqueNm: rotorImpulseNmS / dtFixed,
+                        rotorInertiaKgM2: Jr, rotorAngularVelocityRadS: wr, rotorEnergyJ: 0.5 * Jr * wr * wr});
+                }
                 for (const [id, e] of sliderMap) capture(id, e, e.slider, false);
                 if (fixedStepObservers.size) {
                     deliveringStepObservation = true;
@@ -1950,26 +2041,55 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
          * constraints see (measured: as a motor term the rotor drove a light 24T and arm
          * through a static block, the gear constraint slipping). Setting, not adding: a second
          * call with the same value changes nothing.
+         *
+         * That is the default ('legacy'). A model declaring `0 !BW ROTOR_INERTIA native` (mechanism.rotor,
+         * issue #1494) instead configures the engine's native relative hinge rotor (jolt-physics
+         * 1.1.0-bw.9): kinetic energy ½·J·(ω2 − ω1)², bare body mass, centre of mass and inertia
+         * unchanged, rotor speed and warm-start impulse in Jolt's state. Known limit: the solver
+         * converges that rotor row poorly against contacts, stops and gear meshes on a LIGHT output
+         * body (a gear, arm or wheel of a few grams), because those rows see the bare body; use it
+         * where the housing is free to turn about the motor axis and the output is not stopped.
          */
         setRotorInertia(jointId, inertiaKgM2) {
             ensureAlive();
             const entry = hingeMap.get(jointId);
             if (!entry || !entry.isMotor) throw new Error(`joint ${jointId} is not a motorised hinge`);
-            const I = Number(inertiaKgM2);
-            if (!(I >= 0) || !Number.isFinite(I)) throw new Error('setRotorInertia needs a finite inertia >= 0');
-            const delta = I - entry.rotorInertia;
-            if (delta === 0) return;
-            const j = jointMap.get(jointId);
-            for (const [id, body, local] of [[j.body1, entry.bodyA, entry.localAxis1], [j.body2, entry.bodyB, entry.localAxis2]]) {
-                const e = bodyMap.get(id);
-                if (!e || e.motionType === J.EMotionType_Static) continue;
-                const n = Math.hypot(...local);
-                const a = local.map(v => v / n);
-                const mp = body.GetMotionProperties();
-                setInertia(mp, inertiaOf(mp).map((row, r) => row.map((v, k) => v + delta * a[r] * a[k])));
+            if (!nativeRotor) {
+                const I = Number(inertiaKgM2);
+                if (!(I >= 0) || !Number.isFinite(I)) throw new Error('setRotorInertia needs a finite inertia >= 0');
+                const delta = I - entry.rotorInertia;
+                if (delta === 0) return;
+                const j = jointMap.get(jointId);
+                for (const [id, body, local] of [[j.body1, entry.bodyA, entry.localAxis1], [j.body2, entry.bodyB, entry.localAxis2]]) {
+                    const e = bodyMap.get(id);
+                    if (!e || e.motionType === J.EMotionType_Static) continue;
+                    const n = Math.hypot(...local);
+                    const a = local.map(v => v / n);
+                    const mp = body.GetMotionProperties();
+                    setInertia(mp, inertiaOf(mp).map((row, r) => row.map((v, k) => v + delta * a[r] * a[k])));
+                }
+                entry.rotorInertia = I;
+                setMotorSteps(entry, j);
+                return;
             }
-            entry.rotorInertia = I;
+            const requested = Number(inertiaKgM2);
+            const I = Math.fround(requested);
+            if (!(requested >= 0) || !Number.isFinite(requested) || !Number.isFinite(I)) {
+                throw new Error('setRotorInertia needs a finite native-float inertia >= 0');
+            }
+            for (const method of ['SetReflectedRotorInertia', 'GetReflectedRotorInertia',
+                'GetRotorAngularVelocity', 'GetTotalLambdaRotor']) {
+                if (typeof entry.hinge[method] !== 'function') throw new Error(`native hinge lacks ${method}`);
+            }
+            if (I === entry.rotorInertia) return;
+            if (!entry.hinge.SetReflectedRotorInertia(I)) throw new Error('native hinge rejected rotor inertia');
+            entry.rotorInertia = entry.hinge.GetReflectedRotorInertia();
+            const j = jointMap.get(jointId);
             setMotorSteps(entry, j);
+            for (const id of [j.body1, j.body2]) {
+                const body = bodyMap.get(id);
+                if (body && body.motionType === J.EMotionType_Dynamic) bodyInterface.ActivateBody(body.bodyID);
+            }
         },
         /**
          * A tyred wheel's rolling resistance (physics/rolling.js) as of the last step: {load (N, the

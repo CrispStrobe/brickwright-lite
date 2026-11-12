@@ -156,7 +156,8 @@ const sliderTravel = (group, ref, nodes, edges, nodeToBody) => {
     return [Math.min(0, lo), Math.max(0, hi)];
 };
 
-export const buildJoints = (nodes, edges, islands, diagnostics = []) => {
+export const buildJoints = (nodes, edges, islands, diagnostics = [], {motorDirection = 'legacy'} = {}) => {
+    if (!['legacy', 'motor-frame'].includes(motorDirection)) throw new RangeError('Unknown motor direction mode');
     const {nodeToBody, bodyMap} = islands;
     // Collect hinge and ball edges that are between different islands
     const candidates = []; // each {edge, body1, body2, pointLdu, axisLdu, pointWorld, axisWorld, isMotor, motor}
@@ -279,18 +280,21 @@ export const buildJoints = (nodes, edges, islands, diagnostics = []) => {
                 // If multiple axes have opposite directions, we need consistent; they are parallel same direction per check abs, but we used abs. For collinear check we used abs, so opposite direction still considered parallel. Need to choose axis direction consistent with majority. Use ref's axisWorld oriented already.
                 // If there are two axes opposite, the average would be ambiguous; we pick ref.
 
-                // Motor handling: if any member is motor internal, its joint should be separate, but motor internal groups are size 1 always (only one edge between housing and output), so they are not in >1 group. So ignore.
+                // Existing models retain the bearing-led axis/body ordering.
+                // Opted-in models use the motor's own frame, independent of a
+                // symmetric drive axle's insertion direction (#1460).
+                const motorMember = group.find(g => g.motor);
+                const lead = motorDirection === 'motor-frame' && motorMember ? motorMember : ref;
 
                 const joint = {
                     id: '',
                     type: 'hinge',
-                    body1: ref.body1,
-                    body2: ref.body2,
+                    body1: lead.body1,
+                    body2: lead.body2,
                     point: midWorld,
-                    axis: ref.axisWorld,
+                    axis: lead.axisWorld,
                 };
                 // If any member has motor, include it (should not happen for hinge group >1)
-                const motorMember = group.find(g => g.motor);
                 if (motorMember) joint.motor = motorOf(motorMember.motor);
                 const slip = slipTorqueOf(group, nodes);
                 if (slip !== null) joint.frictionNm = slip;

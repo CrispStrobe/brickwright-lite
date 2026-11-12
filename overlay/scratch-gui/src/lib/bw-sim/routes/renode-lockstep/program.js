@@ -30,6 +30,13 @@ export const ROUTE_PROGRAM_ID = 1;
 export const PROGRAM_STATE_NAMES = Object.freeze(['empty', 'ready', 'running', 'complete', 'stopped', 'fault']);
 
 export const PUBLICATION_CAPABILITY = 'nuttx-program-publication/v1';
+
+/**
+ * The state service advertises this when the package found the firmware's
+ * g_bw_program_instruction_abi 2 (ops 7/8, brickwright-spike-prime-fw#56); without it, ABI 1.
+ */
+export const INSTRUCTIONS_V2_CAPABILITY = 'nuttx-program-instructions/v2';
+export const instructionAbi = frame => (frame?.target?.capabilities?.includes(INSTRUCTIONS_V2_CAPABILITY) === true ? 2 : 1);
 const publicationSequence = value => Number.isInteger(value) && value > 0 && value <= 0xffffffff && value % 2 === 0;
 
 const OP_NAME = {[PROGRAM_OP.START]: 'START', [PROGRAM_OP.STOP]: 'STOP'};
@@ -50,7 +57,7 @@ export class LockstepProgram {
      * @param {object} options
      * @param {{call: Function}} options.transport the route's transport (broker op names)
      * @param {string|null} [options.pythonSource] own-NuttX embedded Python, mutually exclusive with program
-     * @param {{version: 1, instructions: number[][]}} options.program compileFirmwareProgram's output
+     * @param {{version: 1|2, instructions: number[][]}} options.program compileFirmwareProgram's output
      * @param {'default'|'six-motors'|'dual-ultrasonic'} [options.topology]
      * @param {number} [options.id]
      * @param {Function} [options.onChange] called after the program's state or a control changed
@@ -66,7 +73,7 @@ export class LockstepProgram {
             this.key = `python:${pythonSource}`;
         } else {
             encodeInstructions(program, {topology});
-            this.program = {version: 1, instructions: program.instructions.map(row => [...row])};
+            this.program = {version: program.version, instructions: program.instructions.map(row => [...row])};
             this.key = JSON.stringify(this.program.instructions);
         }
         this.transport = transport;

@@ -34,6 +34,7 @@ const StageComponent = props => {
         onArcadeDialogDismiss,
         onArcadeDialogButtonEdge,
         onQuestionAnswered,
+        onQuestionInput,
         ...boxProps
     } = props;
 
@@ -113,6 +114,7 @@ const StageComponent = props => {
                                     question={question}
                                     arcadePrompt={arcadePrompt}
                                     onQuestionAnswered={onQuestionAnswered}
+                                    onQuestionInput={onQuestionInput}
                                 />
                             </div>
                         )}
@@ -155,6 +157,7 @@ StageComponent.propTypes = {
     onArcadeDialogButtonEdge: PropTypes.func,
     onDoubleClick: PropTypes.func,
     onQuestionAnswered: PropTypes.func,
+    onQuestionInput: PropTypes.func,
     question: PropTypes.string,
     arcadePrompt: PropTypes.shape({
         answerLength: PropTypes.number.isRequired,

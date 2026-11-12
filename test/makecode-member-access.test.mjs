@@ -127,6 +127,13 @@ test('arrays: _pickRandom() and unshift(v) are the arrays words', () => {
     }
 });
 
+// A Buffer's `.length` is its own word on micro:bit, not a refusal.
+test('micro:bit Buffer length reads as the buffer-length word', () => {
+    const {code, unsupported} = microbitToPseudocode('let b = serial.readBuffer(0)\nlet r = b.length\n');
+    assert.deepEqual(unsupported, []);
+    assert.match(code, /set r to length of buffer b$/m);
+});
+
 // ── everything else: refused by name, never a variable ─────────────────
 const REFUSED = [
     // [source, the refusal names this, a member name that must not be a variable]
@@ -134,16 +141,16 @@ const REFUSED = [
         'toLowerCase()', 'trim()', 'isEmpty()', 'compare("b")', 'replace("a", "b")', 'charCodeAt(1)']
         .map(call => [inFunction(`s.${call}`), `s.${call.replace(/\(.*/, '')}()`, call.replace(/\(.*/, '')]),
     [inFunction('String.fromCharCode(65)'), 'String.fromCharCode()', 'fromCharCode'],
-    // `.length` of a value no rule knows the type of: a Buffer, an untyped parameter.
-    ['let b = serial.readBuffer(0)\nlet r = b.length\n', 'b.length — not known to be a text or an array', 'length'],
+    // `.length` of a value no rule knows the type of: an untyped parameter. (A Buffer's
+    // length is a word now — `length of buffer` — so it is no longer refused.)
     ['let r = 0\nfunction d(v: any) {\n    r = v.length\n}\nd(1)\n', 'v.length — not known to be a text or an array', 'length'],
     // Any other property of a value of no known type.
     ['let r = 0\nfunction d(v: any) {\n    r = v.size + v.width\n}\nd(1)\n', 'v.size — a property this importer has no word for', 'size'],
-    // A class the importer refuses (an accessor): its properties, read and written.
-    ['class M {\n    _k: number\n    get kind() { return this._k }\n    set kind(v: number) { this._k = v }\n}\n' +
+    // A class the importer refuses (a heritage clause; accessors are lowered now): its properties, read and written.
+    ['class B {\n    x = 1\n}\nclass M extends Elsewhere {\n    _k: number\n    get kind() { return this._k }\n    set kind(v: number) { this._k = v }\n}\n' +
         'let m = new M()\nm.kind = 3\nlet r = m.kind\n', 'm.kind = … — a property this importer cannot write', 'kind'],
-    ['class M {\n    _k: number\n    get kind() { return this._k }\n}\nlet m = new M()\nlet r = m.kind\n', 'm.kind — a property this importer has no word for', 'kind'],
-    ['class M {\n    _k: number\n    get kind() { return this._k }\n}\nlet m = new M()\nm.kind++\n', 'm.kind++ — a property this importer cannot write', 'kind']
+    ['class B {\n    x = 1\n}\nclass M extends Elsewhere {\n    _k: number\n    get kind() { return this._k }\n}\nlet m = new M()\nlet r = m.kind\n', 'm.kind — a property this importer has no word for', 'kind'],
+    ['class B {\n    x = 1\n}\nclass M extends Elsewhere {\n    _k: number\n    get kind() { return this._k }\n}\nlet m = new M()\nm.kind++\n', 'm.kind++ — a property this importer cannot write', 'kind']
 ];
 for (const [src, why, member] of REFUSED) {
     test(`refused by name, not a variable: ${why}`, () => {
@@ -155,6 +162,12 @@ for (const [src, why, member] of REFUSED) {
                 assert.match(code, why === 's.charCodeAt()' ? /char code of text \(arcade local s\) at/ : /text from char code/);
                 continue;
             }
+            // The micro:bit has words for char codes (char code of … at …, char from code …).
+            if (target === 'micro:bit' && ['s.charCodeAt()', 'String.fromCharCode()'].includes(why)) {
+                assert.deepEqual(unsupported, [], code);
+                assert.match(code, why === 's.charCodeAt()' ? /char code of .* at/ : /char from code/);
+                continue;
+            }
             assert.ok(unsupported.some(u => u.includes(why)), `${target}: ${JSON.stringify(unsupported)}\n${code}`);
             const lines = code.split('\n').filter(l => !/^\s*#/.test(l)).join('\n');
             assert.doesNotMatch(lines, new RegExp(`(^|[\\s(])${member}($|[\\s)])`, 'm'), `${target}: ${member} as a name\n${code}`);
@@ -163,7 +176,7 @@ for (const [src, why, member] of REFUSED) {
 }
 
 test('a refused member names the calls inside it, so the census does not count them lost', () => {
-    const cls = 'class M {\n    _k: number\n    get kind() { return this._k }\n    set kind(v: number) { this._k = v }\n}\n';
+    const cls = 'class B {\n    x = 1\n}\nclass M extends Elsewhere {\n    _k: number\n    get kind() { return this._k }\n    set kind(v: number) { this._k = v }\n}\n';
     const write = microbitToPseudocode(`${cls}let m = new M()\nm.kind = control.deviceSerialNumber()\n`).unsupported;
     assert.ok(write.some(u => u.startsWith('m.kind = …') && u.endsWith('it calls control.deviceSerialNumber()')), JSON.stringify(write));
     const read = microbitToPseudocode('let a = [1]\nlet r = a[input.lightLevel()].kind\n').unsupported;

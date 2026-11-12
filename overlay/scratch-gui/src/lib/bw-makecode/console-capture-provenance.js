@@ -21,7 +21,8 @@ export function analyseConsoleCaptures({targets, blocks, input, literal}) {
         ['arcade_registerScenePopHandler','arcade_whenRegisteredScenePop'],
         ['arcade_registerForeverHandler','arcade_whenRegisteredForever'],
         ['arcade_registerLifeZeroHandler','arcade_whenRegisteredLifeZero'],
-        ['arcade_registerCountdownHandler','arcade_whenRegisteredCountdown']
+        ['arcade_registerCountdownHandler','arcade_whenRegisteredCountdown'],
+        ['arcade_registerExternalHandler','arcade_whenRegisteredExternal']
     ]);
     const hats=new Set(pairs.values()), owners=new Map(), scopes=[], records=[], cells=new Map(), proofCache=new Map();
     const strings=value=>typeof value==='string'?value.trim().split(/\s+/).filter(Boolean):null;

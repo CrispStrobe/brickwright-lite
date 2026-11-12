@@ -1,6 +1,11 @@
 # Arcade native-frame entry-reset nonreachability — claim
 
-Status: CLAIMED; merge this scope before implementation.
+Status: implemented after claim #1283 merged. Independent source review and
+all 11 whole-module source controls passed at
+`41b8c0dce0e379bba7530a692b192c10689673c7`, including four immutable
+built-in kind literals. The exact captured-input source receiver check passed
+at `4a5d5e6574d874b35c75fcaecaf711430677bf9b`. Final-head hosted/native/GUI qualification remains
+pending; no runtime, GUI or application completion is asserted.
 Owner: Arcade integration. Isolated branch:
 `lane/arcade-native-frame-reset-claim-20261023`.
 Base: `95b5b97034058abffe5b2e8746581ee64e23691c`.

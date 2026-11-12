@@ -21,3 +21,12 @@ test('frame callback runtime reduces its next actual sleep and never runs an ove
  const host=createFrames({...clock,polls:()=>polls,runFrame:async(owner,delta)=>{assert.equal(active,false);active=true;frames.push({time:clock.now(),delta});await clock.advanceTo(clock.now()+7);active=false;},onError:e=>{throw e;}});
  host.register('scene');await clock.advanceTo(40);assert.deepEqual(frames,[{time:0,delta:0},{time:20,delta:20},{time:40,delta:20}]);host.cancel();
 });
+test('a killed frame fiber never restarts, even when its context is registered again',async()=>{
+ const {clock,host,frames}=setup();host.register('scene');await clock.advanceTo(45);
+ const before=frames.length;assert.ok(before>=2);
+ host.kill('scene');await clock.advanceTo(200);assert.equal(frames.length,before);
+ host.register('scene');await clock.advanceTo(400);assert.equal(frames.length,before);
+ // PXT leaves runningCallbacks set; a sibling scene is unaffected.
+ host.register('other');await clock.advanceTo(450);assert.ok(frames.some(frame=>frame.owner==='other'));
+ host.cancel();
+});

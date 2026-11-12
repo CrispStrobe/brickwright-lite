@@ -1,4 +1,6 @@
-# Arcade current-main notice composition — CLAIMED
+# Arcade current-main notice composition — implementation checkpoint
+
+DONE for source integration; complete composed-head qualification is pending.
 
 Owner: Arcade integration. Branch: `lane/arcade-notice-composition-claim-20261023`.
 Base `ce9fffa9e4271ea344accb1de860fa15c9673abb`. Merge this narrow amendment before manual resolution.
@@ -38,3 +40,15 @@ Do not borrow parent successes, repeat unchanged failures, add full-CI labels,
 force-push or dispatch duplicates. No application completion follows from this
 integration. The independent GUI export-input capture remains separately scoped
 pending work; this amendment does not implement it.
+
+## Integration checkpoint
+
+Claim #1252 merged before manual resolution. The one manual conflict keeps eight
+unique scoped bundle entries and all six required source-author checks. The
+registered Arrays decoder, licence checks and error behavior remain unchanged.
+The incoming motor identities coexist with the retained Arrays identity; no
+independent pin is selected. Automatic main integration retains its qualified
+Robot Lab work, generated menus, workflow/source-policy entries and controls.
+Source review confirms the exact inventory union and unchanged incoming disjoint
+paths. Original failed controls and the separate Arcade repairs remain retained;
+require the final candidate's complete hosted results before landing.

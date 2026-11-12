@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {runProgram} from './helpers/bw-vm.mjs';
-import {instrumentProjectHistory} from '../overlay/scratch-gui/src/lib/bw-project-history.js';
+import {instrumentProjectHistory, changeProjectTitle} from '../overlay/scratch-gui/src/lib/bw-project-history.js';
 import {
     activateUndoSurface, getUndoState, redoActiveSurface, undoActiveSurface
 } from '../overlay/scratch-gui/src/lib/global-undo.js';
@@ -26,6 +26,176 @@ const fixture = async () => {
 };
 const names = target => target.sprite.costumes.map(costume => costume.name);
 const sprites = vm => vm.runtime.targets.filter(t => t.isOriginal && !t.isStage).map(t => t.getName());
+
+test('a user title edit undoes and redoes without recording project loading', async () => {
+    clearProjectHistory();
+    activateUndoSurface('test-project-only');
+    let title = 'Before';
+    const apply = value => { title = value; };
+    try {
+        changeProjectTitle(title, 'After', apply);
+        assert.equal(title, 'After');
+        assert.deepEqual(getUndoState().project.past, ['Project: Rename “Before” → “After”']);
+        await undoActiveSurface(); assert.equal(title, 'Before');
+        await redoActiveSurface(); assert.equal(title, 'After');
+        assert.equal(getUndoState().project.past.length, 1);
+        changeProjectTitle(title, title, apply);
+        assert.equal(getUndoState().project.past.length, 1, 'an unchanged title adds no step');
+        apply('Loaded title');
+        assert.equal(getUndoState().project.past.length, 1, 'ordinary Redux/loading writes do not become user edits');
+    } finally { clearProjectHistory(); }
+});
+
+test('two concurrent script copies are independent reversible steps, with their local variables', async () => {
+    const {vm, actor} = await fixture();
+    try {
+        await vm.duplicateSprite(actor.id);
+        const target = vm.runtime.targets.find(t => t.isOriginal && !t.isStage && t !== actor);
+        clearProjectHistory();
+        actor.createVariable('copy-local', 'Private', '');
+        actor.variables['copy-local'].value = 42;
+        const block = {id: 'copy-source', opcode: 'data_setvariableto', next: null, parent: null,
+            inputs: {}, fields: {VARIABLE: {name: 'VARIABLE', value: 'Private', id: 'copy-local', variableType: ''}},
+            topLevel: true, shadow: false, x: 0, y: 0};
+        const initialBlocks = Object.keys(target.blocks._blocks).length;
+        const initialVariables = Object.keys(target.variables);
+        await Promise.all([vm.shareBlocksToTarget([block], target.id, actor.id),
+            vm.shareBlocksToTarget([block], target.id, actor.id)]);
+        assert.equal(Object.keys(target.blocks._blocks).length, initialBlocks + 2);
+        assert.equal(getUndoState().project.past.length, 2);
+        const shared = Object.values(target.blocks._blocks).filter(b => b.opcode === 'data_setvariableto');
+        assert.equal(shared.length, 2);
+        const id = shared[0].fields.VARIABLE.id;
+        assert.equal(target.variables[id].value, 0, 'Scratch initializes a newly shared local variable to zero');
+        assert.equal(actor.variables['copy-local'].value, 42, 'the source variable is unchanged');
+        await undoActiveSurface();
+        assert.equal(Object.keys(target.blocks._blocks).length, initialBlocks + 1);
+        assert.equal(target.variables[id].value, 0, 'the first copy still owns the variable');
+        await undoActiveSurface();
+        assert.equal(Object.keys(target.blocks._blocks).length, initialBlocks);
+        assert.deepEqual(Object.keys(target.variables), initialVariables);
+        await redoActiveSurface(); await redoActiveSurface();
+        assert.equal(Object.keys(target.blocks._blocks).length, initialBlocks + 2);
+        assert.equal(target.variables[id].value, 0);
+        assert.equal(getUndoState().project.past.length, 2);
+    } finally { vm.quit(); clearProjectHistory(); }
+});
+
+test('a script copy finishing after project replacement cannot restore old History', async () => {
+    const {vm} = await runProgram('SPRITE Actor:\nWHEN flag clicked:\n  move 1 steps', {frames: 1});
+    instrumentProjectHistory(vm);
+    clearProjectHistory();
+    activateUndoSurface('test-project-only');
+    const actor = vm.runtime.targets.find(target => target.isOriginal && !target.isStage);
+    let release;
+    const pending = new Promise(resolve => { release = resolve; });
+    let entered;
+    const started = new Promise(resolve => { entered = resolve; });
+    const manager = vm.extensionManager;
+    const isLoaded = manager.isExtensionLoaded.bind(manager);
+    const loadExtension = manager.loadExtensionURL.bind(manager);
+    manager.isExtensionLoaded = id => id === 'pen' ? false : isLoaded(id);
+    manager.loadExtensionURL = id => {
+        if (id !== 'pen') return loadExtension(id);
+        entered();
+        return pending;
+    };
+    try {
+        const json = vm.toJSON();
+        const block = {id: 'pending-copy', opcode: 'pen_clear', next: null, parent: null,
+            inputs: {}, fields: {}, topLevel: true, shadow: false, x: 0, y: 0};
+        const first = vm.shareBlocksToTarget([block], actor.id);
+        await started;
+        const queued = vm.shareBlocksToTarget([block], actor.id);
+        // Attach immediately so a rejected stale queue does not escape the test.
+        const completed = Promise.allSettled([first, queued]);
+        await vm.loadProject(json);
+        assert.ok(!vm.runtime.targets.includes(actor), 'the real loader replaced the original target');
+        assert.deepEqual(getUndoState().project.past, []);
+        const current = vm.runtime.targets.find(target => target.isOriginal && !target.isStage);
+        let copiedCurrent = false;
+        const fresh = vm.shareBlocksToTarget([{...block, id: 'current-copy', opcode: 'motion_movesteps'}], current.id);
+        const currentResult = fresh.then(() => { copiedCurrent = true; });
+        // Drain this event-loop turn while the old extension remains blocked.
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(copiedCurrent, true, 'new-project copies must not wait on the old extension load');
+        await currentResult;
+        const currentHistory = getUndoState().project.past;
+        assert.equal(currentHistory.length, 1);
+        release();
+        const results = await completed;
+        assert.deepEqual(getUndoState().project.past, currentHistory, 'late work must not resurrect cleared History');
+        assert.deepEqual(results.map(result => result.status), ['fulfilled', 'fulfilled'],
+            'a queued copy from the replaced project is cancelled before calling the VM');
+        assert.ok(vm.runtime.targets.every(target => Object.values(target.blocks._blocks)
+            .every(current => current.opcode !== 'pen_clear')), 'old work cannot alter the loaded project');
+        vm.renameSprite(current.id, 'Current project');
+        assert.equal(getUndoState().project.past.length, 2, 'new-project edits still record normally');
+    } finally {
+        release();
+        vm.quit();
+        clearProjectHistory();
+    }
+});
+
+test('a queued script copy is canceled while project loading has cleared its target', async () => {
+    const {vm} = await runProgram('SPRITE Actor:\nWHEN flag clicked:\n  move 1 steps', {frames: 1});
+    instrumentProjectHistory(vm);
+    clearProjectHistory();
+    activateUndoSurface('test-project-only');
+    const actor = vm.runtime.targets.find(target => target.isOriginal && !target.isStage);
+    const json = vm.toJSON();
+    let releaseExtension;
+    const pendingExtension = new Promise(resolve => { releaseExtension = resolve; });
+    let enteredExtension;
+    const extensionStarted = new Promise(resolve => { enteredExtension = resolve; });
+    const manager = vm.extensionManager;
+    const isLoaded = manager.isExtensionLoaded.bind(manager);
+    const loadExtension = manager.loadExtensionURL.bind(manager);
+    manager.isExtensionLoaded = id => id === 'pen' ? false : isLoaded(id);
+    manager.loadExtensionURL = id => {
+        if (id !== 'pen') return loadExtension(id);
+        enteredExtension();
+        return pendingExtension;
+    };
+    let releaseInstall;
+    const pendingInstall = new Promise(resolve => { releaseInstall = resolve; });
+    let enteredInstall;
+    const installStarted = new Promise(resolve => { enteredInstall = resolve; });
+    const installTargets = vm.installTargets.bind(vm);
+    vm.installTargets = async (...args) => {
+        enteredInstall();
+        await pendingInstall;
+        return installTargets(...args);
+    };
+    const block = {id: 'pending-copy', opcode: 'pen_clear', next: null, parent: null,
+        inputs: {}, fields: {}, topLevel: true, shadow: false, x: 0, y: 0};
+    let loading;
+    try {
+        const first = vm.shareBlocksToTarget([block], actor.id);
+        await extensionStarted;
+        const queued = vm.shareBlocksToTarget([block], actor.id);
+        const copies = Promise.allSettled([first, queued]);
+        loading = vm.loadProject(json);
+        await installStarted;
+        assert.ok(!vm.runtime.targets.includes(actor), 'the VM has cleared the old target');
+        releaseExtension();
+        const results = await copies;
+        assert.deepEqual(results.map(result => result.status), ['fulfilled', 'fulfilled'],
+            'the queued old-project copy is canceled without a VM error');
+        releaseInstall();
+        await loading;
+        assert.deepEqual(getUndoState().project.past, []);
+        assert.ok(vm.runtime.targets.every(target => Object.values(target.blocks._blocks)
+            .every(current => current.opcode !== 'pen_clear')));
+    } finally {
+        releaseExtension();
+        releaseInstall();
+        await loading?.catch(() => {});
+        vm.quit();
+        clearProjectHistory();
+    }
+});
 
 test('deleting a costume is undone in place and redone, many times', async () => {
     const {vm, actor} = await fixture();
@@ -106,6 +276,56 @@ test('a deleted sprite comes back, and older steps follow it to its new target',
         clearProjectHistory();
     }
 });
+
+for (const kind of ['costume', 'sound']) {
+test(`${kind} edits follow their asset identities through repeated sprite restoration`, async () => {
+    const {vm, actor} = await fixture();
+    try {
+        if (kind === 'sound') {
+            // One silent PCM sample: asset identity/ZIP restoration, not audio playback.
+            const wav = Buffer.alloc(46);
+            wav.write('RIFF', 0); wav.writeUInt32LE(38, 4); wav.write('WAVEfmt ', 8);
+            wav.writeUInt32LE(16, 16); wav.writeUInt16LE(1, 20); wav.writeUInt16LE(1, 22);
+            wav.writeUInt32LE(8000, 24); wav.writeUInt32LE(16000, 28);
+            wav.writeUInt16LE(2, 32); wav.writeUInt16LE(16, 34);
+            wav.write('data', 36); wav.writeUInt32LE(2, 40);
+            const storage = vm.runtime.storage;
+            const asset = storage.createAsset(storage.AssetType.Sound, 'wav', new Uint8Array(wav), null, true);
+            for (const name of ['First', 'Second', 'Third']) {
+                await vm.addSound({name, asset, md5: `${asset.assetId}.wav`, dataFormat: 'wav', rate: 8000, sampleCount: 1});
+            }
+            clearProjectHistory();
+        }
+        const list = target => target.sprite[`${kind}s`].map(item => item.name);
+        const suffix = kind === 'sound' ? 'Sound' : 'Costume';
+        const original = list(actor);
+        vm[`rename${suffix}`](1, 'Renamed');
+        vm[`reorder${suffix}`](actor.id, 1, 2);
+        await vm[`duplicate${suffix}`](2);
+        const edited = list(actor);
+        assert.equal(edited.length, original.length + 1);
+        let deletedItems = actor.sprite[`${kind}s`].slice();
+        vm.deleteSprite(actor.id);
+        for (let pass = 0; pass < 2; pass++) {
+            assert.equal(await undoActiveSurface(), true, 'restore the sprite through the real ZIP importer');
+            const restored = vm.runtime.targets.find(target => target.isOriginal && !target.isStage);
+            assert.notEqual(restored, actor);
+            restored.sprite[`${kind}s`].forEach((item, index) => {
+                assert.notEqual(item, deletedItems[index], 'the importer reconstructed each asset object');
+                assert.equal(item.assetId, deletedItems[index].assetId, 'the serialized asset identity is preserved');
+            });
+            assert.deepEqual(list(restored), edited);
+            assert.equal(await moveHistory(-3, 'project'), 3, 'undo duplicate, reorder and rename on rebuilt assets');
+            assert.deepEqual(list(restored), original);
+            assert.equal(await moveHistory(3, 'project'), 3);
+            assert.deepEqual(list(restored), edited);
+            deletedItems = restored.sprite[`${kind}s`].slice();
+            assert.equal(await redoActiveSurface(), true, 'redo sprite deletion before another reconstruction');
+            assert.deepEqual(sprites(vm), []);
+        }
+    } finally { vm.quit(); clearProjectHistory(); }
+});
+}
 
 test('stage drags and sprite info edits are one step each', async () => {
     const {vm, actor} = await fixture();

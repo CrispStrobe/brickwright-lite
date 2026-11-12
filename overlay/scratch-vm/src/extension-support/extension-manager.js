@@ -1,4 +1,5 @@
 const dispatch = require('../dispatch/central-dispatch');
+const resultFactory = require('../util/bw-extension-result-factory');
 const log = require('../util/log');
 const maybeFormatMessage = require('../util/maybe-format-message');
 
@@ -878,6 +879,7 @@ class ExtensionManager {
      * @private
      */
     _prepareBlockInfo (serviceName, blockInfo) {
+        const originalMetadata = blockInfo;
         blockInfo = Object.assign({}, {
             blockType: BlockType.COMMAND,
             terminal: false,
@@ -893,6 +895,7 @@ class ExtensionManager {
                 log.warn(`Ignoring function "${blockInfo.func}" for event block ${blockInfo.opcode}`);
             }
             break;
+        case 'label': // palette section header (see runtime patchPaletteStructure)
         case BlockType.BUTTON:
             if (blockInfo.opcode) {
                 log.warn(`Ignoring opcode "${blockInfo.opcode}" for button with text: ${blockInfo.text}`);
@@ -908,6 +911,7 @@ class ExtensionManager {
             const getBlockInfo = blockInfo.isDynamic ?
                 args => args && args.mutation && args.mutation.blockInfo :
                 () => blockInfo;
+            let ownedBlockFunc = null;
             const callBlockFunc = (() => {
                 if (dispatch._isRemoteService(serviceName)) {
                     return (args, util, realBlockInfo) =>
@@ -916,6 +920,10 @@ class ExtensionManager {
 
                 // avoid promise latency if we can call direct
                 const serviceObject = dispatch.services[serviceName];
+                // Source-owned result factories construct their own known
+                // wrapper, while preserving this ordinary local dispatch.
+                const owned = resultFactory.prepare(originalMetadata, serviceObject, funcName, blockInfo);
+                if (typeof owned === 'function') {ownedBlockFunc = owned; return owned;}
                 if (!serviceObject[funcName]) {
                     // The function might show up later as a dynamic property of the service object
                     log.warn(`Could not find extension block function called ${funcName}`);
@@ -924,11 +932,11 @@ class ExtensionManager {
                     serviceObject[funcName](args, util, realBlockInfo);
             })();
 
-            blockInfo.func = (args, util) => {
+            blockInfo.func = ownedBlockFunc || ((args, util) => {
                 const realBlockInfo = getBlockInfo(args);
                 // TODO: filter args using the keys of realBlockInfo.arguments? maybe only if sandboxed?
                 return callBlockFunc(args, util, realBlockInfo);
-            };
+            });
             break;
         }
         }

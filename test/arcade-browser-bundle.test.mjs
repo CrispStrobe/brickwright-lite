@@ -6,7 +6,7 @@ import {createRequire} from 'node:module';
 import {mkdtempSync, rmSync, readFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {EventEmitter} from 'node:events';
+import {createArcadeRuntimeMock} from './helpers/arcade-runtime-mock.mjs';
 import {INTEGRATED, REPO} from './helpers/bw-integrated.mjs';
 const require = createRequire(join(INTEGRATED,'package.json'));
 
@@ -31,7 +31,7 @@ for (const mode of ['development','production']) test(`the GUI ${mode} bundle pr
         const stats=await new Promise((resolve,reject)=>compiler.run((err,stats)=>err?reject(err):resolve(stats)));
         assert.equal(stats.hasErrors(),false,stats.toString({all:false,errors:true}));
         const Arcade=require(join(directory,'arcade.cjs'));
-        const rt=new EventEmitter();rt.startHats=()=>[];
+        const rt=createArcadeRuntimeMock();
         const extension=new Arcade(rt);
         const blocks=extension.getInfo().blocks;
         assert.ok(blocks.some(b=>b.opcode==='spriteImage'));
@@ -140,7 +140,7 @@ for (const mode of ['development','production']) test(`the GUI ${mode} bundle pr
         extension.setSpriteProperty({ID:hero,PROPERTY:'vx',VALUE:0});
         extension.setSpriteProperty({ID:hero,PROPERTY:'vy',VALUE:0});
         extension.followSprite({ID:hero,TARGET:goal,SPEED:25,TURN:400});
-        extension._inst._globalElapsedMs+=10;extension._moveFollowingSprites();
+        extension._inst._state().elapsedMs=(extension._inst._state().elapsedMs || 0)+10;extension._moveFollowingSprites();
         assert.equal(extension.spriteProperty({ID:hero,PROPERTY:'vx'}),2);
         extension.unfollowSprite({ID:hero});assert.equal(extension.spriteProperty({ID:hero,PROPERTY:'vx'}),0);
         extension.spriteSay({ID:hero,TEXT:'A',DURATION:100,ANIMATED:false,FOREGROUND:2,BACKGROUND:9,MODE:'text'});

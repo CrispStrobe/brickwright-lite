@@ -8,7 +8,7 @@ const source=readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseu
 const method=(start,end,name)=>new Function('window','HUB_EXTENSIONS',`return ({${source.slice(source.indexOf(start),source.indexOf(end,source.indexOf(start)))}}).${name}`)({},{});
 const legacy=method('    connectLegacy (','    connectConnection (','connectLegacy');
 const apiStart=method('    async apiStart (','    /** stop from a block:','apiStart');
-const methods={bt:method('    async runBt (','    /** A blocks example','runBt'),radio:method('    async runRadioHub (','    componentWillUnmount','runRadioHub'),spike:method('    async run ({','    /** Puts the current model','run')};
+const methods={bt:method('    async runBt (','    /** A blocks example','runBt'),radio:method('    async runRadioHub (','    componentDidUpdate (','runRadioHub'),spike:method('    async run ({','    /** Puts the current model','run')};
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b});return {promise,resolve,reject};};
 const fixture=(kind,connect=async()=>{})=>{

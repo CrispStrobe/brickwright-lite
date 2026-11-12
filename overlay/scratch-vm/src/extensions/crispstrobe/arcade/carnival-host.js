@@ -80,6 +80,13 @@ module.exports = function createCarnivalHost (ext) {
         screen: {width: 160, height: 120, isMono: false,
             clone: () => { guard(); const raw = ext._screenRaw();
                 return wrap({width: raw.width, height: raw.height, pixels: raw.pixels.slice()}); }},
+        // The label is a real text sprite: create() is the pinned TextSprite, positioned through the native sprite.
+        textsprite: {create: (text, background, foreground) => {
+            guard();
+            const sprite = ext._textSprites().textsprite.create(text, background, foreground);
+            sprite.setPosition = (x, y) => { guard(); return ext.setSpritePosition({ID: sprite.__bwId, X: x, Y: y}); };
+            return sprite;
+        }},
         image, img, pause: ms => wait(() => ext._arcadePause(ms))
     };
     const {carnival} = initialize(host);
@@ -114,6 +121,13 @@ module.exports = function createCarnivalHost (ext) {
             }
             return carnival.customGameOverExpanded(args.MESSAGE, effect(String(args.EFFECT)), sound,
                 scoring, args.HAS_SCORE ? args.SCORE : undefined);
+        },
+        addLabel: args => {
+            guard();
+            if (!Object.prototype.hasOwnProperty.call(carnival.Areas, args.AREA) || typeof carnival.Areas[args.AREA] !== 'number') {
+                throw new Error('Unknown carnival label area ' + args.AREA);
+            }
+            carnival.addLabelTo(args.LABEL, carnival.Areas[args.AREA], args.HAS_COLOR ? args.COLOR : undefined);
         },
         cancel: () => { cancelled = true; for (const cancel of waits) cancel(); waits.clear(); },
         storage

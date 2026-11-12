@@ -2,9 +2,9 @@
   "version": 1,
   "id": "tipline",
   "language": "en",
-  "what": "One motor slowly tilts a shared deck beneath two freestanding towers. The green and orange towers have the same base, external frame, 22-part inventory and 46.46 g catalogue mass. The eight red ballast plates sit low inside the green tower and high inside the orange tower. Neither tower is fastened to the deck. Compare each tower's first instability while it is still clear of the tall yellow catch wall: does its base move downhill while it stays upright, or does it lean away from the deck normal? The wall arrests later motion. The supplied comparison exchanges only the ballast heights between the lanes.",
+  "what": "matched-load incline: center of mass, friction and first instability. One motor slowly tilts a shared deck beneath two freestanding towers. The green and orange towers have the same base, external frame, 22-part inventory and 46.46 g catalogue mass. The eight red ballast plates sit low inside the green tower and high inside the orange tower. Neither tower is fastened to the deck. Compare each tower's first instability while it is still clear of the tall yellow catch wall: does its base move downhill while it stays upright, or does it lean away from the deck normal? The wall arrests later motion. The supplied comparison exchanges only the ballast heights between the lanes. One motor tilts two equally heavy free towers with low or high internal ballast. In the native recordings, high ballast tips near 15° and low ballast slides near 22°. Swap the ballast heights between lanes; a tall passive wall arrests the later motion.",
   "try": [
-    "Start from a fresh import of tipline.ldr in Robot Lab. Load the text from tipline.bw in Code, choose To Blocks, then Run. This collection add-on is supplied as files; it does not install itself into the example gallery.",
+    "Reset the complete scene, load this model’s example program and run it. Reset again before every repeat or comparison.",
     "Before the deck moves, predict which tower should slide first and which should tip first. Look for the red ballast: color identifies a lane, while ballast height is the quantity being changed.",
     "Watch the first sustained motion of each tower from the side. Sliding means the bottom of the base travels along the deck while the tower remains nearly perpendicular to it. Tipping means the tower rotates relative to the deck. A tower's top moving sideways is not enough to distinguish these events.",
     "Record the actual deck inclination at the first clear slide or tip, before that load reaches the yellow wall. Judge the deck against horizontal and each tower against the deck. Small contact movements are different from a sustained event. A later lean against the wall is not the tipping threshold; a load that slides first may rotate later.",
@@ -27,8 +27,7 @@
   ],
   "formula": "Sharp-edge static tipping: theta_tip = atan(b/h), where b is the downhill support half-width and h the center-of-mass height. For the native rounded base reference, theta_tip,r = atan((b-r)/(h-r)). Coulomb sliding: theta_slide = atan(mu). Here b = 16 mm, r = 0.4 mm, h_low approximately 32.3 mm, h_high approximately 61.6 mm, and prepared mu = 0.4. Rounded tipping references are approximately 26.06 degrees (low) and 14.30 degrees (high); sliding is approximately 21.80 degrees. The smaller static reference predicts the first instability. Recorded onset uses the stated displacement/tilt and persistence criteria; these formulas do not prescribe a trajectory.",
   "related": [
-    "tilt-lab.ldr",
-    "clutch-bench.ldr",
-    "parallel-lift.ldr"
+    "carry-ratio.ldr",
+    "pivot-exchange.ldr"
   ]
 }

@@ -1,8 +1,10 @@
 # Arcade closed SDK Sprite x and registry receivers
 
 Owner: Codex, Arcade compatibility lane. Branch: `lane/arcade-sdk-receivers-20261021`.
-Base: `e8f48db1a9a07919f8490f593cc06ad0cde7ed9a`. Status: claim only; merge after every
-required exact-head check succeeds before implementation.
+Base: `e8f48db1a9a07919f8490f593cc06ad0cde7ed9a`. Claim merged in
+[PR1173](https://github.com/CrispStrobe/brickwright-lite/pull/1173).
+Status: source implementation complete; native, original-SDK, hosted and GUI
+qualification pending before landing.
 
 Extend the completed closed local-lineage analysis with the smallest selected
 SDK slice needed for an actual Sprite subclass x accessor and an allOfKind
@@ -42,3 +44,19 @@ journeys. No focused source result changes historical application or corpus
 counts. No new full-browser label or workflow dispatch is requested by this
 claim. GUI, pseudocode/export and application acceptance remain pending until
 the corresponding original paths actually pass.
+
+## Source qualification — 2026-10-21
+
+The complete nine-module source cohort passes 35 controls with no skips or
+TODOs; its existing 27 controls are unchanged. Both unchanged Sprite-accessor
+and object-heap conversion cases also pass, with complete saved graphs and
+exported files independently checked. These cases exercise original import,
+project creation and export, not VM execution, fresh reimport or original SDK.
+The first 34-pass/one-failure result and an intermediate source-review hold are
+retained: allocation inputs now close independently before merged constructor
+formals can authorize any SDK slot facts.
+
+Before landing, consume this final source in a fresh normal installation and
+run the complete affected native/original-SDK modules. Then check Code and
+export/reimport, fresh SB3 and visible Blocks/pseudocode authoring. No corpus
+entry is promoted by these source-only results.

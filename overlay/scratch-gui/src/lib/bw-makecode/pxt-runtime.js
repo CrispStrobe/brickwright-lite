@@ -57,6 +57,9 @@ export const EXTENSION_TABLE = Object.freeze(VENDORED_EXTENSIONS.map(e => ({
     repo: e.repo.toLowerCase(),
     refs: [e.tag, e.commit, ...(e.untagged ? [''] : [])],
     targets: [e.target || 'microbit'],
+    // `native`: the Arcade translator handles this package's API at its call sites
+    // (generated adapters); every other vendored package is translated from source.
+    native: e.native === true,
     files: Object.fromEntries(Object.entries(e.files).map(([name, f]) => [name, f.text]))
 })));
 
@@ -274,7 +277,7 @@ var bwMakeCode = {
                     namespace = match ? match[1] : '';
                 }
                 var ownedResources = collectResources(ext.overrides[id], config, namespace);
-                var vendored = bwMakeCode.extensions.some(function (entry) { return entry.files === ext.overrides[id]; });
+                var vendored = bwMakeCode.extensions.some(function (entry) { return entry.native === true && entry.files === ext.overrides[id]; });
                 packageInputs[id] = {files: inputs, identity: ext.identities[id], dependencyConfig: config, assetPack: config.assetPack === true, assetNamespace: namespace,
                     vendored: vendored, resourceIds: ownedResources,
                     sourceFiles: (copts.sourceFiles || []).filter(function (name) {
@@ -470,13 +473,13 @@ function workerFor (base) {
  *   fetchedExtensions: object[]}>} `fetchedExtensions`: what was fetched, with its licence
  */
 export async function compileMakeCode ({target, files, native = false, embedSource = null, hwVariant = '', baseUrl,
-    fetchExtensions = remoteExtensionsAllowed(), fetch} = {}) {
+    fetchExtensions = remoteExtensionsAllowed(), fetch, fetchOptions} = {}) {
     if (!MAKECODE_TARGETS.includes(target)) {
         throw new MakeCodeError(`MakeCode ${target || 'unknown'} is not a target this build carries ` +
             `(${MAKECODE_TARGETS.join(', ')})`, 'UNSUPPORTED_TARGET');
     }
     if (!files || !files['pxt.json']) throw new MakeCodeError('a MakeCode project needs its pxt.json', 'COMPILE');
-    const extensions = await onDemandExtensions(target, files, fetchExtensions, fetch);
+    const extensions = await onDemandExtensions(target, files, fetchExtensions, fetch, fetchOptions);
     const base = new URL(runtimeBase(target), baseUrl || document.baseURI).href;
     const w = workerFor(base);
     try {
@@ -490,10 +493,10 @@ export async function compileMakeCode ({target, files, native = false, embedSour
  * Fetch policy and disposable worker lifetime match the existing compile route.
  */
 export async function resolveProjectInputsMakeCode({target,files,baseUrl,
-    fetchExtensions = remoteExtensionsAllowed(),fetch} = {}) {
+    fetchExtensions = remoteExtensionsAllowed(),fetch,fetchOptions} = {}) {
     if (!MAKECODE_TARGETS.includes(target)) throw new MakeCodeError('Unsupported MakeCode target: '+target,'UNSUPPORTED_TARGET');
     if (!files || typeof files['pxt.json'] !== 'string') throw new MakeCodeError('a MakeCode project needs its pxt.json','COMPILE');
-    const extensions = await onDemandExtensions(target,files,fetchExtensions,fetch);
+    const extensions = await onDemandExtensions(target,files,fetchExtensions,fetch,fetchOptions);
     const base = new URL(runtimeBase(target),baseUrl || document.baseURI).href;
     let worker;
     try {
@@ -509,12 +512,12 @@ export async function resolveProjectInputsMakeCode({target,files,baseUrl,
  * fetched (extension-fetch.js) unless fetching is off. Refusals are kept so a
  * missing extension's error can say why it could not be fetched.
  */
-export async function onDemandExtensions (target, files, enabled, fetch) {
+export async function onDemandExtensions (target, files, enabled, fetch, fetchOptions) {
     let deps;
     try { deps = JSON.parse(files['pxt.json']).dependencies || {}; } catch { return {extensions: [], refused: []}; }
     if (!unresolvedGithubDependencies(deps, target, EXTENSION_TABLE).length) return {extensions: [], refused: []};
     if (!enabled) return {extensions: [], refused: [], disabled: true};
-    return fetchMakeCodeExtensions({dependencies: deps, target, table: EXTENSION_TABLE, ...(fetch ? {fetch} : {})});
+    return fetchMakeCodeExtensions({dependencies: deps, target, table: EXTENSION_TABLE, ...(fetch ? {fetch} : {}), ...(fetchOptions || {})});
 }
 
 function retainExtensionFailure(error,onDemand) {
@@ -568,12 +571,12 @@ export const EMULATOR_CLEAN_BASES = Object.freeze(Object.keys(BASE_LICENCES).fil
  * NO_BASE_HEX, as for a download. The result's outfiles['binary.hex'] is a plain
  * (not universal) V2 image with its vector table at 0.
  */
-export async function compileMakeCodeForEmulator ({target = 'microbit', files, baseUrl, fetchExtensions = remoteExtensionsAllowed(), fetch} = {}) {
+export async function compileMakeCodeForEmulator ({target = 'microbit', files, baseUrl, fetchExtensions = remoteExtensionsAllowed(), fetch, fetchOptions} = {}) {
     if (target !== 'microbit') {
         throw new MakeCodeError(`MakeCode ${target} has no emulator firmware bases (only the micro:bit V2 does)`, 'UNSUPPORTED_TARGET');
     }
     if (!files || !files['pxt.json']) throw new MakeCodeError('a MakeCode project needs its pxt.json', 'COMPILE');
-    const extensions = await onDemandExtensions(target, files, fetchExtensions, fetch);
+    const extensions = await onDemandExtensions(target, files, fetchExtensions, fetch, fetchOptions);
     const base = new URL(runtimeBase(target), baseUrl || document.baseURI).href;
     const w = workerFor(base);
     try {

@@ -75,9 +75,35 @@ try {
     await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
         name: 'carnival-control.mkcd', mimeType: 'application/json', buffer: Buffer.from(project)
     });
-    await page.getByText(/Imported the Arcade game.*carnival-control/).first().waitFor({state: 'visible', timeout});
     const editor = page.locator('[data-testid="bw-code-editor"] .cm-content');
-    check('import exposes the carnival pseudocode command', (await editor.innerText()).includes('arcade carnival countdown'));
+    // Import completion is the persistent document for this named project. Do
+    // not require the native command as a readiness signal: that is the
+    // independent capability assertion below, after retaining observations.
+    await page.waitForFunction(() => {
+        const element = document.querySelector('[data-testid="bw-code-editor"] .cm-content');
+        return element?.cmTile?.root?.view?.state?.doc?.toString()
+            .includes('# Imported from MakeCode Arcade: Carnival browser control');
+    }, null, {timeout});
+    // CodeMirror virtualizes visible lines. Read its actual complete document,
+    // and retain the visible projection separately before any content assertion.
+    report.importObservation = await editor.evaluate(element => ({
+        fullCode: element.cmTile.root.view.state.doc.toString(),
+        visibleCode: element.innerText
+    }));
+    report.importObservation.statusText = await page.getByText(/Imported the Arcade game.*Carnival browser control/).first().innerText();
+    report.importObservation.projectContext = await page.evaluate(() => {
+        const gui = window.__brickwrightStore.getState().scratchGui;
+        return {phase: 'before To blocks; not an imported Blocks project',
+            deviceId: gui.vm.runtime.bwDeviceId,
+            projectJSON: gui.vm.toJSON(),
+            projectStateProvided: Object.hasOwn(gui, 'projectState'),
+            projectState: Object.hasOwn(gui, 'projectState') ? gui.projectState : null,
+            providedBlockErrors: window.__bwCarnivalErrors};
+    });
+    report.importObservation.importResultDiagnostics = {status: 'UNOBSERVED',
+        reason: 'The importer result is not exposed here; the visible status does not prove empty import diagnostics.'};
+    await fs.writeFile(path.join(out, 'import-observation.json'), JSON.stringify(report.importObservation, null, 2) + '\n');
+    check('import exposes the carnival pseudocode command', report.importObservation.fullCode.includes('arcade carnival countdown'));
     await page.getByRole('button', {name: '⇦ To blocks', exact: true}).click();
     await page.getByText('Blocks loaded.', {exact: true}).waitFor({state: 'visible', timeout});
     await page.getByRole('tab', {name: 'Blocks', exact: true}).click();

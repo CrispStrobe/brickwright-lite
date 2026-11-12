@@ -125,6 +125,7 @@ on:
       - 'docs/WAVE-OPEN-DEFECTS.md'
       - 'docs/app-store-metadata.md'
       - 'docs/ARCADE-888-OPEN-FAILURES.md'
+      - 'docs/ARCADE-CLASS-LINEAGE.md'
 permissions:
   contents: read
   pages: write
@@ -250,12 +251,9 @@ jobs:
           { echo "fast=$fast"; echo "thorough=$thorough"; echo "full_label=$HAS_FULL"
             echo "browser=$browser"; echo "heavy=$heavy"; echo "light=$light"; echo "robotlab=$robotlab"; echo "fpga=$fpga"; } >> "$GITHUB_OUTPUT"
 
-  # MERGE DISCIPLINE. The merge rule is "every enabled check on the exact head
-  # is SUCCESS", and a PR without ci:full has the thorough tier SKIPPED, not
-  # green. This always-running check turns that into a red verdict for code
-  # changes, so the rule still forces the thorough tier before a code merge.
-  # It runs on every PR event, label ones included, so the newest verdict
-  # always reflects the current labels.
+  # ADMISSION DISCIPLINE. Fast PR qualification is the default. This check
+  # admits an actual selected tier or docs-only scope, never label presence
+  # alone. Every enabled selected job must still succeed before merge.
   full-ci-gate:
     name: full CI requested
     if: github.event_name == 'pull_request'
@@ -263,22 +261,23 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Require ci:full for code changes
+      - name: Admit selected CI tier
         env:
           DOCS_ONLY: ${{ needs.scope.outputs.docs_only }}
-          HAS_FULL: ${{ needs.scope.outputs.full_label }}
-          BROWSER_NEEDED: ${{ needs.scope.outputs.browser_needed }}
-          SUMMARY: ${{ needs.scope.outputs.browser_summary }}
-          ACTION: ${{ github.event.action }}
-          LABEL: ${{ github.event.label.name }}
+          FAST: ${{ needs.scope.outputs.fast }}
+          THOROUGH: ${{ needs.scope.outputs.thorough }}
         run: |
           set -euo pipefail
-          if [ "$DOCS_ONLY" = "true" ]; then echo "documentation-only change: the fast path is sufficient"; exit 0; fi
-          # scripts/ci-browser-scope.mjs: no browser or fpga shard reaches these files.
-          if [ "$BROWSER_NEEDED" = "false" ]; then echo "no browser-relevant paths changed: $SUMMARY"; exit 0; fi
-          if [ "$ACTION" = "unlabeled" ] && [ "$LABEL" = "ci:full" ]; then HAS_FULL=false; fi
-          if [ "$HAS_FULL" = "true" ]; then echo "ci:full present: the thorough tier runs for this PR"; exit 0; fi
-          echo "::error::code change: add the ci:full label so the thorough tier runs before merge"
+          for value in "$DOCS_ONLY" "$FAST" "$THOROUGH"; do
+            case "$value" in
+              true|false) ;;
+              *) echo "::error::missing or invalid selected CI tier"; exit 1 ;;
+            esac
+          done
+          if [ "$DOCS_ONLY" = "true" ]; then echo "documentation-only change: no code tier required"; exit 0; fi
+          if [ "$FAST" = "true" ]; then echo "fast tier selected: require every enabled check to succeed"; exit 0; fi
+          if [ "$THOROUGH" = "true" ]; then echo "thorough tier selected: require every enabled check to succeed"; exit 0; fi
+          echo "::error::code change has no selected CI tier"
           exit 1
 
   # SUPERSEDED MAIN COMMITS RUN CHEAP. Measured 2026-09-29: main took 100 commits
@@ -334,13 +333,13 @@ jobs:
   # Each shard retains identical integrated prerequisites and its own audited
   # file/skip/GUI-resolution census. No Pages artifact is produced here.
   unit:
-    name: unit (${{ matrix.shard }}/6)
+    name: unit (${{ matrix.shard }}/8)
     needs: scope
     if: needs.scope.outputs.fast == 'true'
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -372,13 +371,22 @@ jobs:
       # and the gate covers that degraded path too.
       - name: Fetch the heavy simulation engine (labwired-wasm)
         run: node scripts/sync-labwired-wasm.mjs || echo "labwired-wasm unavailable — the heavy tier will not be offered"
+      - name: Fetch pinned ESP32-S3 ROM assets
+        id: esp32s3_rom_assets
+        run: node scripts/sync-esp32s3-roms.mjs || echo "ESP32-S3 ROM assets unavailable — merged-flash boot will report the missing assets"
       - name: Install
-        run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+        run: |
+          set -euo pipefail
+          (cd packages/scratch-gui && npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund)
+          git diff --exit-code -- packages/scratch-gui/package.json packages/scratch-gui/package-lock.json
       # The deployable build below is flag-ON, and flag-on webpack aliases
       # @yowasp/yosys to the REAL package (an off build gets the yosys-absent stub),
       # so the local FPGA tier's worker resolves. ~75 MB, in the deploy build only.
       - name: Install the local FPGA toolchain (the deployable build is flag-on)
-        run: cd packages/scratch-gui && npm install --no-save --ignore-scripts --legacy-peer-deps --no-audit --no-fund @yowasp/yosys
+        run: |
+          set -euo pipefail
+          (cd packages/scratch-gui && npm install --no-save --ignore-scripts --legacy-peer-deps --no-audit --no-fund @yowasp/yosys)
+          git diff --exit-code -- packages/scratch-gui/package.json packages/scratch-gui/package-lock.json
       - name: Apply the scratch-vm overlay (built-in extensions)
         run: node scripts/apply-vm-overlay.mjs
       # The FPGA surface ships in the DEPLOYABLE build (BW_ENABLE_FPGA=1 above),
@@ -817,24 +825,26 @@ jobs:
         # Bound one installation step; do not start nested retries that may
         # contend with APT children left behind by a timed-out attempt.
         run: ./node_modules/.bin/playwright install --with-deps chromium
+      - name: Admit the pinned Arrays source for native unit inputs
+        id: arrays_number_value_source
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        run: node scripts/admit-arrays-number-value-test-source.mjs
       - name: Run unit tests
-        if: ${{ !cancelled() && steps.overlays.outcome == 'success' && steps.unit_playwright.outcome == 'success' && steps.stc_flasher_pin.outcome == 'success' && steps.stc_flasher_source.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' && steps.unit_playwright.outcome == 'success' && steps.stc_flasher_pin.outcome == 'success' && steps.stc_flasher_source.outcome == 'success' && steps.arrays_number_value_source.outcome == 'success' }}
         env:
-          BW_TEST_SHARD: ${{ matrix.shard }}/6
+          # Fixtures create and remove unique children; never fall back to a host temp root.
+          TMPDIR: ${{ runner.temp }}
+          BW_TEST_SHARD: ${{ matrix.shard }}/8
+          BW_ARRAY_MENU_FAILURE_ROOT: ${{ github.workspace }}/test-results
+          BW_ARRAY_NUMBER_VALUE_SOURCE: ${{ github.workspace }}/test-results/arrays-number-value-input/arrays.js
+          BW_ARRAY_NAMED_JSON_SOURCE: ${{ github.workspace }}/test-results/arrays-number-value-input/arrays.js
+          BW_ARRAY_PRIOR_BINDING_SOURCE: ${{ github.workspace }}/test-results/arrays-number-value-input/arrays.js
           STC_COMPILER_FLASHER_DIR: ${{ github.workspace }}/.stc-compiler-flasher
-          # The two *-native Array tests refuse the vendored copy and require an
-          # explicit frozen supplier file: one exact upstream commit, bytes bound.
-          ARRAY_SUPPLIER_SHA: 4dde49c46123ddf355c53192ce382dab77746799
-          ARRAY_SUPPLIER_SHA256: 47f50e20773c417fb0a7d164b70a354f66cd5c1daa871608e0af9eb0cfdd3db5
         run: |
           if ! grep -q '"test"' package.json; then
             echo "::error::package.json has no test script — tests exist but nothing runs them"
             exit 1
           fi
-          supplier="$RUNNER_TEMP/arrays-number-value-supplier.js"
-          curl -fsSL --retry 3 -o "$supplier" "https://raw.githubusercontent.com/CrispStrobe/extensions/${ARRAY_SUPPLIER_SHA}/extensions/CrispStrobe/arrays.js"
-          echo "${ARRAY_SUPPLIER_SHA256}  $supplier" | sha256sum -c -
-          export BW_ARRAY_NUMBER_VALUE_SOURCE="$supplier"
           set -o pipefail
           # This shard partitions the complete non-corpus suite; the two corpus
           # walks remain in their existing required job. They run in the `corpus` job below, in parallel with this
@@ -880,8 +890,8 @@ jobs:
           # A construction failure is the WORST kind to lose: the gate did not
           # run at all, so it cannot have found anything, and a green line says
           # it did. This repo has found five gates that could not fail; this one
-          # could not even be built. Classify the stream; a TODO is pending, and check-test-run.mjs above
-          # requires its reason to name an existing docs/….md entry.
+          # could not even be built. Classify every depth of the stream; TODO
+          # stays pending only with its existing docs pointer checked above.
           node scripts/check-tap-failures.mjs /tmp/unit.tap
           exit "$rc"
 
@@ -894,6 +904,14 @@ jobs:
             /tmp/unit.tap
             test-results/fast.census.json
             test-results/fast.gui-scope.tsv
+            test-results/arrays-number-value-input/
+            test-results/menu-failure-*.json
+            test-results/menu-capture-failed-*.json
+            test-results/typing-failure-*.json
+            test-results/typing-capture-failed-*.json
+            test-results/effect-failure-*.json
+            test-results/effect-capture-failed-*.json
+            test-results/paired-door/
           if-no-files-found: error
 
   build:
@@ -936,13 +954,22 @@ jobs:
       # and the gate covers that degraded path too.
       - name: Fetch the heavy simulation engine (labwired-wasm)
         run: node scripts/sync-labwired-wasm.mjs || echo "labwired-wasm unavailable — the heavy tier will not be offered"
+      - name: Fetch pinned ESP32-S3 ROM assets
+        id: esp32s3_rom_assets
+        run: node scripts/sync-esp32s3-roms.mjs || echo "ESP32-S3 ROM assets unavailable — merged-flash boot will report the missing assets"
       - name: Install
-        run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+        run: |
+          set -euo pipefail
+          (cd packages/scratch-gui && npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund)
+          git diff --exit-code -- packages/scratch-gui/package.json packages/scratch-gui/package-lock.json
       # The deployable build below is flag-ON, and flag-on webpack aliases
       # @yowasp/yosys to the REAL package (an off build gets the yosys-absent stub),
       # so the local FPGA tier's worker resolves. ~75 MB, in the deploy build only.
       - name: Install the local FPGA toolchain (the deployable build is flag-on)
-        run: cd packages/scratch-gui && npm install --no-save --ignore-scripts --legacy-peer-deps --no-audit --no-fund @yowasp/yosys
+        run: |
+          set -euo pipefail
+          (cd packages/scratch-gui && npm install --no-save --ignore-scripts --legacy-peer-deps --no-audit --no-fund @yowasp/yosys)
+          git diff --exit-code -- packages/scratch-gui/package.json packages/scratch-gui/package-lock.json
       - name: Apply the scratch-vm overlay (built-in extensions)
         run: node scripts/apply-vm-overlay.mjs
       # The FPGA surface ships in the DEPLOYABLE build (BW_ENABLE_FPGA=1 above),
@@ -1592,7 +1619,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [heavy, light, robotlab, robotdraw, robotlink, robotmotion, robotbench, robotlink2, robotbench2, robotdraw2, robotdraw3, robotmotion2, robotaddon1, robotaddon2, robotaddon3, robotaddon4, robotaddon5, robotaddon6, robotaddon7, robotaddon8, robotaddon9, robotaddon10, robotaddon11, robotaddon12]
+        shard: [heavy, light, robotlab, robotdraw, robotlink, robotmotion, robotbench, robotlink2, robotbench2, robotdraw2, robotdraw3, robotmotion2, robotaddon1, robotaddon2, robotaddon3, robotaddon4, robotaddon5, robotaddon6, robotaddon7, robotaddon8, robotaddon9, robotaddon10, robotaddon11, robotaddon12, robotaddon13, robotaddon14, robotaddon15, robotaddon16, robotaddon18, robotaddon19]
         # Path-aware PR runs (scripts/ci-browser-scope.mjs): a shard the changed
         # files do not reach is left out. Non-PR events set every shard true.
         exclude:
@@ -1620,6 +1647,12 @@ jobs:
           - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotaddon10' || 'none' }}
           - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotaddon11' || 'none' }}
           - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotaddon12' || 'none' }}
+          - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotaddon13' || 'none' }}
+          - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotaddon14' || 'none' }}
+          - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotaddon15' || 'none' }}
+          - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotaddon16' || 'none' }}
+          - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotaddon18' || 'none' }}
+          - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotaddon19' || 'none' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # Job-level permissions REPLACE the workflow's for this job, so the two it
@@ -1662,6 +1695,9 @@ jobs:
       - name: Fetch the heavy simulation engine (labwired-wasm)
         id: bw_browser_audit_0007
         run: node scripts/sync-labwired-wasm.mjs || echo "labwired-wasm unavailable — the heavy tier will not be offered"
+      - name: Fetch pinned ESP32-S3 ROM assets
+        id: esp32s3_rom_assets
+        run: node scripts/sync-esp32s3-roms.mjs || echo "ESP32-S3 ROM assets unavailable — merged-flash boot will report the missing assets"
       - name: Install
         id: bw_browser_audit_0008
         run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
@@ -2199,6 +2235,49 @@ jobs:
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon12' }}
         run: npm run verify:sim-lab -- --part=examples --examples=pointweaver
 
+      - name: Browser gate — Robot Lab evenhand promotion
+        id: bw_browser_audit_0265
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon13' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=evenhand
+
+      - name: Browser gate — Robot Lab rimrun promotion
+        id: bw_browser_audit_0266
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon14' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=rimrun
+
+      - name: Browser gate — Robot Lab obliquity-orrery promotion
+        id: bw_browser_audit_0267
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon15' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=obliquity-orrery
+
+      - name: Browser gate — Robot Lab cadence-geneva promotion
+        id: bw_browser_audit_0268
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon16' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=cadence-geneva
+
+      - name: Browser gate — Robot Lab cadence-geneva disconnected control
+        id: bw_browser_audit_0272
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon16' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=cadence-geneva-disconnected
+
+      - name: Browser gate — Robot Lab helios-transmission promotion
+        id: bw_browser_audit_0270
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon18' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=helios-transmission
+
+      - name: Browser gate — Robot Lab orion-cardan promotion
+        id: bw_browser_audit_0271
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon19' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=orion-cardan
+
+
       - name: Browser gate — Robot Lab pantograph-doubler complete example
         id: bw_browser_audit_0064
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
@@ -2216,6 +2295,12 @@ jobs:
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon1' }}
         run: npm run verify:sim-lab -- --part=examples --examples=ripple-relay
+
+      - name: Browser gate — Robot Lab Cross Ratio complete example
+        id: bw_browser_audit_0263
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon1' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=cross-ratio
 
       - name: Browser gate — Robot Lab crossglide complete example
         id: bw_browser_audit_0067
@@ -2946,6 +3031,14 @@ jobs:
         timeout-minutes: 3  # derived: p95 7 s × 3 → 3 min over 20 green runs to 36823340082; max 12 s in run 36544779088 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-i80386-local-hdd-gui.mjs
+      # The debugger docked beside a running x86 machine must own its controls:
+      # a hosted event's real click on Pause landed on the Widgets Full screen
+      # button. Real page, real (unforced) click, hit-test at Pause's centre.
+      - name: Browser gate — debugger Pause is clickable beside the x86 Widgets
+        id: bw_browser_audit_0264
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-debugger-pause-hit.mjs
       - name: Browser gate — machine Widgets keyboard, mouse and fullscreen
         id: bw_browser_audit_0154
         timeout-minutes: 3  # derived: p95 2 s × 3 → 3 min over 20 green runs to 36823340082; max 3 s in run 36327909922 (gen-gate-budgets.mjs)
@@ -3310,6 +3403,38 @@ jobs:
         timeout-minutes: 5  # derived: p95 90 s × 3 → 5 min over 20 green runs to 36823340082; max 168 s in run 34067968927 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: BW_STEP_BUDGET_MIN=5 node scripts/verify-labwired-engine.mjs
+
+      - name: Browser gate — ESP32-S3 firmware boots through the empty-project picker
+        id: esp32s3_firmware_browser
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: |
+          node node_modules/bw-board/scripts/fetch-esp32s3-firmware-fixtures.mjs --out artifacts/esp32s3/m1-inputs
+          PROOF_URL=http://localhost:8617/ node scripts/verify-esp32s3-firmware-browser.mjs
+      - name: Retain ESP32-S3 firmware browser evidence
+        id: esp32s3_firmware_evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && matrix.shard == 'heavy'
+        with:
+          name: esp32s3-firmware-browser
+          path: artifacts/esp32s3-firmware-browser/**
+          if-no-files-found: error
+
+      - name: Browser gate — S040 firmware drives its placed display and touch face
+        id: esp32s040_firmware_browser
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: |
+          node node_modules/bw-board/scripts/fetch-esp32s040-fixtures.mjs --out artifacts/esp32s040/inputs
+          PROOF_URL=http://localhost:8617/ node scripts/verify-esp32s040-firmware-browser.mjs
+      - name: Retain S040 placed-face browser evidence
+        id: esp32s040_firmware_evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && matrix.shard == 'heavy'
+        with:
+          name: esp32s040-firmware-browser
+          path: artifacts/esp32s040-firmware-browser/**
+          if-no-files-found: error
 
       # The OTHER branch of the same honesty rule, and the one production
       # actually ships when the release fetch above fails: the engine is absent,
@@ -3770,6 +3895,7 @@ jobs:
             bw_browser_audit_0005	${{ steps['bw_browser_audit_0005'].outcome }}	${{ steps['bw_browser_audit_0005'].conclusion }}
             bw_browser_audit_0006	${{ steps['bw_browser_audit_0006'].outcome }}	${{ steps['bw_browser_audit_0006'].conclusion }}
             bw_browser_audit_0007	${{ steps['bw_browser_audit_0007'].outcome }}	${{ steps['bw_browser_audit_0007'].conclusion }}
+            esp32s3_rom_assets	${{ steps['esp32s3_rom_assets'].outcome }}	${{ steps['esp32s3_rom_assets'].conclusion }}
             bw_browser_audit_0008	${{ steps['bw_browser_audit_0008'].outcome }}	${{ steps['bw_browser_audit_0008'].conclusion }}
             bw_browser_audit_0009	${{ steps['bw_browser_audit_0009'].outcome }}	${{ steps['bw_browser_audit_0009'].conclusion }}
             bw_browser_audit_0010	${{ steps['bw_browser_audit_0010'].outcome }}	${{ steps['bw_browser_audit_0010'].conclusion }}
@@ -3846,14 +3972,23 @@ jobs:
             bw_browser_audit_0256	${{ steps['bw_browser_audit_0256'].outcome }}	${{ steps['bw_browser_audit_0256'].conclusion }}
             bw_browser_audit_0261	${{ steps['bw_browser_audit_0261'].outcome }}	${{ steps['bw_browser_audit_0261'].conclusion }}
             bw_browser_audit_0262	${{ steps['bw_browser_audit_0262'].outcome }}	${{ steps['bw_browser_audit_0262'].conclusion }}
+            bw_browser_audit_0265	${{ steps['bw_browser_audit_0265'].outcome }}	${{ steps['bw_browser_audit_0265'].conclusion }}
+            bw_browser_audit_0266	${{ steps['bw_browser_audit_0266'].outcome }}	${{ steps['bw_browser_audit_0266'].conclusion }}
+            bw_browser_audit_0267	${{ steps['bw_browser_audit_0267'].outcome }}	${{ steps['bw_browser_audit_0267'].conclusion }}
+            bw_browser_audit_0268	${{ steps['bw_browser_audit_0268'].outcome }}	${{ steps['bw_browser_audit_0268'].conclusion }}
+            bw_browser_audit_0272	${{ steps['bw_browser_audit_0272'].outcome }}	${{ steps['bw_browser_audit_0272'].conclusion }}
+            bw_browser_audit_0270	${{ steps['bw_browser_audit_0270'].outcome }}	${{ steps['bw_browser_audit_0270'].conclusion }}
+            bw_browser_audit_0271	${{ steps['bw_browser_audit_0271'].outcome }}	${{ steps['bw_browser_audit_0271'].conclusion }}
             bw_browser_audit_0064	${{ steps['bw_browser_audit_0064'].outcome }}	${{ steps['bw_browser_audit_0064'].conclusion }}
             bw_browser_audit_0065	${{ steps['bw_browser_audit_0065'].outcome }}	${{ steps['bw_browser_audit_0065'].conclusion }}
             bw_browser_audit_0066	${{ steps['bw_browser_audit_0066'].outcome }}	${{ steps['bw_browser_audit_0066'].conclusion }}
+            bw_browser_audit_0263	${{ steps['bw_browser_audit_0263'].outcome }}	${{ steps['bw_browser_audit_0263'].conclusion }}
             bw_browser_audit_0067	${{ steps['bw_browser_audit_0067'].outcome }}	${{ steps['bw_browser_audit_0067'].conclusion }}
             bw_browser_audit_0068	${{ steps['bw_browser_audit_0068'].outcome }}	${{ steps['bw_browser_audit_0068'].conclusion }}
             bw_browser_audit_0069	${{ steps['bw_browser_audit_0069'].outcome }}	${{ steps['bw_browser_audit_0069'].conclusion }}
             bw_browser_audit_0070	${{ steps['bw_browser_audit_0070'].outcome }}	${{ steps['bw_browser_audit_0070'].conclusion }}
             bw_browser_audit_0071	${{ steps['bw_browser_audit_0071'].outcome }}	${{ steps['bw_browser_audit_0071'].conclusion }}
+          BW_BROWSER_RUNNER_TERMINALS_V1_2: |
             bw_browser_audit_0072	${{ steps['bw_browser_audit_0072'].outcome }}	${{ steps['bw_browser_audit_0072'].conclusion }}
             bw_browser_audit_0073	${{ steps['bw_browser_audit_0073'].outcome }}	${{ steps['bw_browser_audit_0073'].conclusion }}
             bw_browser_audit_0074	${{ steps['bw_browser_audit_0074'].outcome }}	${{ steps['bw_browser_audit_0074'].conclusion }}
@@ -3863,7 +3998,6 @@ jobs:
             bw_browser_audit_0078	${{ steps['bw_browser_audit_0078'].outcome }}	${{ steps['bw_browser_audit_0078'].conclusion }}
             bw_browser_audit_0079	${{ steps['bw_browser_audit_0079'].outcome }}	${{ steps['bw_browser_audit_0079'].conclusion }}
             bw_browser_audit_0080	${{ steps['bw_browser_audit_0080'].outcome }}	${{ steps['bw_browser_audit_0080'].conclusion }}
-          BW_BROWSER_RUNNER_TERMINALS_V1_2: |
             measurement_success	${{ steps['measurement_success'].outcome }}	${{ steps['measurement_success'].conclusion }}
             bw_browser_audit_0081	${{ steps['bw_browser_audit_0081'].outcome }}	${{ steps['bw_browser_audit_0081'].conclusion }}
             bw_browser_audit_0082	${{ steps['bw_browser_audit_0082'].outcome }}	${{ steps['bw_browser_audit_0082'].conclusion }}
@@ -3938,6 +4072,7 @@ jobs:
             bw_browser_audit_0151	${{ steps['bw_browser_audit_0151'].outcome }}	${{ steps['bw_browser_audit_0151'].conclusion }}
             bw_browser_audit_0152	${{ steps['bw_browser_audit_0152'].outcome }}	${{ steps['bw_browser_audit_0152'].conclusion }}
             bw_browser_audit_0153	${{ steps['bw_browser_audit_0153'].outcome }}	${{ steps['bw_browser_audit_0153'].conclusion }}
+            bw_browser_audit_0264	${{ steps['bw_browser_audit_0264'].outcome }}	${{ steps['bw_browser_audit_0264'].conclusion }}
             bw_browser_audit_0154	${{ steps['bw_browser_audit_0154'].outcome }}	${{ steps['bw_browser_audit_0154'].conclusion }}
             bw_browser_audit_0155	${{ steps['bw_browser_audit_0155'].outcome }}	${{ steps['bw_browser_audit_0155'].conclusion }}
             bw_browser_audit_0156	${{ steps['bw_browser_audit_0156'].outcome }}	${{ steps['bw_browser_audit_0156'].conclusion }}
@@ -3954,6 +4089,7 @@ jobs:
             bw_browser_audit_0167	${{ steps['bw_browser_audit_0167'].outcome }}	${{ steps['bw_browser_audit_0167'].conclusion }}
             bw_browser_audit_0168	${{ steps['bw_browser_audit_0168'].outcome }}	${{ steps['bw_browser_audit_0168'].conclusion }}
             bw_browser_audit_0169	${{ steps['bw_browser_audit_0169'].outcome }}	${{ steps['bw_browser_audit_0169'].conclusion }}
+          BW_BROWSER_RUNNER_TERMINALS_V1_3: |
             bw_browser_audit_0170	${{ steps['bw_browser_audit_0170'].outcome }}	${{ steps['bw_browser_audit_0170'].conclusion }}
             bw_browser_audit_0171	${{ steps['bw_browser_audit_0171'].outcome }}	${{ steps['bw_browser_audit_0171'].conclusion }}
             bw_browser_audit_0172	${{ steps['bw_browser_audit_0172'].outcome }}	${{ steps['bw_browser_audit_0172'].conclusion }}
@@ -3964,7 +4100,6 @@ jobs:
             bw_browser_audit_0177	${{ steps['bw_browser_audit_0177'].outcome }}	${{ steps['bw_browser_audit_0177'].conclusion }}
             bw_browser_audit_0178	${{ steps['bw_browser_audit_0178'].outcome }}	${{ steps['bw_browser_audit_0178'].conclusion }}
             bw_browser_audit_0179	${{ steps['bw_browser_audit_0179'].outcome }}	${{ steps['bw_browser_audit_0179'].conclusion }}
-          BW_BROWSER_RUNNER_TERMINALS_V1_3: |
             bw_browser_audit_0180	${{ steps['bw_browser_audit_0180'].outcome }}	${{ steps['bw_browser_audit_0180'].conclusion }}
             bw_browser_audit_0181	${{ steps['bw_browser_audit_0181'].outcome }}	${{ steps['bw_browser_audit_0181'].conclusion }}
             bw_browser_audit_0182	${{ steps['bw_browser_audit_0182'].outcome }}	${{ steps['bw_browser_audit_0182'].conclusion }}
@@ -3979,6 +4114,10 @@ jobs:
             bw_browser_audit_0191	${{ steps['bw_browser_audit_0191'].outcome }}	${{ steps['bw_browser_audit_0191'].conclusion }}
             bw_browser_audit_0192	${{ steps['bw_browser_audit_0192'].outcome }}	${{ steps['bw_browser_audit_0192'].conclusion }}
             bw_browser_audit_0193	${{ steps['bw_browser_audit_0193'].outcome }}	${{ steps['bw_browser_audit_0193'].conclusion }}
+            esp32s3_firmware_browser	${{ steps['esp32s3_firmware_browser'].outcome }}	${{ steps['esp32s3_firmware_browser'].conclusion }}
+            esp32s3_firmware_evidence	${{ steps['esp32s3_firmware_evidence'].outcome }}	${{ steps['esp32s3_firmware_evidence'].conclusion }}
+            esp32s040_firmware_browser	${{ steps['esp32s040_firmware_browser'].outcome }}	${{ steps['esp32s040_firmware_browser'].conclusion }}
+            esp32s040_firmware_evidence	${{ steps['esp32s040_firmware_evidence'].outcome }}	${{ steps['esp32s040_firmware_evidence'].conclusion }}
             bw_browser_audit_0194	${{ steps['bw_browser_audit_0194'].outcome }}	${{ steps['bw_browser_audit_0194'].conclusion }}
             bw_browser_audit_0195	${{ steps['bw_browser_audit_0195'].outcome }}	${{ steps['bw_browser_audit_0195'].conclusion }}
             bw_browser_audit_0196	${{ steps['bw_browser_audit_0196'].outcome }}	${{ steps['bw_browser_audit_0196'].conclusion }}
@@ -4212,6 +4351,7 @@ jobs:
 
   arcade-numeric-authoring:
     name: Arcade numeric authoring (official build)
+    if: needs.build.result == 'success' && (github.event_name == 'push' || github.event_name == 'pull_request')
     needs: build
     runs-on: ubuntu-latest
     permissions:

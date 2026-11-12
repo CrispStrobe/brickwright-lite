@@ -127,6 +127,7 @@
       motorStart: "[PORT] start motor [DIRECTION]",
       motorStop: "[PORT] stop motor",
       motorSetSpeed: "[PORT] set speed to [SPEED] %",
+      motorStartPower: "[PORT] start motor at [POWER] % power",
       motorSetStopAction: "[PORT] set stop action to [ACTION]",
       getPosition: "[PORT] position",
       getRelativePosition: "[PORT] relative position",
@@ -274,6 +275,7 @@
       motorStart: "[PORT] starte Motor [DIRECTION]",
       motorStop: "[PORT] stoppe Motor",
       motorSetSpeed: "[PORT] setze Geschwindigkeit auf [SPEED] %",
+      motorStartPower: "[PORT] starte Motor mit [POWER] % Leistung",
       motorSetStopAction: "[PORT] setze Stopp-Aktion auf [ACTION]",
       getPosition: "[PORT] Position",
       getRelativePosition: "[PORT] relative Position",
@@ -389,6 +391,7 @@
       motorStart: "[PORT] démarrer moteur [DIRECTION]",
       motorStop: "[PORT] arrêter moteur",
       motorSetSpeed: "[PORT] définir vitesse sur [SPEED] %",
+      motorStartPower: "[PORT] démarrer moteur à [POWER] % de puissance",
       getPosition: "[PORT] position",
       getRelativePosition: "position du moteur [PORT]",
       startMotor: "démarrer moteur [PORT] à [SPEED]%",
@@ -1476,7 +1479,17 @@
 
     sendMessage(options) {
       if (!this.isConnected()) return Promise.resolve();
-      this._ws.send(options.message);
+      // The REPL hands every link what Scratch Link takes: base64 of the
+      // text. The relay forwards text to the hub's serial port as it is (and
+      // ws.onmessage above reads the hub's text as it is), so the base64 has
+      // to come off here, or the hub's REPL is sent base64 and runs nothing.
+      const text =
+        options.encoding === "base64"
+          ? new TextDecoder().decode(
+              Base64Util.base64ToUint8Array(options.message)
+            )
+          : options.message;
+      this._ws.send(text);
       return Promise.resolve();
     }
   }
@@ -3889,6 +3902,24 @@ continuous_sensor_loop()
             this.addLine(`motor.start(${direction} * 75)`);
           });
         }
+      } else if (opcode === "spikeprime_motorStartPower") {
+        const port = this.getInputValue(block, "PORT", blocks).replace(
+          /"/g,
+          ""
+        );
+        const power = this.getInputValue(block, "POWER", blocks);
+
+        this.usedMotors.add(port);
+
+        const ports = port.includes("+") ? port.split("+") : [port];
+
+        for (const p of ports) {
+          this.addLine(`motor = get_motor("${p}")`);
+          this.safeIfBlock("motor", () => {
+            // Unregulated: the hub module's duty cycle, -100..100.
+            this.addLine(`motor.pwm(int(max(-100, min(100, ${power}))))`);
+          });
+        }
       } else if (opcode === "spikeprime_motorStop") {
         const port = this.getInputValue(block, "PORT", blocks).replace(
           /"/g,
@@ -5167,6 +5198,24 @@ continuous_sensor_loop()
             },
           },
           {
+            // The SPIKE app's "More Motors" block "start motor at % power":
+            // an unregulated duty cycle, not a speed. The hub does not hold a
+            // speed under load (the motor slows, and stalls at a hard stop).
+            // SPIKE 3 Python: motor.set_duty_cycle(port, -10000..10000);
+            // 2.x hub module: hub.port.X.motor.pwm(-100..100).
+            opcode: "motorStartPower",
+            text: t("motorStartPower"),
+            blockType: BlockType.COMMAND,
+            arguments: {
+              PORT: {
+                type: ArgumentType.STRING,
+                menu: "MULTIPLE_PORT",
+                defaultValue: "A",
+              },
+              POWER: { type: ArgumentType.NUMBER, defaultValue: 100 },
+            },
+          },
+          {
             opcode: "motorSetStopAction",
             text: t("motorSetStopAction"),
             blockType: BlockType.COMMAND,
@@ -6358,8 +6407,9 @@ continuous_sensor_loop()
 
     // Movement implementations
     setMovementMotors(args) {
-      const portA = Cast.toString(args.PORT_A).trim().toUpperCase();
-      const portB = Cast.toString(args.PORT_B).trim().toUpperCase();
+      const portA = this._validatePort(args.PORT_A);
+      const portB = this._validatePort(args.PORT_B);
+      if (!portA || !portB) return;
       this._peripheral._movementMotors = [portA, portB];
       // Tell the hub too: motors.move/start/... drive whatever the hub's own
       // motors pair is, and recording the ports here alone left it unchanged.
@@ -6579,7 +6629,8 @@ continuous_sensor_loop()
     }
 
     motorRunToPosition(args) {
-      const port = Cast.toString(args.PORT).trim().toUpperCase();
+      const port = this._validatePort(args.PORT);
+      if (!port) return;
       const position = Cast.toNumber(args.POSITION);
       const speed = this._peripheral.motorSettings[port].speed;
       return this._peripheral.sendPythonCommand(
@@ -6645,7 +6696,10 @@ continuous_sensor_loop()
           false // needsResponse = false
         );
         const altCommand = this._peripheral.sendPythonCommand(
-          `import hub; hub.port.${port}.motor.pwm(${Math.round(setting.speed * direction)})`
+          // The hub module's speed command (percent, regulated), not pwm():
+          // pwm is a duty cycle, so a loaded motor would not hold the speed
+          // the block asks for (pwm is "start motor at % power").
+          `import hub; hub.port.${port}.motor.run_at_speed(${Math.round(setting.speed * direction)})`
         );
         return standardCommand.catch(() => altCommand);
       });
@@ -6680,7 +6734,8 @@ continuous_sensor_loop()
     }
 
     motorSetStopAction(args) {
-      const port = Cast.toString(args.PORT).trim().toUpperCase();
+      const port = this._validatePort(args.PORT);
+      if (!port) return;
       const action = Cast.toString(args.ACTION);
       const stopModeMap = { coast: 0, brake: 1, hold: 2 };
       this._peripheral.motorSettings[port].stopMode = stopModeMap[action] || 1;
@@ -7363,6 +7418,28 @@ continuous_sensor_loop()
       return Promise.all(promises).then(() => {});
     }
 
+    /**
+     * Start at a power (duty cycle), unregulated: the "More Motors" block.
+     * There is no JSON-RPC or tunnel verb for it that is documented, so both
+     * firmwares get their documented MicroPython call: SPIKE 3's
+     * motor.set_duty_cycle (-10000..10000) and the 2.x hub module's
+     * motor.pwm (-100..100). Power 0 lets the motor coast, as a duty of 0 does.
+     */
+    motorStartPower(args) {
+      const ports = this._validatePorts(Cast.toString(args.PORT));
+      // SPIKE 3 resolves a hundredth of a percent; the 2.x pwm a whole one.
+      const power = MathUtil.clamp(Cast.toNumber(args.POWER), -100, 100);
+      const spike3 = this._peripheral.protocol === "spike3";
+      const promises = ports.map((port) =>
+        this._peripheral.sendPythonCommand(
+          spike3
+            ? `import motor; from hub import port; motor.set_duty_cycle(port.${port}, ${Math.round(power * 100)})`
+            : `import hub; hub.port.${port}.motor.pwm(${Math.round(power)})`
+        )
+      );
+      return Promise.all(promises).then(() => {});
+    }
+
     /** Stop with an explicitly named stop action. */
     stopMotor(args) {
       const ports = this._validatePorts(Cast.toString(args.PORT));
@@ -7504,6 +7581,22 @@ continuous_sensor_loop()
     _noteToFrequency(note) {
       return Math.pow(2, (note - 69 + 12) / 12) * 440;
     }
+    /**
+     * One motor port, A to F, or "" when the argument names none. A block
+     * whose port menu arrives empty (a project that stored the port where the
+     * editor does not read it) or holding a reporter's odd value does
+     * nothing, as a multi-port block already does with no valid port
+     * (_validatePorts), rather than throwing on motorSettings[port].
+     */
+    _validatePort(value) {
+      const port = Cast.toString(value).trim().toUpperCase();
+      if (/^[A-F]$/.test(port)) return port;
+      console.warn(
+        `[SPIKE] no motor port "${Cast.toString(value)}": the block does nothing`
+      );
+      return "";
+    }
+
     _validatePorts(text) {
       return text
         .toUpperCase()

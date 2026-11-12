@@ -50,8 +50,28 @@ const dataSnapshot = root => {
     });
 };
 
-const resourceLiteral = (target, node) => {
+// A global variable read whose stored value is a string, which no block in
+// any target writes and no slider monitor can change, holds that string for
+// the whole run (in PXT the source declares it once and never assigns it).
+export const constantStringVariable = (target, raw, context) => {
+    if (!context || !Array.isArray(context.targets) || !Array.isArray(raw) || raw.length !== 3 || raw[0] !== 12 ||
+        typeof raw[1] !== 'string' || typeof raw[2] !== 'string') return null;
+    const [, name, id] = raw;
+    const owner = [target, ...context.targets.filter(t => t?.isStage)].find(t => t && Object.hasOwn(t.variables || {}, id));
+    const row = owner?.variables[id];
+    if (!Array.isArray(row) || row.length !== 2 || row[0] !== name || typeof row[1] !== 'string') return null;
+    for (const t of context.targets) for (const block of Object.values(t?.blocks || {})) {
+        if (block?.opcode === 'data_variable') continue;
+        const field = block?.fields?.VARIABLE;
+        if (Array.isArray(field) && field[1] === id) return null;
+    }
+    if (Array.isArray(context.monitors) && context.monitors.some(m => m?.params?.VARIABLE === name && m.mode === 'slider')) return null;
+    return row[1];
+};
+
+const resourceLiteral = (target, node, context = null) => {
     const slot = node.inputs?.RESOURCE, raw = slot?.[1];
+    if (Array.isArray(slot) && slot[0] === 3 && slot.length === 3) return constantStringVariable(target, raw, context);
     if (!Array.isArray(slot) || slot[0] !== 1 || slot.length !== 2) return null;
     if (Array.isArray(raw)) return raw.length === 2 && raw[0] === 10 && typeof raw[1] === 'string' ? raw[1] : null;
     const selector = typeof raw === 'string' && target.blocks?.[raw];
@@ -136,11 +156,18 @@ export const createAnimationFrameArrayProducers = options => {
     const producer = Object.freeze({
         entries: Object.freeze(entries),
         isCurrent: unchanged,
-        resolve(target, node) {
+        // Exact private normalized resource identity, never a caller-supplied ID
+        // or image literal. Existing resolve remains the allocation admission.
+        freshResource(target, node, context = null) {
+            if(node?.opcode!=='arcade_animationAssetFreshFrames')return null;
+            const resource=resources.get(resourceLiteral(target,node,context))?.resource||null;
+            return unchanged()?resource:null;
+        },
+        resolve(target, node, context = null) {
             if (!['arcade_animationAssetFrames', 'arcade_animationAssetFreshFrames'].includes(node?.opcode) ||
                 node.mutation != null || Object.keys(node.fields || {}).length ||
                 Object.keys(node.inputs || {}).join('|') !== 'RESOURCE' || !unchanged()) return null;
-            const value = resources.get(resourceLiteral(target, node));
+            const value = resources.get(resourceLiteral(target, node, context));
             if (!value) return null;
             return Object.freeze({allocation: node.opcode === 'arcade_animationAssetFrames' ? value.sharedAllocation : node,
                 shared: node.opcode === 'arcade_animationAssetFrames', length: value.resource.frames.length});

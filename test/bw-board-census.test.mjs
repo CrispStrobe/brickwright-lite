@@ -172,3 +172,46 @@ test('public census omits local locations while preserving observations and stab
     }
     assert.deepEqual(result.source, original.source);
 });
+
+// Independent leak detector: an absolute POSIX/Windows/UNC location anywhere in a
+// value, including immediately after an assignment delimiter such as `X=/path`.
+const LOCAL_LOCATION = /(?:^|[^A-Za-z0-9_.~/\\:-])(?:\/(?!\/)[A-Za-z0-9_.~-]|[A-Za-z]:[\\/]|\\\\[A-Za-z0-9_.-])/;
+const leaks = doc => doc.rows.filter(row => typeof row.via === 'string' && LOCAL_LOCATION.test(row.via)).map(row => row.id);
+
+test('assignment-prefixed discovery locations are omitted from the public census', () => {
+    const rows = [
+        {id: 'posix-assign', via: '$TOOL_DIR=/home/example/tool (set, but does not exist)'},
+        {id: 'bare-assign', via: 'TOOL_DIR=/home/example/tool'},
+        {id: 'windows-assign', via: 'TOOL_DIR=C:\\Users\\example\\tool'},
+        {id: 'unc-assign', via: 'TOOL_DIR=\\\\server\\share\\tool'},
+        {id: 'flag-assign', via: 'tried --root=/srv/example/vectors, then PATH'},
+        {id: 'unset', via: '$TOOL_DIR unset'},
+        {id: 'url-assign', via: 'MIRROR=https://example.org/public/tool'}
+    ].map(row => ({...row, kind: 'fixture', present: false, ciAvailable: false, ci: 'not in CI', gates: [], what: 'observation'}));
+    const original = {source: {sha: 'b'.repeat(40)}, rows};
+    assert.deepEqual(leaks(original), ['posix-assign', 'bare-assign', 'windows-assign', 'unc-assign', 'flag-assign'],
+        'the detector sees every planted location (non-vacuous)');
+    const saved = JSON.stringify(original), result = publicSnapshot(original);
+    assert.equal(JSON.stringify(original), saved, 'the original observation is preserved');
+    assert.deepEqual(result.rows.map(row => row.via), [
+        '$TOOL_DIR=[local path omitted] (set, but does not exist)', 'TOOL_DIR=[local path omitted]',
+        'TOOL_DIR=[local path omitted]', 'TOOL_DIR=[local path omitted]',
+        'tried --root=[local path omitted], then PATH', '$TOOL_DIR unset',
+        'MIRROR=https://example.org/public/tool'
+    ]);
+    assert.deepEqual(leaks(result), [], 'no local location survives the public projection');
+    assert.deepEqual(publicSnapshot(result), result, 'public projection is idempotent');
+    for (let i = 0; i < rows.length; i++) {
+        for (const key of [...STABLE_FIELDS, 'present']) assert.deepEqual(result.rows[i][key], rows[i][key]);
+    }
+});
+
+test('committed public census carries no local location and refuses a planted one', () => {
+    const committed = JSON.parse(readFileSync(output, 'utf8'));
+    assert.deepEqual(leaks(committed), [], 'committed census leaks a local location');
+    assert.deepEqual(publicSnapshot(committed), committed, 'committed census is already its public projection');
+    const planted = structuredClone(committed);
+    planted.rows[0].via = 'EXAMPLE_DIR=/home/example/leak';
+    assert.deepEqual(leaks(planted), [planted.rows[0].id], 'leak control bites');
+    assert.notDeepEqual(publicSnapshot(planted), planted, 'the committed-file guard would refuse the planted leak');
+});

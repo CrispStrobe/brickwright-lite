@@ -58,12 +58,14 @@ async function pxt () {
  * MakeCode TypeScript -> the simulator's JavaScript, by pxt itself.
  *
  * @param {string} ts main.ts
+ * @param {object} [opts]
+ * @param {object} [opts.dependencies] pxt.json dependencies (bluetooth and radio cannot be used together)
  * @returns {Promise<string>} binary.js; throws with pxt's first diagnostics when it does not compile
  */
-export async function compileMakeCode (ts) {
+export async function compileMakeCode (ts, {dependencies = {core: '*', radio: '*', microphone: '*'}} = {}) {
     const sb = await pxt();
     const files = {
-        'pxt.json': JSON.stringify({name: 'sim', dependencies: {core: '*', radio: '*', microphone: '*'}, files: ['main.ts']}),
+        'pxt.json': JSON.stringify({name: 'sim', dependencies, files: ['main.ts']}),
         'main.ts': ts
     };
     const r = JSON.parse(JSON.stringify(await sb.bwMakeCode.compile(files, {})));
@@ -78,10 +80,16 @@ export async function compileMakeCode (ts) {
  * @param {object} [opts]
  * @param {number} [opts.ms] how long to run
  * @param {number[]} [opts.at] virtual times at which to snapshot the LED matrix
- * @returns {Promise<{serial: Array<{t: number, text: string}>, frames: object, error: ?string}>}
+ * @param {Array<[number, object]>} [opts.radio] radio packets to deliver, [virtual ms, message] — a message as
+ *   `sent` returned it (from another run), so one program's packets can be heard by another
+ * @param {Array<[number, string, number]>} [opts.presses] button presses as the board's own view makes them:
+ *   [virtual ms, 'A' | 'B' | 'AB', hold ms] — DOWN at the press; at the release UP, then CLICK (LONG_CLICK after 1000 ms)
+ * @returns {Promise<{serial: Array<{t: number, text: string}>, frames: object, error: ?string, sent: Array<object>}>}
  */
-export async function runMakeCodeSim (code, {ms = 5000, at = []} = {}) {
+export async function runMakeCodeSim (code, {ms = 5000, at = [], radio = [], presses = []} = {}) {
     const START = 1000000;                        // the sim's clock starts somewhere; only differences count
+    const sent = [];
+    const events = [];                            // radio.raiseEvent: pxsim's 'eventbus' messages (no byte layout)
     let now = START;
     const timers = [];
     let seq = 0;
@@ -130,7 +138,14 @@ export async function runMakeCodeSim (code, {ms = 5000, at = []} = {}) {
         location: {hash: '', search: '', href: 'http://localhost/'},
         localStorage: {getItem: () => null, setItem () {}},
         addEventListener () {},
-        postMessage () {}
+        // What the board broadcasts: the radio packets are kept (see `sent`).
+        postMessage: msg => {
+            if (msg && msg.type === 'eventbus') events.push({id: msg.id, eventid: msg.eventid, group: msg.group});
+            if (msg && msg.type === 'radiopacket') {
+                const payload = msg.payload || {};
+                sent.push({...msg, payload: {...payload, bufferData: Array.from(payload.bufferData || [])}});
+            }
+        }
     };
     ctx.window = ctx;
     ctx.self = ctx;
@@ -166,6 +181,26 @@ export async function runMakeCodeSim (code, {ms = 5000, at = []} = {}) {
     const snap = () => Array.from(runtime.board.ledMatrixState.image.data);
 
     runtime.board.initAsync({}).then(() => runtime.run(() => {}));
+    for (const [when, message] of radio) {
+        later(() => runtime.board.radioState.receivePacket({
+            ...message, payload: {...message.payload, bufferData: Uint8Array.from(message.payload.bufferData || [])}
+        }), when, false);
+    }
+    // A press, exactly as pxsim's ButtonPairView / board view queue it (sim.js: attachEvents, attachAPlusBEvents).
+    for (const [when, which, hold] of presses) {
+        const bp = () => runtime.board.buttonPairState;
+        const states = () => (which === 'AB' ? [bp().aBtn, bp().bBtn, bp().abBtn] : [which === 'A' ? bp().aBtn : bp().bBtn]);
+        const id = () => (which === 'AB' ? bp().abBtn.id : (which === 'A' ? bp().aBtn.id : bp().bBtn.id));
+        later(() => {
+            states().forEach(b => { b.pressed = true; });
+            runtime.board.bus.queue(id(), 1);
+        }, when, false);
+        later(() => {
+            states().forEach(b => { b.pressed = false; });
+            runtime.board.bus.queue(id(), 2);
+            runtime.board.bus.queue(id(), hold > 1000 ? 4 : 3);
+        }, when + hold, false);
+    }
     const settle = async () => {
         for (let i = 0; i < 5; i++) await new Promise(resolve => setImmediate(resolve));
     };
@@ -190,5 +225,5 @@ export async function runMakeCodeSim (code, {ms = 5000, at = []} = {}) {
     }
     for (const t of snaps) if (t <= ms) frames[t] = snap();
     runtime.kill();
-    return {serial, frames, error};
+    return {serial, frames, error, sent, events};
 }

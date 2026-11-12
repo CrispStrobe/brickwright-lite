@@ -294,7 +294,7 @@ function panelMethod (name) {
 const methodNames = ['_supportsHddDownload', '_invalidateHddDownload', '_updateHddDownloadSession',
     '_hddDownloadSession', 'onHddDownload', 'onStart', 'onStop', 'onStep', '_teardownRunner',
     'componentWillUnmount', 'onReverseStep', 'onReverseCycle', 'onReverseContinue', 'onRestoreLast',
-    'onTimelineGoSelected', 'onCorrelatedRestore', 'onDebugSessionImport'];
+    'onTimelineGoSelected', 'onCorrelatedRestore', 'onDebugSessionImport', 'releaseSamdButtons'];
 function panelFixture (f = fixture(), asyncState = false) {
     const events = []; const pendingState = [];
     const fakeWindow = {removeEventListener () {}, bwStopMachineVideo () {}, bwStopMachineKeyboard () {}, bwStopMachineAudio () {}};
@@ -312,7 +312,7 @@ function panelFixture (f = fixture(), asyncState = false) {
     panel.state = {runner, ui: {phase: 'paused', session: {why: {pc: 1}}}, hddDownloadBusy: false, hddDownloadStatus: null};
     Object.assign(panel, {_hddDownloadMounted: true, _hddDownloadToken: {}, _hddDownloadRunner: runner,
         _hddDownloadPhase: 'paused', _hddDownloadHalt: panel.state.ui.session.why, _hddDownload: null,
-        _hddDownloadPending: false, _runnerPromise: null,
+        _hddDownloadPending: false, _runnerPromise: null, _samdPressed: new Set(),
         // The panel's real runner-ownership claim (#1124): _teardownRunner releases it.
         _runnerOwnership: createRunnerOwnership()});
     panel.props = {vm: {}, onRunnerGone: () => events.push('gone'), onRunnerChange: () => events.push('change')};

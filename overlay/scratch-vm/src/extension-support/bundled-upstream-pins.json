@@ -5,10 +5,10 @@
     "files": {
         "arrays": {
             "path": "extensions/CrispStrobe/arrays.js",
-            "sha256": "60b19f17ecf96d9084cd0c53622474601c444f60116c1c4f13ea96664e04156e",
-            "bytes": 82461,
+            "sha256": "7024089285a820105aea02fa187232991e566adf9bf8baa05cf9f63f54be5349",
+            "bytes": 112514,
             "repo": "CrispStrobe/extensions",
-            "commit": "4db2813d366af8a110fc79599afb55d1cd42d8df"
+            "commit": "035ab22a4d946fe5b8e367013caf898cd763e5f4"
         },
         "circuitplayground": {
             "path": "extensions/CrispStrobe/circuitplayground.js",
@@ -131,8 +131,10 @@
         },
         "microbitplus": {
             "path": "extensions/CrispStrobe/microbitplus.js",
-            "sha256": "582d19f6b05d8dfd0b169f9737f98ba454779336d60d95cba39f20930bc92645",
-            "bytes": 55538
+            "sha256": "7bdf152f945c34f81b919cda1232d6d8f21298c5274bbe317838042446118583",
+            "bytes": 92808,
+            "repo": "CrispStrobe/extensions",
+            "commit": "3dc133320c2b9c3725bfc69b0f2d2406c4e8900f"
         },
         "text2speech": {
             "path": "extensions/CrispStrobe/brickwright_tts.js",
@@ -144,7 +146,7 @@
             "sha256": "e7c35e7ae3d45ec2bdb1a7b1b9d51c727889bfd3780b852ffb11fe13a92ad079",
             "bytes": 15127,
             "repo": "CrispStrobe/bw-board",
-            "commit": "8785e4688cc308b34fea434c1734523caa621f74"
+            "commit": "33d3ee399db9224105e70f34864f1af962ccdb41"
         }
     }
 }

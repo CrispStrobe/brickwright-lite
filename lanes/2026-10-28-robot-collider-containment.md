@@ -1,6 +1,6 @@
 # Robot Lab mesh-collider containment and repeatable generation
 
-Status: CLAIMED — correction scope only; merge before new implementation.
+Status: SOURCE CANDIDATE — merged scope; affected runtime qualification pending.
 Owner: Codex, user-approved ordered qualification continuation.
 Carrier branch: `lane/robot-coast-steering-20261028` (scope-only stage).
 Base: `b9fa2e844f66566f9f801c94a4dfd425e973bdd6`.
@@ -42,3 +42,11 @@ admission, audit saved bytes independently, and preserve old failures. Admit all
 enabled exact-head checks, only declared skips, then verify predicted/actual
 parents/tree and preservation of unrelated main entries. Overall user goal stays
 open through subsequent rotor, coasting, steering and contact acceptance.
+
+The successor implements clipped-face bounds with coplanar boundary ownership,
+an explicit tapered-shoulder region, conservative numerical bounds and guarded
+repeat generation. Independent rational controls and complete declared-section
+surface subtraction are described in
+`docs/ROBOT-LAB-COLLIDER-DERIVATIONS.md`. Existing overhang and construction
+guards remain. Pure source controls do not qualify model behavior; no shipped
+model verdict is promoted or demoted by this checkpoint.

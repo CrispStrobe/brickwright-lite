@@ -168,7 +168,8 @@ test('published migration counts distinguish proven, awaiting-proof and ambient 
     // deferred count moved 103 -> 104. 24/105/1 = 130 after the 2026-10-14
     // sync: CrispStrobe/circuitplayground arrived deferred (VM runtime) and
     // CrispStrobe/arrays, already deferred, was re-pinned; no worker source moved.
-    assert.deepEqual(counts, {worker: 24, deferred: 105, candidate: 1});
+    // 24/110/1 = 135 after the 2026-10-31 sync: five arrivals, all deferred.
+    assert.deepEqual(counts, {worker: 24, deferred: 110, candidate: 1});
 });
 
 test('worker-safe fetch requirements remain measured while their proven cohort stays promoted', () => {

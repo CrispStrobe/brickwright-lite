@@ -26,9 +26,11 @@ export function encodeInstructions (program, {topology = 'default'} = {}) {
     if (!['default', 'six-motors', 'dual-ultrasonic'].includes(topology)) throw new TypeError('Unknown firmware topology');
     const six = topology === 'six-motors', dual = topology === 'dual-ultrasonic';
     if (!program || Object.getPrototypeOf(program) !== Object.prototype ||
-        Object.keys(program).length !== 2 || program.version !== 1 ||
-        !Array.isArray(program.instructions)) throw new TypeError('Expected compiled firmware program v1');
-    const rows = program.instructions, count = rows.length;
+        Object.keys(program).length !== 2 || ![1, 2].includes(program.version) ||
+        !Array.isArray(program.instructions)) throw new TypeError('Expected compiled firmware program v1 or v2');
+    // v2 (firmware g_bw_program_instruction_abi 2) adds op 7, a position move without
+    // waiting, and op 8, wait until every motor in a port bitmask is done.
+    const rows = program.instructions, count = rows.length, v2 = program.version === 2;
     requireInteger(count, 1, 256, 'instruction count');
     for (const row of rows) {
         if (!Array.isArray(row) || row.length !== 4 ||
@@ -44,7 +46,8 @@ export function encodeInstructions (program, {topology = 'default'} = {}) {
                 integer(b, 0, a >= 0x100 || a <= 2 ? 65535 : a === 3 ? 1 : a === 4 ? 255 : 100) &&
                 (op === 3 ? c === 0 : integer(c, 0, count - 1))) ||
             (op === 4 && integer(a, 0, count - 1) && b === 0 && c === 0) ||
-            (op === 6 && integer(a, 0, six ? 5 : 1) && integer(b, -36000, 36000) && integer(c, 1, 1110));
+            ((op === 6 || (v2 && op === 7)) && integer(a, 0, six ? 5 : 1) && integer(b, -36000, 36000) && integer(c, 1, 1110)) ||
+            (v2 && op === 8 && integer(a, 1, six ? 63 : 3) && b === 0 && c === 0);
         if (!valid) throw new RangeError('Instruction exceeds firmware ABI bounds');
     }
     if (rows[count - 1].some(word => word !== 0)) throw new Error('Firmware program must end with END');

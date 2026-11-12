@@ -1,0 +1,77 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026 Brickwright contributors
+// Stock name-based syscall ABI; tests seed button 1 with one short release and hold it.
+task main()
+{
+    IOMapReadType r;
+    IOMapWriteType w;
+    int size;
+    r.ModuleName = "Button.mod";
+    r.Offset = 33;
+    r.Count = 1;
+    SysIOMapRead(r);
+    NumOut(0, LCD_LINE1, r.Result);
+    NumOut(0, LCD_LINE1, r.Buffer[0]);
+    r.Offset = 10;
+    r.Count = 3;
+    SysIOMapRead(r);
+    NumOut(0, LCD_LINE1, r.Result);
+    NumOut(0, LCD_LINE1, r.Buffer[0]);
+    NumOut(0, LCD_LINE1, r.Buffer[1]);
+    NumOut(0, LCD_LINE1, r.Buffer[2]);
+    w.ModuleName = "Button.mod";
+    w.Offset = 10;
+    ArrayInit(w.Buffer, 0, 3);
+    w.Buffer[0] = 1;
+    SysIOMapWrite(w);
+    NumOut(0, LCD_LINE1, w.Result);
+    SysIOMapRead(r);
+    NumOut(0, LCD_LINE1, r.Buffer[2]);
+    w.Buffer[0] = 0;
+    SysIOMapWrite(w);
+    NumOut(0, LCD_LINE1, w.Result);
+    SysIOMapRead(r);
+    NumOut(0, LCD_LINE1, r.Buffer[0]);
+    NumOut(0, LCD_LINE1, r.Buffer[1]);
+    NumOut(0, LCD_LINE1, r.Buffer[2]);
+    r.Offset = 33;
+    r.Count = 1;
+    SysIOMapRead(r);
+    NumOut(0, LCD_LINE1, r.Buffer[0]);
+    ArrayInit(r.Buffer, 99, 1);
+    r.ModuleName = "Missing.mod";
+    SysIOMapRead(r);
+    NumOut(0, LCD_LINE1, r.Result);
+    size = ArrayLen(r.Buffer);
+    NumOut(0, LCD_LINE1, size);
+    NumOut(0, LCD_LINE1, r.Buffer[0]);
+    r.ModuleName = "Button.mod";
+    r.Offset = 35;
+    r.Count = 2;
+    SysIOMapRead(r);
+    NumOut(0, LCD_LINE1, r.Result);
+    NumOut(0, LCD_LINE1, r.Buffer[0]);
+    r.Count = 65;
+    SysIOMapRead(r);
+    NumOut(0, LCD_LINE1, r.Result);
+    size = ArrayLen(r.Buffer);
+    NumOut(0, LCD_LINE1, size);
+    ArrayInit(w.Buffer, 0, 65);
+    SysIOMapWrite(w);
+    NumOut(0, LCD_LINE1, w.Result);
+    r.Count = 64;
+    SysIOMapRead(r);
+    NumOut(0, LCD_LINE1, r.Result);
+    r.Offset = 36;
+    r.Count = 0;
+    SysIOMapRead(r);
+    NumOut(0, LCD_LINE1, r.Result);
+    size = ArrayLen(r.Buffer);
+    NumOut(0, LCD_LINE1, size);
+    w.Offset = 36;
+    ArrayInit(w.Buffer, 0, 0);
+    SysIOMapWrite(w);
+    NumOut(0, LCD_LINE1, w.Result);
+    Wait(100);
+    NumOut(0, LCD_LINE1, 999);
+}

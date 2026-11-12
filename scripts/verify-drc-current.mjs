@@ -157,8 +157,10 @@ try {
         } catch {
             return {chip: false, text: ''};
         }
-        if (await designer.locator('[data-warnings-popover]').count() === 0) await chip.first().click();
-        const pop = designer.locator('[data-warnings-popover]');
+        // The popover is portalled to document.body (bw-circuit-ui#134) so the
+        // scrolling toolbar row cannot clip it; look for it on the page.
+        if (await page.locator('[data-warnings-popover]').count() === 0) await chip.first().click();
+        const pop = page.locator('[data-warnings-popover]');
         await pop.first().waitFor({state: 'visible', timeout: 30000});
         // The popover renders before the DRC memo has necessarily re-run over
         // the new topology; wait for this bench's own finding to be in it.

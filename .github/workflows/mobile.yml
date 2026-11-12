@@ -3249,7 +3249,7 @@ jobs:
           APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
           APPSTORE_API_KEY_P8: ${{ secrets.APPSTORE_API_KEY_P8 }}
           APPSTORE_APP_ID: ${{ vars.APPSTORE_APP_ID }}
-        run: node scripts/testflight-submit.mjs
+        run: node scripts/testflight-submit.mjs --platform IOS
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         # Never let the artifact sink the release: the upload above is the point,

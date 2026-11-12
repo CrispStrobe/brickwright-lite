@@ -1,7 +1,7 @@
 // Owned GUI acceptance game (MIT); portable settings helper retains MPL-2.0.
 import {STRING_ARRAY_SETTINGS_PATH, STRING_ARRAY_SETTINGS_SOURCE} from '../../overlay/scratch-gui/src/lib/bw-makecode/string-array-settings.generated.js';
 export function numericAuthoringFiles({maximum = 10, operation = 'min', message = '猫'} = {}) {
-    if (![10, 12].includes(maximum) || !['min', 'max'].includes(operation) || !['猫', 'PLAY'].includes(message)) throw new Error('Unknown owned GUI fixture variant');
+    if (![10, 12].includes(maximum) || !['min', 'max', 'atan2'].includes(operation) || !['猫', 'PLAY'].includes(message)) throw new Error('Unknown owned GUI fixture variant');
     return {
         [STRING_ARRAY_SETTINGS_PATH]: STRING_ARRAY_SETTINGS_SOURCE,
         'main.ts': `scene.setBackgroundColor(15)
@@ -33,4 +33,4 @@ ready += 0
         'pxt.json': JSON.stringify({name: 'Owned numeric authoring game', dependencies: {device: '*'}, files: [STRING_ARRAY_SETTINGS_PATH, 'main.ts'], preferredEditor: 'tsprj'})
     };
 }
-export const numericSample = ({pressed = false, maximum = 10, operation = 'min', message = '猫'} = {}) => ({ready: 1, count: 3, ordered: operation === 'min' ? 1 : 4, range: -3, never: false, always: true, saved: message, pressed: pressed ? 1 : 0, result: pressed ? maximum : 0, heroX: pressed ? 40 + maximum : 40});
+export const numericSample = ({pressed = false, maximum = 10, operation = 'min', message = '猫'} = {}) => ({ready: 1, count: 3, ordered: operation === 'min' ? 1 : operation === 'atan2' ? Math.atan2(1, 4) : 4, range: -3, never: false, always: true, saved: message, pressed: pressed ? 1 : 0, result: pressed ? maximum : 0, heroX: pressed ? 40 + maximum : 40});

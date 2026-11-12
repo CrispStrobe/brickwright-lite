@@ -1,5 +1,6 @@
 import path from 'node:path';
 import {readFileSync} from 'node:fs';
+import {STATIC_RECORDS} from '../admit-static-provenance.mjs';
 
 export const quote = value => `'${String(value).replaceAll("'", "'\\''")}'`;
 
@@ -36,6 +37,13 @@ export function refreshForwardPackages (run, {root, clones, verifyGuiMetadata = 
     // Default mode established byte identity. --record refreshes provenance
     // for the existing ROM, without replacing the binary.
     run(`node scripts/sync-i8086-bios.mjs --dir ${quote(clones['bw-board'])} --record`);
+    // Retained static records (DOS image, CP/M and free-386 ROMs) re-admit together or refuse by name.
+    try {
+        run(`node scripts/admit-static-provenance.mjs --dir ${quote(clones['bw-board'])}`);
+    } catch (error) {
+        throw new Error('Forward refused: static provenance records could not be re-admitted at the new pin. ' +
+            'Review the named records/assets; no integrate, install or notices ran.', {cause: error});
+    }
     run(`node scripts/sync-i8086-demo-roms.mjs --dir ${quote(clones['bw-board'])} --write`);
     run(`node scripts/gen-bw-board-census.mjs --dir ${quote(clones['bw-board'])}`);
     run('npm run integrate');
@@ -98,7 +106,13 @@ export const FORWARD_OUTPUTS = Object.freeze([
     'docs/generated/LANGUAGE-DEVICE-MATRIX.md',
     ...['overlay/scratch-gui', 'packages/scratch-gui'].flatMap(root => ARTIFACTS.map(file => `${root}/${file}`))
 ]);
-const allowed = new Set(FORWARD_OUTPUTS);
+// Static provenance records: all three overlay records, but only the two tracked
+// package mirrors (the free-386 mirror is git-ignored and never force-added).
+export const STATIC_FORWARD_OUTPUTS = Object.freeze([
+    ...STATIC_RECORDS.map(rec => `overlay/scratch-gui/${rec.record}`),
+    ...STATIC_RECORDS.filter(rec => rec.trackedMirror).map(rec => `packages/scratch-gui/${rec.record}`)
+]);
+const allowed = new Set([...FORWARD_OUTPUTS, ...STATIC_FORWARD_OUTPUTS]);
 export function selectForwardOutputs (paths) {
     const unexpected = paths.filter(file => file.includes('\0') || file.includes('\\') ||
         file.split('/').some(part => !part || part === '.' || part === '..') ||

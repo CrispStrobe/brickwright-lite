@@ -722,6 +722,29 @@ export const parseModel = (text, {catalog} = {}) => {
     }
 
     const model = {version: 1, parts};
+    // One model-wide setting in the main section. Embedded parts/submodels do
+    // not override the receiving model's compatibility choice.
+    const directionLines = mainLines.filter(l => /^\s*0\s+!BW\s+MOTOR_DIRECTION(?:\s|$)/i.test(l.text));
+    if (directionLines.length) {
+        const value = directionLines[0].text.trim().replace(/^0\s+!BW\s+MOTOR_DIRECTION\s*/i, '').trim();
+        if (directionLines.length !== 1 || !['legacy', 'motor-frame'].includes(value)) {
+            model.motorDirection = 'invalid';
+            refusals.push({line: directionLines[0].lineNo, severity: 'error', code: 'bad-motor-direction',
+                message: 'MOTOR_DIRECTION needs exactly one legacy or motor-frame setting in the main model'});
+        } else model.motorDirection = value;
+    }
+    // The motor rotor treatment, likewise once in the main section (#1494): 'legacy' (the
+    // default) puts the reflected rotor inertia on both hinge bodies; 'native' uses the
+    // engine's relative hinge rotor and leaves bare body inertia unchanged.
+    const rotorLines = mainLines.filter(l => /^\s*0\s+!BW\s+ROTOR_INERTIA(?:\s|$)/i.test(l.text));
+    if (rotorLines.length) {
+        const value = rotorLines[0].text.trim().replace(/^0\s+!BW\s+ROTOR_INERTIA\s*/i, '').trim();
+        if (rotorLines.length !== 1 || !['legacy', 'native'].includes(value)) {
+            model.rotor = 'invalid';
+            refusals.push({line: rotorLines[0].lineNo, severity: 'error', code: 'bad-rotor-model',
+                message: 'ROTOR_INERTIA needs exactly one legacy or native setting in the main model'});
+        } else model.rotor = value;
+    }
     // Keep a supplied model's attribution when Build edits or exports a derivative.
     const header = mainLines.map(l => l.text);
     const author = header.map(l => /^0\s+Author:\s*(.+)$/i.exec(l)?.[1]?.trim()).find(Boolean);
@@ -797,6 +820,12 @@ export const parseModel = (text, {catalog} = {}) => {
  * @returns {string} LDraw text with CRLF
  */
 export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright model', author = model.attribution?.author || 'Brickwright', precision = 6} = {}) => {
+    if (model.motorDirection !== undefined && !['legacy', 'motor-frame'].includes(model.motorDirection)) {
+        throw new RangeError('motorDirection must be legacy or motor-frame');
+    }
+    if (model.rotor !== undefined && !['legacy', 'native'].includes(model.rotor)) {
+        throw new RangeError('rotor must be legacy or native');
+    }
     if (![6, 12].includes(precision)) throw new RangeError('LDraw precision must be 6 or 12');
     const number = n => formatNumber(n, precision);
     const lines = [];
@@ -806,6 +835,8 @@ export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright 
     lines.push(`0 ${title}`);
     lines.push(`0 Name: ${name}`);
     lines.push(`0 Author: ${author}`);
+    if (model.motorDirection !== undefined) lines.push(`0 !BW MOTOR_DIRECTION ${model.motorDirection}`);
+    if (model.rotor !== undefined) lines.push(`0 !BW ROTOR_INERTIA ${model.rotor}`);
     if (model.attribution?.license) lines.push(`0 !LICENSE ${model.attribution.license}`);
     for (const d of model.drawings || []) {
         lines.push(`0 !BW DRAW ${d.surface} ${d.pen} ${[...d.tip, ...d.center, d.radiusLdu].map(number).join(' ')}`);

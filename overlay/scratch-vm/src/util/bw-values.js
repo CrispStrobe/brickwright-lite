@@ -56,7 +56,16 @@
  *    wrote them as JSON objects that scratch-parser refuses (or as 0).
  */
 // The Arrays extension's built-in value rules (arrays.js `makeValues`), verbatim.
+// This lookup adds no allocation or reference authority. Its primitive identity
+// inputs cannot invoke caller traps; captured heap operations never initialize
+// a heap or call runtime listeners. Ordinary value APIs retain their behavior.
+const identityApply = Reflect.apply;
+const identityWeakGet = WeakMap.prototype.get;
+const identityMapGet = Map.prototype.get;
+const metadataHas = WeakSet.prototype.has;
+const metadataAdd = WeakSet.prototype.add;
 const makeValues = () => {
+  const nativeMetadata = new WeakSet();
   const isUndefined = (value) =>
     Boolean(value) &&
     typeof value === "object" &&
@@ -136,8 +145,18 @@ const makeValues = () => {
     }
     return scopes.get(key);
   };
-  const reference = (runtime, kind, id) =>
-    restoreReference({ bwReference: { kind, id, scope: scopeOf(runtime) } });
+  const reference = (runtime, kind, id) => {
+    const inner = { kind, id, scope: scopeOf(runtime) };
+    const outer = { bwReference: inner };
+    // Membership records allocation origin only, before interning can choose an
+    // existing reference. It neither registers a heap body nor grants a loan.
+    identityApply(metadataAdd, nativeMetadata, [inner]);
+    identityApply(metadataAdd, nativeMetadata, [outer]);
+    return restoreReference(outer);
+  };
+  const hasNativeReferenceMetadata = value =>
+    Boolean(value) && typeof value === "object" &&
+    identityApply(metadataHas, nativeMetadata, [value]);
   const heaps = new WeakMap();
   const heapOf = (runtime) => {
     const key = keyOf(runtime);
@@ -177,6 +196,14 @@ const makeValues = () => {
   const arrayValue = (runtime, value) => {
     const id = referenceId(runtime, value, "array");
     return id === null ? undefined : heapOf(runtime).values.get(id);
+  };
+  const existingArrayByIdentity = (runtime, kind, id, scope) => {
+    if (!runtime || (typeof runtime !== "object" && typeof runtime !== "function") ||
+        kind !== "array" || typeof id !== "string" || typeof scope !== "string") return undefined;
+    const currentScope = identityApply(identityWeakGet, scopes, [runtime]);
+    if (scope !== currentScope) return undefined;
+    const heap = identityApply(identityWeakGet, heaps, [runtime]);
+    return heap ? identityApply(identityMapGet, heap.values, [id]) : undefined;
   };
   const sameReference = (a, b) =>
     isReference(a) &&
@@ -308,6 +335,8 @@ const makeValues = () => {
     UNDEFINED,
     arrayReference,
     arrayValue,
+    existingArrayByIdentity,
+    hasNativeReferenceMetadata,
     reference,
     referenceId,
     isReference,

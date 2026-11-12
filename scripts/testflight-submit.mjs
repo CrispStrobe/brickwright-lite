@@ -41,6 +41,7 @@ async function main() {
     const env = readEnv();
     const api = client(env);
     const dryRun = flag('dry-run');
+    const required = arg('platform');
     const version = arg('version') || JSON.parse(await readFile(
         new URL('../apps/tauri/src-tauri/tauri.conf.json', import.meta.url), 'utf8')).version;
 
@@ -59,7 +60,17 @@ async function main() {
             '&fields[builds]=version,processingState,uploadedDate,usesNonExemptEncryption')).data;
         builds = all.filter(b => b.attributes.version === version &&
             b.attributes.processingState === 'VALID');
-        if (builds.length) break;
+        // `--platform MAC_OS|IOS`: the build this run must not finish without.
+        // iOS (mobile.yml) and macOS (release.yml) upload into one app record
+        // from separate workflows, so "any VALID build" let the iOS run end
+        // before the macOS build existed and the macOS build reached nobody.
+        if (builds.length) {
+            if (!required) break;
+            const seen = await Promise.all(builds.map(async b => (await api(`/v1/builds/${b.id}/preReleaseVersion` +
+                '?fields[preReleaseVersions]=platform')).data?.attributes?.platform || null));
+            if (seen.includes(required)) break;
+            console.log(`waiting for the ${required} build at ${version} (VALID so far: ${seen.join(', ') || 'none'})`);
+        }
         if (Date.now() > deadline) {
             throw new Error(`no VALID build at ${version} after ${VALID_DEADLINE_MS / 60000} min ` +
                 `(have: ${all.map(b => `${b.attributes.version}/${b.attributes.processingState}`)

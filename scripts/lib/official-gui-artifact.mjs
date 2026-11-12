@@ -14,8 +14,17 @@ const id = value => assert.ok(Number.isSafeInteger(value) && value > 0, 'Officia
 // A dependent consumer can run while sibling jobs remain active. The producer
 // job, not the entire run, must have finished successfully. API head_sha is not
 // a PR merge checkout witness: that comes from the embedded source manifest.
+function producerAttemptOf({attempt, producerAttempt = attempt}) {
+    id(attempt); id(producerAttempt);
+    assert.ok(producerAttempt <= attempt, 'Producer attempt cannot follow the consumer attempt');
+    return producerAttempt;
+}
+
 function admitGuiArtifactEnvelope({run, job, artifact, artifacts}, expected, admitSteps) {
     const {repository, runId, attempt, runHeadSha, checkoutSha, reviewedHeadSha, artifactId, jobId} = expected;
+    // A single-job rerun reuses the earlier attempt's build job and outputs, so
+    // the producer attempt may precede the consumer (run) attempt, never follow it.
+    const producerAttempt = producerAttemptOf(expected);
     assert.equal(repository, 'CrispStrobe/brickwright-lite', 'Only the owned repository is admitted');
     for (const value of [runId, attempt, artifactId, jobId]) id(value);
     for (const value of [runHeadSha, checkoutSha, reviewedHeadSha]) fullSha(value);
@@ -34,7 +43,7 @@ function admitGuiArtifactEnvelope({run, job, artifact, artifacts}, expected, adm
             'PR reviewed head must belong to the official run');
     }
     same(job.id, jobId, 'Official producer job identity'); same(job.run_id, runId, 'Producer run');
-    same(job.run_attempt, attempt, 'Producer attempt'); same(job.head_sha, runHeadSha, 'Producer run source');
+    same(job.run_attempt, producerAttempt, 'Producer attempt'); same(job.head_sha, runHeadSha, 'Producer run source');
     same(job.name, 'build', 'Sole Pages producer job'); same(job.status, 'completed', 'Producer completed');
     same(job.conclusion, 'success', 'Producer successful'); same(job.html_url, `${html}/job/${jobId}`, 'Official producer URL'); same(job.run_url, `${api}/runs/${runId}`, 'Producer API run');
     admitSteps(job);
@@ -52,7 +61,7 @@ function admitGuiArtifactEnvelope({run, job, artifact, artifacts}, expected, adm
     const named = artifacts.filter(item => item.name === 'github-pages');
     same(named.length, 1, 'Unique Pages artifact in this run'); same(named[0].id, artifactId, 'Listed artifact identity');
     if (artifact.digest !== null && artifact.digest !== undefined) assert.match(artifact.digest, /^sha256:[0-9a-f]{64}$/, 'Official archive digest');
-    return Object.freeze({repository, runId, attempt, runHeadSha, checkoutSha, reviewedHeadSha, artifactId, jobId,
+    return Object.freeze({repository, runId, attempt, producerAttempt, runHeadSha, checkoutSha, reviewedHeadSha, artifactId, jobId,
         archiveUrl: artifact.archive_download_url, archiveBytes: artifact.size_in_bytes, archiveDigest: artifact.digest || null,
         runUrl: html, jobUrl: job.html_url});
 }
@@ -119,6 +128,9 @@ export function guiRunnerProducerSource(workflowText) {
     const outputAt = build.indexOf('    outputs:\n');
     same(build.slice(outputAt).split(/(?=^    [a-z][a-z-]*:)/m)[0], expectedOutput, 'Closed producer output keys');
     assert.ok(/^    needs: build$/m.test(consumer), 'Exact same-workflow build dependency');
+    same([...consumer.matchAll(/^    if: (.+)$/gm)].map(match => match[1]).join('\n'),
+        "needs.build.result == 'success' && (github.event_name == 'push' || github.event_name == 'pull_request')",
+        'Supported official GUI consumer events');
     same([...consumer.matchAll(/^      (BW_GUI_PRODUCER_[A-Z0-9_]+):/gm)].map(match => match[1]).sort().join(','), [GUI_RUNNER_ENV, 'BW_GUI_PRODUCER_RESULT'].sort().join(','), 'Closed consumer producer inputs');
     for (const [key, expression] of [[GUI_RUNNER_ENV, '${{ needs.build.outputs.gui_producer_runner_v1 }}'],
         ['BW_GUI_PRODUCER_RESULT', '${{ needs.build.result }}']]) {
@@ -140,12 +152,14 @@ export function guiRunnerProducerReceipt(wire, source, {expected, env}) {
     const [schema, repository, runId, attempt, job, checkoutSha, runHeadSha, reviewedHeadSha, workflowSha, workflowRef] = fields;
     same(schema, GUI_RUNNER_SCHEMA, 'Producer evidence schema');same(source.schema, schema, 'Selected producer source schema');
     same(repository, expected.repository, 'Producer scalar repository');same(repository, 'CrispStrobe/brickwright-lite', 'Owned producer scalar repository');
-    same(runId, String(expected.runId), 'Producer scalar run');same(attempt, String(expected.attempt), 'Producer scalar attempt');
+    same(runId, String(expected.runId), 'Producer scalar run');
+    assert.match(attempt, /^[1-9][0-9]{0,8}$/, 'Producer scalar attempt');
+    const producerAttempt = producerAttemptOf({attempt: expected.attempt, producerAttempt: Number(attempt)});
     same(job, 'build', 'Producer scalar logical job');same(checkoutSha, expected.checkoutSha, 'Producer scalar checkout');
     same(runHeadSha, expected.runHeadSha, 'Producer scalar run head');same(reviewedHeadSha, expected.reviewedHeadSha, 'Producer scalar reviewed head');
     for (const value of [checkoutSha, runHeadSha, reviewedHeadSha, workflowSha]) fullSha(value);
     same(env.GITHUB_REPOSITORY, repository, 'Consumer repository');same(env.GITHUB_RUN_ID, runId, 'Consumer run');
-    same(env.GITHUB_RUN_ATTEMPT, attempt, 'Consumer attempt');same(env.GITHUB_SHA, checkoutSha, 'Consumer actual checkout');
+    same(env.GITHUB_RUN_ATTEMPT, String(expected.attempt), 'Consumer attempt');same(env.GITHUB_SHA, checkoutSha, 'Consumer actual checkout');
     same(env.GITHUB_JOB, 'arcade-numeric-authoring', 'Consumer logical job');same(env.BW_GUI_PRODUCER_RESULT, 'success', 'Successful build dependency result');
     same(env.GITHUB_WORKFLOW_SHA, workflowSha, 'Same executing workflow source');same(env.GITHUB_WORKFLOW_REF, workflowRef, 'Same executing workflow reference');
     assert.match(workflowRef, /^CrispStrobe\/brickwright-lite\/\.github\/workflows\/build\.yml@refs\/(?:pull\/[1-9][0-9]*\/merge|heads\/[^\s\t]+)$/, 'Official producer workflow reference');
@@ -156,7 +170,7 @@ export function guiRunnerProducerReceipt(wire, source, {expected, env}) {
         same(outcome, 'success', 'Critical producer outcome must succeed');same(conclusion, 'success', 'Critical producer conclusion must succeed');
         return {...selected, outcome, conclusion};
     });
-    const receipt = {schema: GUI_RUNNER_SCHEMA, repository, runId: expected.runId, attempt: expected.attempt,
+    const receipt = {schema: GUI_RUNNER_SCHEMA, repository, runId: expected.runId, attempt: expected.attempt, producerAttempt,
         producerJob: job, consumerJob: env.GITHUB_JOB, checkoutSha, runHeadSha, reviewedHeadSha,
         workflowSha, workflowRef, workflowSha256: source.workflowSha256, dependencyResult: 'success', rows,
         inputBytes: Buffer.byteLength(wire), inputSha256: hash(Buffer.from(wire)), apiStepEvidenceRewritten: false};
@@ -169,6 +183,7 @@ export function admitGuiArtifactRunnerMetadata(metadata, expected, receipt) {
     // validate its exact successful shape again at the official metadata join.
     same(receipt.schema, GUI_RUNNER_SCHEMA, 'Admitted runner receipt schema');
     for (const key of ['repository', 'runId', 'attempt', 'checkoutSha', 'runHeadSha', 'reviewedHeadSha']) same(receipt[key], expected[key], `Runner official join ${key}`);
+    same(receipt.producerAttempt, producerAttemptOf(expected), 'Runner official join producerAttempt');
     same(receipt.dependencyResult, 'success', 'Runner dependency admitted');same(receipt.rows.length, 3, 'Runner producer count');
     return admitGuiArtifactEnvelope(metadata, expected, job => {
         for (const [i, [stepId, name]] of GUI_RUNNER_STEPS.entries()) {
@@ -270,7 +285,7 @@ export async function inspectGuiArchive(bytes, admission, expected) {
     assert.ok(members.has(GUI_MANIFEST), 'Embedded original build manifest required');
     const manifest = JSON.parse(members.get(GUI_MANIFEST).toString('utf8'));
     same(manifest.schema, 1, 'Build manifest schema'); same(manifest.repository, admission.repository, 'Manifest repository');
-    same(manifest.runId, admission.runId, 'Manifest run'); same(manifest.attempt, admission.attempt, 'Manifest attempt');
+    same(manifest.runId, admission.runId, 'Manifest run'); same(manifest.attempt, admission.producerAttempt, 'Manifest producer attempt');
     same(manifest.job, 'build', 'Manifest producer'); same(manifest.githubSha, admission.checkoutSha, 'Original GITHUB_SHA checkout');
     same(manifest.sourceSha, admission.checkoutSha, 'Manifest actual checkout'); same(manifest.reviewedHeadSha, admission.reviewedHeadSha, 'Manifest reviewed source');
     for (const key of ['treeSha', 'producerSha', 'arraysValuesSha']) {fullSha(manifest[key]); same(manifest[key], expected[key], `Manifest ${key}`);}
@@ -287,7 +302,7 @@ export async function inspectGuiArchive(bytes, admission, expected) {
     assert.ok(Object.keys(assets).some(name => name.endsWith('.js')), 'Actual JavaScript inventory required');
     const receipt = {sourceSha: manifest.sourceSha, treeSha: manifest.treeSha, reviewedHeadSha: manifest.reviewedHeadSha,
         producerSha: manifest.producerSha, arraysValuesSha: manifest.arraysValuesSha, sdk: manifest.sdk,
-        build: {runId: admission.runId, attempt: admission.attempt, jobId: admission.jobId, artifactId: admission.artifactId,
+        build: {runId: admission.runId, attempt: admission.producerAttempt, consumerAttempt: admission.attempt, jobId: admission.jobId, artifactId: admission.artifactId,
             runUrl: admission.runUrl, conclusion: 'success', checkoutSha: admission.checkoutSha, archiveSha256}, assets, assetBytes};
     return {members, receipt, manifest};
 }
@@ -306,8 +321,8 @@ export async function extractAdmittedGui(inspected, directory) {
     }
 }
 
-export async function fetchGuiArtifactMetadata({repository, runId, attempt, fetchImpl = fetch, token, signal}) {
-    assert.equal(repository, 'CrispStrobe/brickwright-lite'); id(runId); id(attempt);
+export async function fetchGuiArtifactMetadata({repository, runId, attempt, producerAttempt = attempt, fetchImpl = fetch, token, signal}) {
+    assert.equal(repository, 'CrispStrobe/brickwright-lite'); id(runId); producerAttemptOf({attempt, producerAttempt});
     const base = `https://api.github.com/repos/${repository}/actions`;
     const headers = {accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28',
         ...(token ? {authorization: `Bearer ${token}`} : {})};
@@ -331,7 +346,7 @@ export async function fetchGuiArtifactMetadata({repository, runId, attempt, fetc
         assert.equal(new Set(all.map(value => value.id)).size, all.length, 'Unique official record identities');
         return all;
     };
-    const jobs = await collect(`${base}/runs/${runId}/attempts/${attempt}/jobs`, 'jobs');
+    const jobs = await collect(`${base}/runs/${runId}/attempts/${producerAttempt}/jobs`, 'jobs');
     const artifacts = await collect(`${base}/runs/${runId}/artifacts`, 'artifacts');
     const producers = jobs.filter(value => value.name === 'build'), pages = artifacts.filter(value => value.name === 'github-pages');
     same(producers.length, 1, 'Unique official build producer'); same(pages.length, 1, 'Unique official Pages artifact');

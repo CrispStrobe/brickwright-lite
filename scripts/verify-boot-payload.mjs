@@ -30,6 +30,7 @@ import {readFileSync, existsSync, readdirSync, statSync} from 'node:fs';
 import {join, resolve, dirname, basename} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {gzipSync} from 'node:zlib';
+import {proveMenuLazyCompanion} from './lib/boot-lazy-companion.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const build = process.env.BW_BUILD
@@ -51,11 +52,15 @@ const LAZY = [
         why: 'lazyBuiltinExtensions.legonxt in extension-manager.js'},
     {what: 'Arcade runtime (its speech fonts)', marker: 'font12: Adobe SIL OFL 1.1', chunk: 'ext-arcade',
         why: 'lazyBuiltinExtensions.arcade in extension-manager.js'},
+    // The Arcade frame phase (~26 KiB) is handed to the runtime by the lazy extension, not required by runtime.js.
+    {what: 'Arcade frame phase', marker: 'Arcade phase work budget must be finite and positive', chunk: 'ext-arcade',
+        why: 'dependencies.framePhase in arcade/index.js (runtime._attachArcadeFramePhase receives the class)'},
     {what: 'Robot Lab blocks', marker: 'when part [PART] touches [OTHER]', chunk: 'ext-robotlab',
         why: 'lazyBuiltinExtensions.robotlab in extension-manager.js'},
     // The extension menu-shape table (~35 KB): read by the Code tab's compiler and by the
     // load-time repair of extension projects; the first load carries only the import() call.
     {what: 'extension menu shape table', marker: '+MULTIPLE_PORT', chunk: 'bw-extension-menus',
+        menuCompanion: true,
         why: 'the import() in lib/arcade-project-migration.js (lib/extension-menu-args.js)'},
     // Autosave, project-structure history and error notes load after the first
     // paint; the History & autosave panel only when it is opened.
@@ -81,8 +86,18 @@ const LAZY = [
     // these chunks at first paint, so "not preloaded" is the eager-script check.
     {what: 'circuit DRC rules', marker: 'Check the address decode wiring on the breadboard.', chunk: 'bw-circuit-ui',
         why: 'the guarded load in overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx (webpackChunkName "bw-circuit-ui")'},
+    // The German words for those findings (bw-circuit-ui src/i18n/drc-de.js) come with the
+    // designer as well; the first-load budget has no room for a translation table. ASCII-only
+    // marker, so minification cannot escape it into a different spelling.
+    {what: 'German DRC texts', marker: 'Bus-Extraktor fehlgeschlagen: ', chunk: 'bw-circuit-ui',
+        why: 'the guarded load in circuit-tab.jsx (webpackChunkName "bw-circuit-ui"); drc-de.js is imported only by designer components'},
     {what: 'board canvas', marker: 'Could not recognise this file', chunk: 'bw-circuit-ui',
         why: 'the guarded load in circuit-tab.jsx (webpackChunkName "bw-circuit-ui")'},
+    // The Circuit tab's panel switch and panel views (Robot Lab conventions): loaded with the
+    // designer, never at boot (the tab is mounted from the start). The marker is the panel
+    // header's test id, which only circuit-panels.jsx carries.
+    {what: 'the Circuit tab panels', marker: 'bw-circuit-panel-header', chunk: 'bw-circuit-panels',
+        why: 'the guarded load in circuit-tab.jsx (webpackChunkName "bw-circuit-panels")'},
     {what: '6502 bus extractor (bw-board)', marker: 'no RAM, ROM, VIA or ACIA on the board', chunk: 'bw-board',
         // npm package modules shared by multiple lazy consumers may be extracted
         // into an anonymous split chunk. Keep the named entry requirement and
@@ -255,12 +270,29 @@ for (const m of LAZY) {
     check(`${m.what} have their own chunk (chunks/${m.chunk}*.js)`, Boolean(chunk),
         chunk ? `${chunk}, ${kib(statSync(join(chunksDir, chunk)).size)}` : `no chunks/${m.chunk}*.js — check ${m.why}`);
     if (chunk && !m.optional) {
+        if (m.menuCompanion && !has(readFileSync(join(chunksDir, chunk), 'utf8'), m)) {
+            const matches = chunkFiles.filter(f => f.endsWith('.js') &&
+                (f === `${m.chunk}.js` || f.startsWith(`${m.chunk}.`)));
+            const eagerNames = new Set(eagerSources.map(({p}) => resolve(p)));
+            const proof = matches.length === 1 ? proveMenuLazyCompanion({
+                entryName: `chunks/${chunk}`, marker: m.marker, html,
+                eagerSources: eagerSources.map(({p, src}) => ({name: p.slice(build.length + 1), source: src})),
+                lazySources: chunkFiles.filter(f => f.endsWith('.js') && !eagerNames.has(resolve(chunksDir, f)))
+                    .map(f => ({name: `chunks/${f}`, source: readFileSync(join(chunksDir, f), 'utf8')}))
+            }) : {ok: false, reason: 'DUPLICATE_NAMED_ENTRY'};
+            check(`the marker for ${m.what} belongs to its actual lazy request group`, proof.ok,
+                proof.ok ? proof.markerFiles.join(', ') : proof.reason);
+            check(`nothing preloads the menu request group`, proof.ok && proof.files.every(f =>
+                !html.includes(f) && !html.includes(basename(f))),
+            'named entry and every actual companion must be absent from HTML script/preload/prefetch references');
+        } else {
         const candidates = m.sharedLazy ? chunkFiles.filter(f => f.endsWith('.js')) : [chunk];
         const found = candidates.filter(f => has(readFileSync(join(chunksDir, f), 'utf8'), m));
         check(`the marker for ${m.what} still discriminates (found in ${m.sharedLazy ? 'lazy JS' : 'its chunk'})`, found.length > 0,
             found.length ? found.join(', ') : `${JSON.stringify(m.marker)} is missing from its permitted lazy chunks — the marker rotted, so the "not in the first load" check above proves nothing`);
         if (m.sharedLazy) check(`nothing preloads shared ${m.what} payloads`,
             found.every(f => !html.includes(f)), 'index.html must not reference the matched shared payload assets');
+        }
     }
     check(`nothing preloads ${m.what} into the first load`, !html.includes(m.chunk),
         `index.html must not reference chunks/${m.chunk}*`);

@@ -1,6 +1,6 @@
 # Frame-delta Number domain across saved projects and actual VM execution
 
-Status: CLAIMED; merge before implementation.
+Status: IMPLEMENTED candidate; final exact-head hosted/native/editor qualification pending.
 Base: `507e98e4c1a027c8dd3ad2945ca313056315cd02`.
 Owner: Arcade integration. Preserve the active source publisher and its exclusive
 official-original intake; do not push that publisher's branch.
@@ -76,3 +76,27 @@ Bounded source/actual-method controls precede final exact-head original/emitted
 MakeCode, native and visible editor/controller/fresh-save qualification by the
 integration publisher. Keep unavailable captures and independent Array/operand
 refusals separate. This documentation-only claim requests no full browser tag.
+
+## Candidate and qualification boundary
+
+The saved-project proof and source consumer now pass the unchanged full Code,
+two-JSON and SB3 journey. The latest 23-control source/project/math cohort
+passes; it overlaps the earlier 73-control composed source cohort. Four project
+guard cuts and three source guard cuts are detected, including private
+environment issuance rather than an inert denial facade's currentness.
+
+The VM service preserves the actual original property read after accessor
+checks, compares it to the current own-data value and completed result, and
+retains every existing scene-clock hook. Its 83 available source/synthetic
+boundary controls pass. Five VM guard cuts detect invalid finite reads, result
+substitution, changed state/value, delegate replacement and descriptor-value
+substitution for the original property read. Six engine-reader controls could
+not run because provider source files were absent; their original failures are
+retained. These counts do not establish actual VM or SDK execution.
+
+The new native test uses a later real frame, checks the constrained callee's
+value against the actual cached completed expression, and covers Code,
+same/fresh SB3, export/reimport and five metadata/method/delegate refusals
+before effects. Its syntax is checked; its actual execution remains hosted
+qualification work. Visible Blocks operation, controllers and fresh editor
+reopen remain separate pending acceptance. No timing provenance is certified.

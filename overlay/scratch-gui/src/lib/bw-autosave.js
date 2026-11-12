@@ -44,6 +44,9 @@ const nativeInvoke = () => {
     return tauri && tauri.core && typeof tauri.core.invoke === 'function' ? tauri.core.invoke : null;
 };
 
+export const isAndroidApp = () => !!nativeInvoke() && typeof navigator !== 'undefined' &&
+    /Android/i.test(navigator.userAgent);
+
 export const readSettings = () => {
     try {
         const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
@@ -134,6 +137,9 @@ const prune = async keep => {
 
 // ---- folder targets ----
 const folderLabel = async () => {
+    // An older Android build may have enabled an app-private folder. Keep the
+    // accessible in-app versions, but stop writing that invisible extra copy.
+    if (isAndroidApp()) return null;
     const invoke = nativeInvoke();
     if (invoke) {
         const folder = await Promise.resolve(invoke('autosave_folder')).catch(() => null);
@@ -143,22 +149,23 @@ const folderLabel = async () => {
     return handle ? {kind: 'browser', name: handle.name, handle} : null;
 };
 
-export const folderPickerAvailable = () => !!nativeInvoke() ||
-    (typeof window !== 'undefined' && typeof window.showDirectoryPicker === 'function');
+export const folderPickerAvailable = () => !isAndroidApp() && (!!nativeInvoke() ||
+    (typeof window !== 'undefined' && typeof window.showDirectoryPicker === 'function'));
 
 /**
  * The app on a phone or tablet has no folder picker: "choosing" turns on its own
  * Autosave folder (on iPad/iPhone visible in the Files app), so there is nothing to change.
  * @returns {boolean} true in the native app on a touch device
  */
-export const fixedFolder = () => !!nativeInvoke() && typeof navigator !== 'undefined' &&
-    navigator.maxTouchPoints > 1 && /iPad|iPhone|Macintosh|Android/.test(navigator.userAgent);
+export const fixedFolder = () => !isAndroidApp() && !!nativeInvoke() && typeof navigator !== 'undefined' &&
+    navigator.maxTouchPoints > 1 && /iPad|iPhone|Macintosh/.test(navigator.userAgent);
 
 /**
  * Choose the autosave folder (native dialog in the app, directory picker in Chromium).
  * @returns {Promise<?string>} the folder's name, or null when cancelled
  */
 export const chooseFolder = async () => {
+    if (isAndroidApp()) throw new Error('Android autosaves stay inside the app; download a saved version to keep a file.');
     const invoke = nativeInvoke();
     if (invoke) {
         const folder = await invoke('choose_autosave_folder');

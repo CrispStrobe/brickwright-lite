@@ -1,0 +1,29 @@
+# HelixGate — 24:1 perpendicular worm gate, with a coasting hold.
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026 CrispStrobe
+# Start from the saved encoder-zero pose. Virtual SPIKE motor port A.
+# Motor 0 -> +720 -> 0 degrees; wheel ideally 0 -> +30 -> 0.
+# The two-second coast interval explores native worm holding (not hardware proof).
+DEVICE SPIKE
+
+WHEN flag clicked:
+  lab start
+  lab stop motor A hold
+  wait 0.5 seconds
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  lab run motor A for (720 - (lab motor A angle)) degrees at 60 degrees per second
+  lab stop motor A coast
+  IF (abs of (720 - (lab motor A angle))) > 3 THEN:
+    lab stop motor A hold
+    stop all
+  wait 2 seconds
+  lab stop motor A hold
+  lab run motor A for (0 - (lab motor A angle)) degrees at 60 degrees per second
+  lab stop motor A hold
+  IF (abs of (0 - (lab motor A angle))) > 3 THEN:
+    lab stop motor A hold
+    stop all
+  wait 0.5 seconds
+  lab stop motor A hold

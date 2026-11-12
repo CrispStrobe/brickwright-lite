@@ -13,10 +13,10 @@ const read = p => readFileSync(new URL(p, root), 'utf8');
 const hash = s => createHash('sha256').update(s).digest('hex');
 
 /** Observe real controllers, floor contacts and VM globals without changing the run. */
-export async function recordNineIntake(id, {frameMs = 1000 / 30, disconnect = false, directory, partMetadata} = {}) {
+export async function recordNineIntake(id, {frameMs = 1000 / 30, disconnect = false, directory, partMetadata, model} = {}) {
     const contract = NINE_INTAKES[id];
     if (!contract) throw new Error('No independently reviewed contract: ' + id);
-    const original = read(`overlay/scratch-gui/static/sim-lab/models/${id}.ldr`);
+    const original = model ?? read(`overlay/scratch-gui/static/sim-lab/models/${id}.ldr`);
     const modelText = disconnect ? removeIntakeParts(original, contract.disconnect) : original;
     const source = read(`overlay/scratch-gui/static/sim-lab/programs/${id}.bw`);
     const metadata = partMetadata || JSON.parse(read('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json'));

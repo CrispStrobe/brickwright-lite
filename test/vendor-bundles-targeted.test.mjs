@@ -13,6 +13,8 @@ test('targeted vendor adoption fetches one immutable source and preserves unrela
     mkdirSync(scripts, {recursive:true}); mkdirSync(support, {recursive:true});
     for (const id of ['arrays','circuit']) mkdirSync(join(root, 'overlay/scratch-vm/src/extensions/crispstrobe', id), {recursive:true});
     for (const name of ['vendor-bundles.mjs','bundled-upstream.mjs']) copyFileSync(new URL('../scripts/spike/'+name, import.meta.url), join(scripts,name));
+    mkdirSync(join(root,'scripts/lib'), {recursive:true});
+    copyFileSync(new URL('../scripts/lib/arrays-carrier.mjs', import.meta.url), join(root,'scripts/lib/arrays-carrier.mjs'));
     const candidate = 'a'.repeat(40), source = '// immutable test source\n' + 'x'.repeat(600);
     writeFileSync(join(root,'vendor-pins.json'), JSON.stringify({'arrays-values':candidate}));
     const pinPath = join(support,'bundled-upstream-pins.json');

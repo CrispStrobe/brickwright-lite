@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "id": "cross-ratio",
+  "status": "CANDIDATE_NOT_QUALIFIED",
+  "experimental": true,
+  "contract": "test/fixtures/bw-sim/cross-ratio/contract.json",
+  "nativeTests": "test/bw-sim-cross-ratio.test.mjs",
+  "independentReader": "scripts/verify-sim-cross-ratio.mjs",
+  "nativeOriginals": "HOSTED_NOT_RUN",
+  "browserLoad": "NOT_RUN",
+  "savedProjectReplay": "NOT_RUN",
+  "independentSavedProjectBytes": "NOT_ACQUIRED",
+  "scope": "Finite software-law candidate only; no physical, hardware or library-wide claim.",
+  "lightweightChecks": {
+    "engineExecuted": false,
+    "readerPreflightTests": 9,
+    "checkoutSupplierRejections": 7,
+    "acknowledgmentEnvelopeRejections": 6,
+    "checkoutToolBinding": "EXPLICIT_ABSOLUTE_EXECUTABLE_AND_ROOT; GIT_ENV_OVERRIDES_REMOVED; CI_COMMIT_CHECKED",
+    "initialSnapshotObservedInputs": true,
+    "rejectedCorruptions": 52,
+    "quaternionSignInvariant": true,
+    "globalTranslationInvariant": true,
+    "browserShardInventoryTests": 15,
+    "rejectionInventory": {
+      "rawRecord": 22,
+      "stream": 6,
+      "identitySchema": 2,
+      "sameOpcodeProgramContent": 7,
+      "detachedCaptureCensus": 5,
+      "browserClockAndApi": 6,
+      "damagedWire": 4
+    },
+    "recordTransport": "STRUCTURED_NESTED_TAP_DIAGNOSTICS_LENGTH_SHA256_BASE64; ARTIFACT_COMPLETENESS_REQUIRED; SEPARATE_WRITABLE_ACK_CONTROLS"
+  },
+  "diagnosticPreflight": {
+    "status": "FIRST_CONTROL_TOPOLOGY_REFUSAL_RETAINED",
+    "source": "aa6280c357d32862b044aa3628ffb9ce3126a0c4",
+    "originalBodyCount": 5,
+    "axleEditBodyCount": 12,
+    "exactDetachedWarnings": 7,
+    "motionCasesExecuted": 0,
+    "nodeMajor": 24
+  },
+  "supplementaryNativeDiagnostic": {
+    "source": "bc84fb62e3f9d057a5be4e85249f0737ed30ecdd",
+    "nodeMajor": 24,
+    "internalMotionPass": 4,
+    "rawRecordsRetained": false,
+    "standaloneReadback": "UNAVAILABLE",
+    "replayedForOutput": false,
+    "scope": "Supplementary capped component diagnostic; not clean hosted/GitHub/full SDK qualification."
+  }
+}

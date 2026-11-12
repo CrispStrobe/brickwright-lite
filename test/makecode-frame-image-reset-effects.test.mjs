@@ -148,8 +148,16 @@ test('consumed frame-reset facts expire on changed edges metadata and currentnes
         assert.equal(proof.validateInput(f.target,read).ok,false,mode+' restoration cannot renew the consumed fact');
         assert.equal(createArrayReferenceExportAuthority(f.project).validateInput(f.target,read).ok,true,'fresh independent proof remains possible');
     }
-    // A failed exploratory frame visit does not adopt the new expiry policy.
+    // Failed frame exploration is independent of the successful nonframe prefix.
+    // That consumed prefix now correctly retains its own sticky lifetime.
     const f=fixture();replace(f,frameOf(f),'INDEX',f.local('cell1'));assert.equal(results(f)[1],false);
     const proof=createArrayReferenceExportAuthority(f.project),read=f.blocks[f.reads[0]];assert.equal(proof.validateInput(f.target,read).ok,true);
-    f.project.extensions.push('custom');assert.equal(proof.validateInput(f.target,read).ok,false);f.project.extensions.pop();assert.equal(proof.validateInput(f.target,read).ok,true,'failed frame exploration does not broaden the old nonframe currentness policy');
+    f.project.extensions.push('custom');assert.equal(proof.validateInput(f.target,read).ok,false);f.project.extensions.pop();assert.equal(proof.validateInput(f.target,read).ok,false,'restoration cannot revive the actually consumed nonframe prefix');
+    const legacy=new Creator();legacy.parse('DEVICE ARCADE\nGLOBAL out\nWHEN flag clicked:\n  set out to (length of array reference (new array reference from ("[]")))');
+    const target=legacy.project.targets.find(t=>Object.values(t.blocks).some(n=>n.opcode==='arrays_referenceLength'));assert.ok(target);
+    const length=Object.values(target.blocks).find(n=>n.opcode==='arrays_referenceLength'),unused=createArrayReferenceExportAuthority(legacy.project);
+    assert.equal(unused.validateInput(target,length).ok,true);
+    const allocation=target.blocks[length.inputs.ARRAY[1]],original=allocation.inputs.VALUES;assert.equal(allocation.opcode,'arrays_createReference');
+    allocation.inputs.VALUES=[1,[10,'not JSON']];assert.equal(unused.validateInput(target,length).ok,false);allocation.inputs.VALUES=original;
+    assert.equal(unused.validateInput(target,length).ok,true,'legacy-only producer does not consume a private prefix or frame lifetime');
 });

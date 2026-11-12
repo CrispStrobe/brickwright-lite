@@ -34,6 +34,7 @@ const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 const manifestPath=join(source,'manifest.json');
 if ((await stat(manifestPath)).size>65536) throw new Error('Support manifest exceeds bounds');
 const manifest=JSON.parse(await readFile(manifestPath,'utf8'));
+if (manifest && Object.hasOwn(manifest,'tools/spike_lockstep.py')) names.push('tools/spike_lockstep.py');
 const compiled=manifest && Object.hasOwn(manifest,'profile.json');
 if (compiled) names.push('profile.json');
 else {
@@ -65,6 +66,8 @@ for (const name of names) {
         throw new Error('Support artifact failed verification');
     }
 }
+if (/^import spike_lockstep$/m.test(await readFile(join(source,'scripts/spike-state-server.py'),'utf8')) &&
+    !Object.hasOwn(manifest,'tools/spike_lockstep.py')) throw new Error('Missing lockstep helper');
 if (compiled) {
     const file=join(source,'profile.json');
     if ((await stat(file)).size>4096) throw new Error('Compiled model profile exceeds bounds');

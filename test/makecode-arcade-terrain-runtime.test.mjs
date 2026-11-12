@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {EventEmitter} from 'node:events';
+import {createArcadeRuntimeMock} from './helpers/arcade-runtime-mock.mjs';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 const Arcade=loadExtensionClass('arcade');
 function game({transparent=false,blank=false,tileSize=8,walls=Array.from({length:16},(_,i)=>i%4===2?1:0)}={}){
-    const runtime=new EventEmitter(),arcade=new Arcade(runtime);
+    const runtime=createArcadeRuntimeMock(),arcade=new Arcade(runtime);
     arcade.setTilemap({DATA:JSON.stringify({columns:4,rows:4,tileSize,indices:Array(16).fill(0),walls,images:[{width:1,height:1,pixels:[0]}]})});
     const image=arcade.createImage({WIDTH:transparent||blank?3:1,HEIGHT:transparent||blank?3:1});if(!blank)arcade.drawImage({IMAGE:image,OP:'fillRect',X:transparent?1:0,Y:transparent?1:0,W:1,H:1,COLOR:2});
     const actor=arcade.createImageSprite({IMAGE:image,TEMPLATE:'',KIND:'Player'});arcade.setSpritePosition({ID:actor,X:tileSize*1.5,Y:tileSize*1.5});

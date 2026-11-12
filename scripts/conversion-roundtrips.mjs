@@ -9,11 +9,13 @@ import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import JSZip from 'jszip';
 import {svgToPixels} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
-import {importProjectFiles} from '../overlay/scratch-gui/src/lib/bw-makecode/index.js';
+import {importProjectFiles, unpackMakeCodeSource} from '../overlay/scratch-gui/src/lib/bw-makecode/index.js';
+import {resolveExtensionNamespaces} from '../overlay/scratch-gui/src/lib/bw-makecode/extension-namespaces.js';
 import {exportToMakeCode} from '../overlay/scratch-gui/src/lib/bw-makecode/export.js';
-import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
+import {projectJsonToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 import {compile, hasRuntime} from './lib/pxt-node.mjs';
+import {pathOutcome, structuralOutcome, classifyNormalization} from './lib/roundtrip-status.mjs';
 
 
 // Report identity contains hashes and declared public identities, never host paths.
@@ -105,7 +107,7 @@ if (!out || !inputs.length || !Number.isInteger(limit) && limit !== Infinity || 
 }
 const collect = name => fs.statSync(name).isDirectory() ?
     fs.readdirSync(name).sort().flatMap(child => collect(path.join(name, child))) :
-    /\.(ts|sb3)$/i.test(name) ? [name] : [];
+    /\.(ts|sb3|mkcd)$/i.test(name) ? [name] : [];
 if (corpusCommit !== null && !/^[a-f0-9]{40}$/i.test(corpusCommit)) throw new Error('--corpus-commit requires a full immutable commit SHA');
 const files = [...new Set(inputs.flatMap(collect))].slice(0, limit);
 const provenance = auditProvenance(files, corpusCommit);
@@ -143,7 +145,9 @@ const artworkSignatures = assets => assets.map(asset => {
     // and expression order in exported TypeScript. Compare their exact pixels
     // as a multiset within each template family; named sprites retain identity.
     const generated = /^(__(?:arcadeTemplate|arcadeBackground))\d+$/.exec(asset.sprite);
-    const owner = generated ? generated[1] : asset.sprite;
+    // The exporter keeps each sprite in a global `<name>Sprite`, so a re-import names that
+    // sprite's artwork carrier `<name>Sprite`; `<name>` and `<name>Sprite` are one owner.
+    const owner = generated ? generated[1] : asset.sprite.replace(/(?<=.)Sprite$/, '');
     const pixels = svgToPixels(asset.svg);
     return pixels ? `${owner}:${pixels.width}x${pixels.height}:` +
         Buffer.from(pixels.pixels).toString('hex') : `${owner}:unreadable:${asset.svg}`;
@@ -154,9 +158,14 @@ const stage = (label, fn) => {
 };
 
 async function inspect (file) {
-    const isTs = file.endsWith('.ts');
-    const target = isTs && file.split(path.sep).includes('arcade') ? 'arcade' : 'microbit';
-    const row = {file, format: isTs ? 'makecode-ts' : 'sb3', target: isTs ? target : 'scratch', paths: []};
+    // A .mkcd is a complete project (several source files plus assets); a bare .ts is one file.
+    const isMkcd = file.endsWith('.mkcd');
+    const isTs = file.endsWith('.ts') || isMkcd;
+    const unpacked = isMkcd ? await unpackMakeCodeSource(fs.readFileSync(file), {name: file}) : null;
+    const mkcdTarget = unpacked && (/arcade/.test(String(unpacked.meta?.cloudId || '')) ||
+        /arcade/.test(String(unpacked.files?.['pxt.json'] || '')) || file.split(path.sep).some(p => /^arcade-/.test(p))) ? 'arcade' : 'microbit';
+    const target = isMkcd ? mkcdTarget : isTs && file.split(path.sep).includes('arcade') ? 'arcade' : 'microbit';
+    const row = {file, format: isMkcd ? 'makecode-mkcd' : isTs ? 'makecode-ts' : 'sb3', target: isTs ? target : 'scratch', paths: []};
     let project;
     let projectCreator;
     let originalCode;
@@ -164,10 +173,20 @@ async function inspect (file) {
     if (isTs) {
         const dependencies = target === 'arcade' ? {device: '*'} :
             {core: '*', radio: '*', microphone: '*'};
-        const files = {'main.ts': fs.readFileSync(file, 'utf8'),
-            'pxt.json': JSON.stringify({name: path.basename(file, '.ts'), dependencies, files: ['main.ts']})};
+        const base = isMkcd ? {...unpacked.files} : {'main.ts': fs.readFileSync(file, 'utf8')};
+        const main = base['main.ts'] || '';
+        // A bare .ts lists no extensions; the ones its namespaces name are added
+        // (vendored first), so the original compiles and the import translates them.
+        const detected = resolveExtensionNamespaces({files: base, target});
+        row.extensions = detected.extensions.map(e => e.id);
+        row.unavailableExtensionNamespaces = detected.unresolved.map(u => u.namespace);
+        const manifest = isMkcd ? (() => { try { return JSON.parse(base['pxt.json']); } catch { return {}; } })() : {};
+        const files = {...base,
+            'pxt.json': JSON.stringify(isMkcd ?
+                {...manifest, dependencies: {...dependencies, ...(manifest.dependencies || {}), ...detected.dependencies}} :
+                {name: path.basename(file, '.ts'), dependencies: {...dependencies, ...detected.dependencies}, files: ['main.ts']})};
         row.sourceFiles = files;
-        const imported = importProjectFiles(files, {target, name: path.basename(file, '.ts')});
+        const imported = importProjectFiles(files, {target, name: path.basename(file).replace(/\.(ts|mkcd)$/, '')});
         originalCode = imported.code;
         originalAssets = imported.costumes || [];
         row.importUnsupported = imported.unsupported || [];
@@ -223,7 +242,7 @@ async function inspect (file) {
         // MakeCode -> BW -> MakeCode -> BW. This checks the reverse translator
         // and identifies code that MakeCode itself rejects after re-export.
         row.paths.push(stage('makecode -> bw -> makecode -> bw', () => {
-            const exported = target === 'arcade' ? projectToArcade(project, {name: 'roundtrip',
+            const exported = target === 'arcade' ? projectJsonToArcade(JSON.stringify(project), {name: 'roundtrip',
                 costumeSvg: (sprite, costume) => {
                     const asset = projectCreator.assets.get(costume.assetId);
                     return asset?.type === 'svg' ? asset.data : null;
@@ -241,7 +260,8 @@ async function inspect (file) {
                     return false;
                 });
             }
-            return {status: 'converted', differences: loss,
+            const split = classifyNormalization(loss, {before: project, after: converted});
+            return {status: 'converted', differences: split.differences, normalization: split.normalization,
                 exportUnsupported: exported.unsupported || [], importUnsupported: back.unsupported || [],
                 exportedFiles: exported.files};
         }));
@@ -266,9 +286,7 @@ async function inspect (file) {
         }
     }
     for (const p of row.paths) {
-        const loss = p.binaryAssetsNotRepresented || Object.values(p.differences || {}).some(v => v.length);
-        const unsupported = row.importUnsupported?.length || p.exportUnsupported?.length || p.importUnsupported?.length;
-        p.qualification = {structuralRoundtrip: p.error ? 'failed' : loss ? 'loss' : unsupported ? 'partial' : 'preserved',
+        p.qualification = {structuralRoundtrip: structuralOutcome(p, row),
             exportedCompile: p.compile?.status === 'source-invalid' ? 'fail' : p.compile?.status || 'not-run',
             originalCompile: p.originalCompile?.status || 'not-run',
             runtime: 'not-measured', behavioralEquivalence: 'not-measured'};
@@ -286,13 +304,7 @@ for (const file of files) {
 const tally = {};
 for (const r of rows) {
     for (const p of r.paths || []) {
-        const hasLoss = p.binaryAssetsNotRepresented ||
-            p.differences && Object.values(p.differences).some(v => v.length);
-        const hasUnsupported = r.importUnsupported?.length || p.exportUnsupported?.length ||
-            p.importUnsupported?.length;
-        const key = p.error ? 'failed' : p.compile?.status === 'fail' ? 'compile-failed' :
-            p.compile?.status === 'source-invalid' ? 'source-invalid' :
-            hasLoss ? 'loss' : hasUnsupported ? 'partial' : 'preserved';
+        const key = pathOutcome(p, r);
         tally[`${p.label}: ${key}`] = (tally[`${p.label}: ${key}`] || 0) + 1;
     }
 }

@@ -1,3 +1,5 @@
+> **Current coordinator handoff, 2026-10-29:** [Delivery continuation](docs/DELIVERY-CONTINUATION-2026-10-29.md) scopes P0–P5, source checkpoints, ownership and completion gates. Earlier lane notes below remain historical where they disagree.
+
 # Current handoff — 2026-10-18
 
 See [WeDo/iPad integration handoff](docs/WEDO-IPAD-INTEGRATION-HANDOFF.md) for current delivery status and scoped next actions; [LANES.md](LANES.md) governs ownership (claims are one file each, `lanes/<YYYY-MM-DD>-<slug>.md`; never edit LANES.md to claim). Machine-specific context is in gitignored `CLAUDE.md`.

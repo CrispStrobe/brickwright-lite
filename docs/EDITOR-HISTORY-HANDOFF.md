@@ -1,3 +1,5 @@
+> **Continuation, 2026-10-29:** [Coordinator tasks and current source/gates](DELIVERY-CONTINUATION-2026-10-29.md) and [editor follow-ups](EDITOR-HISTORY-FOLLOWUPS.md) supersede old pending code tasks below. Public PR1555 and an unpublished coordinator composition contain additional fixes; neither is a new release. The user defers iPad T1, T2 requires an observed crash and T4 remains unapproved. Preserve the device-test server/worktree and ask before any release step.
+
 # Editor history, autosave and crash isolation — handoff (2026-10-28)
 
 Lane claim: [`lanes/2026-10-27-editor-history-autosave.md`](../lanes/2026-10-27-editor-history-autosave.md).

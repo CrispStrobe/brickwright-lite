@@ -32,18 +32,19 @@ for(const [name,body] of [['countdown','info.startCountdown(0.2)'],['life zero',
 });
 
 
-test('queued default loss belongs to its scene and run, with one terminal operation',async()=>{
+// PXT raises the default loss from the HUD draw and pushes the game-over scene
+// right there, so it starts synchronously (no pending loss a stop could cancel).
+// It still belongs to one scene and run and starts one terminal operation.
+test('default loss starts once, synchronously, and only for its own scene and run',()=>{
  const runtime=createArcadeRuntimeMock(),errors=[];runtime.on('BLOCKS_ERROR',error=>errors.push(String(error)));
  const native=new(loadExtensionClass('arcade'))(runtime)._inst,calls=[];
  native._runGameOver=(win,util,pixels)=>{calls.push({win,pixels});};
  let owner=native._infoState(),pixels=new Uint8Array(19200);pixels[0]=9;
  native._defaultInfoGameOver(owner,pixels);native._defaultInfoGameOver(owner,pixels);
- await Promise.resolve();assert.equal(calls.length,1);assert.equal(calls[0].win,false);assert.equal(calls[0].pixels[0],9);
- startArcadeProject(runtime);owner=native._infoState();native._defaultInfoGameOver(owner,pixels);
- runtime.emit('PROJECT_STOP_ALL');await Promise.resolve();assert.equal(calls.length,1,'stop cancels pending loss');
- startArcadeProject(runtime);owner=native._infoState();native._defaultInfoGameOver(owner,pixels);
- startArcadeProject(runtime);await Promise.resolve();assert.equal(calls.length,1,'restart cancels old loss');
- owner=native._infoState();native._defaultInfoGameOver(owner,pixels);
- runtime.bwArcadeDeviceState={};await Promise.resolve();assert.equal(calls.length,1,'replacement scene cancels old loss');
+ assert.equal(calls.length,1,'one terminal operation, started synchronously');assert.equal(calls[0].win,false);assert.equal(calls[0].pixels[0],9);
+ startArcadeProject(runtime);const previousRun=owner;owner=native._infoState();
+ native._defaultInfoGameOver(previousRun,pixels);assert.equal(calls.length,1,'a loss from the previous run is refused');
+ runtime.bwArcadeDeviceState={};native._defaultInfoGameOver(owner,pixels);assert.equal(calls.length,1,'a loss from a replaced scene is refused');
+ owner=native._infoState();native._defaultInfoGameOver(owner,pixels);assert.equal(calls.length,2,'the current scene gets its own loss');
  assert.deepEqual(errors,[]);
 });

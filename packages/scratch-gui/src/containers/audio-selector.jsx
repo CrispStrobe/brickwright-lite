@@ -44,16 +44,26 @@ class AudioSelector extends React.Component {
     }
     componentWillReceiveProps (newProps) {
         const {trimStart, trimEnd} = this.props;
-        if (newProps.trimStart === trimStart && newProps.trimEnd === trimEnd) return;
+        if (newProps.disabled && !this.props.disabled) {
+            this.trimStartDragRecognizer.reset();
+            this.trimEndDragRecognizer.reset();
+        }
+        if (newProps.trimStart === trimStart && newProps.trimEnd === trimEnd &&
+            !(newProps.disabled && !this.props.disabled)) return;
         this.setState({
             trimStart: newProps.trimStart,
             trimEnd: newProps.trimEnd
         });
     }
+    componentWillUnmount () {
+        this.trimStartDragRecognizer.reset();
+        this.trimEndDragRecognizer.reset();
+    }
     clearSelection () {
         this.props.onSetTrim(null, null);
     }
     handleNewSelectionMouseDown (e) {
+        if (this.props.disabled) return;
         const {width, left} = this.containerElement.getBoundingClientRect();
         this.initialTrimEnd = (getEventXY(e).x - left) / width;
         this.initialTrimStart = this.initialTrimEnd;
@@ -113,6 +123,7 @@ class AudioSelector extends React.Component {
         }
     }
     handleTrimStartMouseDown (e) {
+        if (this.props.disabled) return;
         this.containerSize = this.containerElement.getBoundingClientRect().width;
         this.trimStartDragRecognizer.start(e);
         this.initialTrimStart = this.props.trimStart;
@@ -121,6 +132,7 @@ class AudioSelector extends React.Component {
         e.preventDefault();
     }
     handleTrimEndMouseDown (e) {
+        if (this.props.disabled) return;
         this.containerSize = this.containerElement.getBoundingClientRect().width;
         this.trimEndDragRecognizer.start(e);
         this.initialTrimEnd = this.props.trimEnd;
@@ -147,6 +159,7 @@ class AudioSelector extends React.Component {
 }
 
 AudioSelector.propTypes = {
+    disabled: PropTypes.bool,
     onSetTrim: PropTypes.func,
     playhead: PropTypes.number,
     trimEnd: PropTypes.number,

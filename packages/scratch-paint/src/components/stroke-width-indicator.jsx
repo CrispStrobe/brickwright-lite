@@ -1,5 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import {injectIntl, intlShape} from 'react-intl';
 
 import Input from './forms/input.jsx';
 import InputGroup from './input-group/input-group.jsx';
@@ -8,9 +9,13 @@ import LiveInputHOC from './forms/live-input-hoc.jsx';
 import {MAX_STROKE_WIDTH} from '../reducers/stroke-width';
 
 const LiveInput = LiveInputHOC(Input);
-const StrokeWidthIndicatorComponent = props => (
+const StrokeWidthIndicatorComponent = props => {
+    const label = props.intl.formatMessage({id: 'gui.paintEditor.outlineWidth', defaultMessage: 'Outline width (pixels)'});
+    return (
     <InputGroup disabled={props.disabled}>
         <LiveInput
+            title={label}
+            aria-label={label}
             range
             small
             disabled={props.disabled}
@@ -21,12 +26,14 @@ const StrokeWidthIndicatorComponent = props => (
             onSubmit={props.onChangeStrokeWidth}
         />
     </InputGroup>
-);
+    );
+};
 
 StrokeWidthIndicatorComponent.propTypes = {
+    intl: intlShape.isRequired,
     disabled: PropTypes.bool.isRequired,
     onChangeStrokeWidth: PropTypes.func.isRequired,
     strokeWidth: PropTypes.number
 };
 
-export default StrokeWidthIndicatorComponent;
+export default injectIntl(StrokeWidthIndicatorComponent);

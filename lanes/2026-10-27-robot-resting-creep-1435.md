@@ -1,7 +1,8 @@
 # Robot Lab resting-frame creep — issue #1435
 
 Status: DONE (diagnostic). Baseline #1472 and contact stage #1498 merged; cause located.
-The fix is unclaimed: see docs/ROBOT-LAB-QUALIFICATION-HANDOFF-20261028.md, section 4.
+Fix 2026-10-30 (branch `fix/resting-creep-1435-20261030`): idle speculative floor hits are
+rejected in the core's contact listener; see docs/ROBOT-LAB-RESTING-CREEP.md, "Fix".
 Continuation: Claude Code successor, 2026-10-27, after the Codex owner's handoff
 (#1466) released the lane with no active writer. Same owned paths and limits as
 below; still diagnostic only, no solver/setting/pin change.

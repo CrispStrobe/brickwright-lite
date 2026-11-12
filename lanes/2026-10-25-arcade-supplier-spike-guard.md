@@ -1,6 +1,7 @@
 # Reviewed Arcade supplier adoption: SPIKE artifact guard
 
-Status: CLAIMED; merge before implementation. Owner: Arcade integration,
+Status: IMPLEMENTED; complete unchanged SPIKE artifact module passes at the
+reviewed exact pin. Final composed hosted qualification remains pending. Owner: Arcade integration,
 continuing PR #1128. Base: `80d9092bd282fed4c8608edcc6478c63e2ce10a7`.
 
 The merged atan2 claim lands its vocabulary upstream first, then adopts the
@@ -29,3 +30,9 @@ not silently retargeted or newly qualified by this narrow test update. Their
 owners retain those original identities and any separate new admission work.
 Require every enabled final-head check and affected Arcade runtime/editor
 qualification before landing PR #1128.
+
+The upstream source delta from the previous pin contains only the Arcade
+binary-math vocabulary and its focused test. SPIKE emitter source is unchanged.
+The old-pin refusal was retained, then the complete artifact/roundtrip module
+passed after the strict literal update. No artifact assertion or program was
+changed, and no SPIKE guest, firmware or hardware qualification is inferred.

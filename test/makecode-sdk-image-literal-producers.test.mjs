@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {createSdkImageLiteralResources} from '../overlay/scratch-gui/src/lib/bw-makecode/sdk-image-literal-resources.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
-import {SB3Creator} from './helpers/bw-vm.mjs';
+import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 import {source} from './fixtures/arcade/sdk-image-literal-callables.mjs';
 const fixture=()=>{
  const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);

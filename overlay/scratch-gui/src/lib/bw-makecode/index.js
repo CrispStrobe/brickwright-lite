@@ -29,12 +29,14 @@ import {
 } from './embedded-source.js';
 import {decodePng} from './png.js';
 import {extractMicroPython} from './micropython-hex.js';
-import {microbitToPseudocode} from './microbit-translate.js';
+import {microbitToPseudocode, MAKECODE_NAMESPACES} from './microbit-translate.js';
+import {resolveExtensionNamespaces, extensionSources, unavailableNamespaces} from './extension-namespaces.js';
 import {arcadeToPseudocode} from './arcade-translate.js';
 import {ev3ToPseudocode} from './ev3-translate.js';
 import {adafruitToPseudocode} from './adafruit-translate.js';
 import {fetchSharedProject} from './share.js';
 import {importDependencyProjectFiles} from './dependency-import.js';
+import {fetchNamespaceExtensions} from './extension-ondemand.js';
 
 export {sniffFormat, unpackMakeCodeSource, describeProject} from './embedded-source.js';
 export {decodePng} from './png.js';
@@ -129,15 +131,28 @@ export function importProjectFiles (files = {}, opts = {}) {
     // helpers, the LED-sprite game library — is refused by name, so the
     // shared 90% arrives and the rest is visible rather than invented.
     if ((target === 'microbit' || target === 'calliopemini') && files['main.ts']) {
-        const translated = microbitToPseudocode(files['main.ts'], {name, board: target});
+        // Extensions the program uses, declared in its pxt.json or not: their
+        // sources are translated with it, and a namespace no extension provides
+        // is named in `unsupported`, never dropped.
+        const ext = resolveExtensionNamespaces({files, target, extensions: opts.extensions || []});
+        const sources = ext.extensions.flatMap(row => extensionSources(row.entry.files).map(f => ({id: row.id, file: f.file, source: f.source})));
+        const translated = microbitToPseudocode(files['main.ts'], {name, board: target, extensionSources: sources});
+        const missing = [...ext.unresolved, ...unavailableNamespaces({unsupported: translated.unsupported, source: files['main.ts'],
+            resolved: ext.extensions, knownCore: MAKECODE_NAMESPACES})];
+        const missingMessages = [...new Set([...missing.map(row => row.message), ...(opts.extensionRefusals || []).map(r => r.message)])];
+        const code = missingMessages.length ?
+            translated.code.replace(/^(DEVICE [^\n]*\n)/, `$1${missingMessages.map(m => `# unsupported: ${m}\n`).join('')}`) : translated.code;
         return {
             kind: 'makecode',
             lang: 'pseudocode',
-            code: translated.code,
+            code,
             source: main,
-            unsupported: translated.unsupported,
+            unsupported: [...translated.unsupported, ...missingMessages],
             costumes: [],
             files,
+            extensions: ext.extensions.map(({id, spec, via, declared, symbols, entry}) => ({id, spec, via, declared, symbols,
+                commit: entry.commit || null, licence: entry.licence || null, holder: entry.holder || null})),
+            unavailableExtensions: [...new Set(missing.map(row => row.namespace))],
             project: {target, name, version: opts.version || ''},
             note: 'microbit'
         };
@@ -196,7 +211,34 @@ export function importProjectFiles (files = {}, opts = {}) {
  * reader remains the offline API; this async entrypoint explicitly prepares.
  */
 export function importProjectFilesWithDependencies(files = {}, opts = {}) {
-    return importDependencyProjectFiles(files,{...opts,target:opts.target || inferTarget(files)},importProjectFiles);
+    const target = opts.target || inferTarget(files);
+    // Extensions the program uses but its pxt.json does not list (or that are not
+    // vendored): vendored ones are detected by namespace, synchronously, so the
+    // current input is still captured before anything is awaited; with the opt-in
+    // fetchExtensions flag the rest are fetched, pinned and licence-checked first.
+    const run = fetched => {
+        const added = fetched.extensions.length || fetched.refused.length ? {extensions: fetched.extensions, extensionRefusals: fetched.refused} : {};
+        const prepared = target === 'arcade' && opts.prepareDependencies !== false ? withNamespaceDependencies(files, target, fetched.extensions) : files;
+        return importDependencyProjectFiles(prepared, {...opts, ...added, target}, importProjectFiles)
+            .then(result => prepared === files ? result : {...result, files: result.files === prepared ? files : result.files});
+    };
+    if (opts.fetchExtensions !== true || opts.prepareDependencies === false || typeof files['main.ts'] !== 'string') return run({extensions: [], refused: []});
+    return fetchNamespaceExtensions({files, target, fetchExtensions: true, fetch: opts.fetch, cache: opts.extensionCache || null,
+        knownCore: MAKECODE_NAMESPACES}).then(run);
+}
+
+/** The Arcade project files with the dependencies its namespaces name added to pxt.json. */
+function withNamespaceDependencies (files, target, fetched) {
+    if (typeof files['main.ts'] !== 'string') return files;
+    const found = resolveExtensionNamespaces({files, target, extensions: fetched});
+    const dependencies = {...found.dependencies};
+    for (const row of found.extensions) if (row.via === 'fetched') dependencies[row.id] = row.spec;
+    let cfg = {};
+    try { cfg = JSON.parse(files['pxt.json'] || '{}'); } catch { return files; }
+    const add = Object.fromEntries(Object.entries(dependencies).filter(([id]) => !cfg.dependencies || !(id in cfg.dependencies)));
+    if (files['pxt.json'] && !Object.keys(add).length) return files;
+    const next = {...cfg, name: cfg.name || 'project', files: cfg.files || ['main.ts'], dependencies: {device: '*', ...cfg.dependencies, ...add}};
+    return {...files, 'pxt.json': JSON.stringify(next)};
 }
 
 /**

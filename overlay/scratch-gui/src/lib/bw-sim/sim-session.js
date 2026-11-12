@@ -136,6 +136,69 @@ export const MODELS = Object.freeze([
         manualJog: {A: {minDeg: -85, maxDeg: 85, stepDeg: 5, speedDps: 30}}},
     {file: 'thirdline.ldr', title: {en: 'Thirdline — angle trisector', de: 'Thirdline — Winkeldreiteiler'}, example: 'thirdline.bw', mat: 'plain',
         manualJog: {A: {minDeg: -5, maxDeg: 40, stepDeg: 5, speedDps: 8}}},
+    {
+        "file": "tipline.ldr",
+        "title": {
+            "en": "Tipline — sliding versus tipping",
+            "de": "Tipline — Rutschen oder Kippen"
+        },
+        "example": "tipline.bw",
+        "mat": "plain",
+        "intro": {
+            "en": "One motor tilts two equally heavy free towers with low or high internal ballast. In the native recordings, high ballast tips near 15° and low ballast slides near 22°. Swap the ballast heights between lanes; a tall passive wall arrests the later motion.",
+            "de": "Ein Motor neigt zwei gleich schwere freie Türme mit tiefem oder hohem innerem Ballast. In den nativen Aufzeichnungen kippt die hohe Anordnung bei etwa 15°; die tiefe rutscht bei etwa 22°. Vertausche die Ballasthöhen zwischen den Spuren; eine hohe passive Wand fängt die spätere Bewegung ab."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 23.5,
+                "stepDeg": 1,
+                "speedDps": 1
+            }
+        }
+    },
+    {
+        "file": "twistspan.ldr",
+        "title": {
+            "en": "TwistSpan — two-cord torsion pendulum",
+            "de": "TwistSpan — Zweifaden-Torsionspendel"
+        },
+        "example": "twistspan.bw",
+        "mat": "plain",
+        "intro": {
+            "en": "One motor turns an upper bar; two fixed 104 mm cords suspend a separate passive payload. Compare 64 mm and 32 mm tie spacing with the same rigid parts: the recorded period changes from about 0.77 s to 1.52 s.",
+            "de": "Ein Motor dreht den oberen Balken; zwei feste 104-mm-Schnüre tragen eine eigene passive Last. Vergleiche 64 mm und 32 mm Befestigungsabstand bei denselben starren Teilen: Die aufgezeichnete Periode ändert sich von etwa 0,77 s auf 1,52 s."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 20,
+                "stepDeg": 5,
+                "speedDps": 10
+            }
+        }
+    },
+    {
+        "file": "swayshift.ldr",
+        "title": {
+            "en": "SwayShift — timing an anti-sway transfer",
+            "de": "SwayShift — Nachschwingen durch gezieltes Timing mindern"
+        },
+        "example": "swayshift.bw",
+        "mat": "plain",
+        "intro": {
+            "en": "One motor drives a rack trolley through a 3:1 speed increase. A freely hinged rigid pendulum has a 216 mm hole span. Compare the same nominal 22 mm + 22 mm transfer with half-period or full-period timing between move starts, then observe the passive load after arrival.",
+            "de": "Ein Motor bewegt einen Zahnstangenschlitten mit dreifacher Ausgangsdrehzahl. Das frei gelagerte starre Pendel hat 216 mm Abstand zwischen den äußeren Löchern. Vergleiche dieselbe Sollfahrt von 22 mm + 22 mm mit einer halben oder einer ganzen Periode zwischen den Bewegungsstarts und beobachte das Nachschwingen."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -70,
+                "maxDeg": 0,
+                "stepDeg": 5,
+                "speedDps": 20
+            }
+        }
+    },
     {file: 'samebeat.ldr', title: {en: 'Samebeat — reversible pendulum', de: 'Samebeat — Reversionspendel'}, example: 'samebeat.bw', mat: 'plain',
         manualJog: {A: {minDeg: -8, maxDeg: 8, stepDeg: 4, speedDps: 60}}},
     {file: 'carry-ratio.ldr', title: {en: 'Carry Ratio — a free ball carried by a driven tray', de: 'Carry Ratio — eine freie Kugel auf einem angetriebenen Tisch'}, example: 'carry-ratio.bw', mat: 'plain',
@@ -151,6 +214,52 @@ export const MODELS = Object.freeze([
     {file: 'travel-dial.ldr', title: {en: 'Travel Dial — passive measuring wheel', de: 'Travel Dial — passives Messrad'}, example: 'travel-dial.bw', mat: 'plain',
         manualJog: {A: {minDeg: -60, maxDeg: 60, stepDeg: 15, speedDps: 15}}},
     {file: 'pivot-exchange.ldr', title: {en: 'Pivot Exchange — nearly equal periods from different pivots', de: 'Pivot Exchange — nahezu gleiche Perioden an verschiedenen Aufhängungen'}, example: 'pivot-exchange.bw', mat: 'plain'},
+    {file: 'phasor-twin.ldr', title: {en: 'Phasor Twin — the Stirling phase loop', de: 'Phasor Twin — die Stirling-Phasenschleife'}, example: 'phasor-twin.bw', mat: 'plain',
+        manualJog: {A: {minDeg: 0, maxDeg: 720, stepDeg: 45, speedDps: 45}}},
+    {file: 'final-squeeze.ldr', title: {en: 'Final Squeeze — a knee press', de: 'Final Squeeze — eine Kniehebelpresse'}, example: 'final-squeeze.bw', mat: 'plain',
+        manualJog: {A: {minDeg: 0, maxDeg: 25, stepDeg: 5, speedDps: 8}}},
+    {file: 'high-select.ldr', title: {en: 'High Select — mechanical maximum', de: 'High Select — mechanisches Maximum'}, example: 'high-select.bw', mat: 'plain',
+        manualJog: {A: {minDeg: 0, maxDeg: 152, stepDeg: 19, speedDps: 38}, B: {minDeg: 0, maxDeg: 152, stepDeg: 19, speedDps: 38}}},
+    {file: 'poise.ldr', title: {en: 'Poise — Roberval balance', de: 'Poise — Roberval-Waage'}, example: 'poise.bw', mat: 'plain',
+        manualJog: {A: {minDeg: 0, maxDeg: 180, stepDeg: 45, speedDps: 15}, B: {minDeg: 0, maxDeg: 180, stepDeg: 45, speedDps: 15}}},
+    {file: 'bend-ripple.ldr', title: {en: 'Bend Ripple — variable-bend Cardan joint', de: 'Bend Ripple — Kardangelenk mit verstellbarem Knickwinkel'}, example: 'bend-ripple.bw', mat: 'plain',
+        manualJog: {A: {minDeg: 0, maxDeg: 765, stepDeg: 45, speedDps: 24}, B: {minDeg: 0, maxDeg: 20, stepDeg: 5, speedDps: 4}}},
+    {file: 'offset-relay.ldr', title: {en: 'Offset Relay — variable-offset coupling', de: 'Offset Relay — Kupplung mit variablem Versatz'}, example: 'offset-relay.bw', mat: 'plain',
+        manualJog: {A: {minDeg: -3, maxDeg: 2883, stepDeg: 90, speedDps: 90}, B: {minDeg: -160, maxDeg: 84, stepDeg: 19.1, speedDps: 15}}},
+    {file: 'rack-decoder.ldr', title: {en: 'Rack Decoder — mechanical selection', de: 'Rack Decoder — mechanische Auswahl'}, example: 'rack-decoder.bw', mat: 'plain',
+        manualJog: {A: {minDeg: -122, maxDeg: 122, stepDeg: 19.1, speedDps: 14.3}, B: {minDeg: -122, maxDeg: 122, stepDeg: 19.1, speedDps: 14.3}}},
+    {file: 'remote-pivot.ldr', title: {en: 'Remote Pivot — empty-centre rotation', de: 'Remote Pivot — Drehung um ein freies Zentrum'}, example: 'remote-pivot.bw', mat: 'plain',
+        manualJog: {A: {minDeg: -31, maxDeg: 31, stepDeg: 5, speedDps: 8}}},
+    {file: 'schmidt-shift.ldr', title: {en: 'Schmidt Shift — offset coupling', de: 'Schmidt Shift — Kupplung für versetzte Wellen'}, example: 'schmidt-shift.bw', mat: 'plain',
+        manualJog: {A: {minDeg: -360, maxDeg: 720, stepDeg: 45, speedDps: 30}}},
+    {file: 'equal-share.ldr', title: {en: 'Equal Share — whippletree force equalizer', de: 'Equal Share — Kraftausgleich mit Ausgleichsbalken'}, example: 'equal-share.bw', mat: 'plain',
+        manualJog: {A: {minDeg: 0, maxDeg: 35, stepDeg: 5, speedDps: 8}}},
+    {file: 'stroke-shift.ldr', title: {en: 'Stroke Shift — adjustable crank throw', de: 'Stroke Shift — verstellbarer Kurbelradius'}, example: 'stroke-shift.bw', mat: 'plain',
+        manualJog: {A: {minDeg: 0, maxDeg: 1080, stepDeg: 90, speedDps: 180}, B: {minDeg: 0, maxDeg: 3582.446015, stepDeg: 1791.223007, speedDps: 360}}},
+    {file: 'triad-table.ldr', title: {en: 'Triad Table — three lengths, one pose', de: 'Triad Table — drei Längen, eine Pose'}, example: 'triad-table.bw', mat: 'plain',
+        manualJog: {A: {minDeg: -1500, maxDeg: 1500, stepDeg: 150, speedDps: 180}, B: {minDeg: -1500, maxDeg: 1500, stepDeg: 150, speedDps: 180}, C: {minDeg: -1500, maxDeg: 1500, stepDeg: 150, speedDps: 180}}},
+    {file: 'toggle-press.ldr', title: {en: 'Toggle Press — near-dead-centre ram', de: 'Kniehebelpresse — Schlitten nahe dem Totpunkt'}, example: 'toggle-press.bw', mat: 'plain',
+        manualJog: {A: {minDeg: -82, maxDeg: 0, stepDeg: 2, speedDps: 8}}},
+    {file: 'footfall.ldr', title: {en: 'Footfall — twelve-link leg-path tracer', de: 'Schrittspur — zwölfgliedrige Beinmechanik'}, example: 'footfall.bw', mat: 'plain',
+        manualJog: {A: {minDeg: -5, maxDeg: 365, stepDeg: 5, speedDps: 12}}},
+    {file: 'phasekeeper.ldr', title: {en: 'Phasekeeper — equal-angle double-Cardan transmission', de: 'Phasenhalter — gleichwinklige Doppel-Kardankupplung'}, example: 'phasekeeper.bw', mat: 'plain',
+        manualJog: {A: {minDeg: -5, maxDeg: 365, stepDeg: 5, speedDps: 18}}},
+    {file: 'vectorsum.ldr', title: {en: 'VectorSum — two-input differential mixer', de: 'Vektorsumme — Differentialmischer mit zwei Eingängen'}, example: 'vectorsum.bw', mat: 'plain',
+        manualJog: {A: {minDeg: -190, maxDeg: 190, stepDeg: 10, speedDps: 24}, B: {minDeg: -190, maxDeg: 190, stepDeg: 10, speedDps: 24}}},
+    {file: 'pointweaver.ldr', title: {en: 'PointWeaver — two-motor five-bar path tracer', de: 'Punktweber — Fünfgelenk-Bahnzeichner mit zwei Motoren'}, example: 'pointweaver.bw', mat: 'plain',
+        manualJog: {A: {minDeg: -34, maxDeg: 2, stepDeg: 1, speedDps: 8}, B: {minDeg: -11, maxDeg: 26, stepDeg: 1, speedDps: 8}}},
+    {file: 'kestrel-flapper.ldr', title: {en: 'Kestrel — flapping linkage', de: 'Kestrel — Schlagflügel-Gestänge'}, example: 'kestrel-flapper.bw', mat: 'plain',
+        manualJog: {A: {minDeg: 0, maxDeg: 720, stepDeg: 30, speedDps: 45}}},
+    {file: 'meridian-linkage.ldr', title: {en: 'Meridian — straight-line linkage', de: 'Meridian — Geradführungs-Gestänge'}, example: 'meridian-linkage.bw', mat: 'plain',
+        manualJog: {A: {minDeg: -60, maxDeg: 60, stepDeg: 10, speedDps: 15}}},
+    {file: 'lumen-iris.ldr', title: {en: 'Lumen — six-leaf iris', de: 'Lumen — sechsblättrige Iris'}, example: 'lumen-iris.bw', mat: 'plain',
+        manualJog: {A: {minDeg: -55.2168, maxDeg: 0, stepDeg: 13.8042, speedDps: 15}}},
+    {file: 'tangent-table.ldr', title: {en: 'Tangent Table — mechanical angle mapping', de: 'Tangent Table — mechanische Winkelabbildung'}, example: 'tangent-table.bw', mat: 'plain',
+        manualJog: {A: {minDeg: -16, maxDeg: 16, stepDeg: 1, speedDps: 8}, B: {minDeg: -2627, maxDeg: 2627, stepDeg: 597, speedDps: 300}}},
+    {file: 'paired-door-sync.ldr', title: {en: 'Paired Door Sync — one pinion, two opposed racks', de: 'Doppeltür-Synchron — ein Ritzel, zwei gegenläufige Zahnstangen'}, example: 'paired-door-sync.bw', mat: 'plain',
+        manualJog: {A: {minDeg: -150, maxDeg: 150, stepDeg: 15, speedDps: 15}}},
+    {file: 'rimrun.ldr', title: {en: 'RimRun — equal weight, different roll', de: 'RimRun — gleiche Masse, anderes Rollverhalten'}, example: 'rimrun.bw', mat: 'plain',
+        manualJog: {A: {minDeg: 0, maxDeg: 100, stepDeg: 10, speedDps: 60}}},
     {file: 'watt-line.ldr', title: {en: "Watt’s Line — approximate straight-line linkage", de: 'Watt’s Line — angenäherte Geradführung'}, example: 'watt-line.bw', mat: 'plain',
         manualJog: {A: {minDeg: -20, maxDeg: 20, stepDeg: 2, speedDps: 6}}},
     {file: 'twin-tempo.ldr', title: {en: 'TwinTempo — three-to-one hoist', de: 'TwinTempo — Seilzüge im Verhältnis drei zu eins'}, example: 'twin-tempo.bw', mat: 'plain',
@@ -179,6 +288,26 @@ export const MODELS = Object.freeze([
     {file: 'linger.ldr', title: {"en": "Linger — six-bar dwell machine", "de": "Linger — sechsgliedriges Rastgetriebe"}, example: 'linger.bw', mat: 'plain'},
     {file: 'crossline.ldr', title: {"en": "Crossline — geared straight-line pair", "de": "Crossline — Geradführung durch Gegenrotation"}, example: 'crossline.bw', mat: 'plain'},
     {file: 'counterturn.ldr', title: {en: 'Counterturn — a free carrier and flywheel', de: 'Counterturn — freier Träger und Schwungrad'}, example: 'counterturn.bw', mat: 'plain'},
+    {file: "afterturn.ldr", title: {en: "Afterturn — a closed shape cycle", de: "Afterturn — ein geschlossener Formzyklus"}, example: "afterturn.bw", mat: "plain",
+        manualJog: {A: {minDeg: 0, maxDeg: 900, stepDeg: 90, speedDps: 90}, B: {minDeg: 0, maxDeg: 70, stepDeg: 10, speedDps: 10}}},
+    {file: 'helixgate.ldr', title: {en: 'HelixGate — a 24:1 worm gearbox', de: 'HelixGate — ein Schneckengetriebe mit 24:1'}, example: 'helixgate.bw', mat: 'plain',
+        manualJog: {A: {minDeg: 0, maxDeg: 720, stepDeg: 45, speedDps: 60}}},
+    {file: 'looprelay.ldr', title: {"en": "LoopRelay — chain drive, gear reversal", "de": "LoopRelay — Kettenantrieb mit Zahnradumkehr"}, example: 'looprelay.bw', mat: 'plain',
+        manualJog: {"A": {"minDeg": 0, "maxDeg": 180, "stepDeg": 5, "speedDps": 12}}},
+    {file: 'paritydial.ldr', title: {"en": "ParityDial — two outputs, one idler", "de": "ParityDial — zwei Abtriebe, ein Zwischenrad"}, example: 'paritydial.bw', mat: 'plain',
+        manualJog: {"A": {"minDeg": -90, "maxDeg": 90, "stepDeg": 5, "speedDps": 15}}},
+    {file: 'counterslide.ldr', title: {"en": "CounterSlide — twin-rack self-centering jaws", "de": "CounterSlide — selbstzentrierende Doppelzahnstangen"}, example: 'counterslide.bw', mat: 'plain',
+        manualJog: {"A": {"minDeg": -100, "maxDeg": 0, "stepDeg": 5, "speedDps": 15}}},
+    {file: 'evenhand.ldr', title: {en: 'Evenhand — counterbalanced two-joint arm', de: 'Evenhand — ausgewogener Zweigelenkarm'}, example: 'evenhand.bw', mat: 'plain',
+        manualJog: {A: {minDeg: -20, maxDeg: 20, stepDeg: 5, speedDps: 20}, B: {minDeg: -30, maxDeg: 30, stepDeg: 5, speedDps: 25}}},
+    {file: 'obliquity-orrery.ldr', title: {en: 'Obliquity Orrery — the tilt behind the seasons', de: 'Obliquity Orrery — die Neigung hinter den Jahreszeiten'}, example: 'obliquity-orrery.bw', mat: 'plain',
+        manualJog: {A: {minDeg: -90, maxDeg: 0, stepDeg: 5, speedDps: 12}}},
+    {file: 'cadence-geneva.ldr', title: {en: 'Cadence — Geneva indexing', de: 'Cadence — Malteserkreuz-Schaltung'}, example: 'cadence-geneva.bw', mat: 'plain',
+        manualJog: {A: {minDeg: -45, maxDeg: 4365, stepDeg: 45, speedDps: 30}}},
+    {file: 'helios-transmission.ldr', title: {en: 'Helios — epicyclic transmission', de: 'Helios — Planetengetriebe'}, example: 'helios-transmission.bw', mat: 'plain',
+        manualJog: {A: {minDeg: 0, maxDeg: 360, stepDeg: 30, speedDps: 30}, B: {minDeg: -360, maxDeg: 0, stepDeg: 30, speedDps: 42}}},
+    {file: 'orion-cardan.ldr', title: {en: 'Orion — double Cardan drive', de: 'Orion — Doppel-Kardanantrieb'}, example: 'orion-cardan.bw', mat: 'plain',
+        manualJog: {A: {minDeg: 0, maxDeg: 360, stepDeg: 15, speedDps: 60}}},
     {file: 'product-plotter.ldr', title: {en: 'Product Plotter — a mechanical multiplier', de: 'Product Plotter — ein mechanischer Multiplizierer'},
         example: 'product-plotter.bw', mat: 'plain', manualJog: {A: {minDeg: -15, maxDeg: 15, stepDeg: 2, speedDps: 10}, B: {minDeg: -75, maxDeg: 75, stepDeg: 10, speedDps: 30}}, intro: {
             en: 'Motor A tilts a straight guide; motor B slides the green rail. Their intersection moves the passive orange carriage, so similar triangles make its displacement equal the product of both inputs divided by a fixed reference length.',
@@ -333,6 +462,9 @@ export const prepareModel = (text, catalog, {mat = null, autoPorts: plugIn = !OW
     }
     for (const issue of unknownOf.values()) {
         if (issue.count > 1) issue.message = `${issue.message} (and ${issue.count - 1} more)`;
+    }
+    if (refusals.some(r => r.code === 'bad-motor-direction' || r.code === 'bad-rotor-model')) {
+        return {model: parsedModel, runModel: parsedModel, mechanism: null, issues};
     }
     if (parsedModel.parts.length === 0) {
         issues.push({severity: 'error', code: 'empty-model', message: 'The model has no parts the Sim Lab knows.', parts: []});
@@ -603,10 +735,11 @@ export class SimSession {
     }
 
     /** Reset analytical state on an explicit selection change; no physical state is changed. */
-    setMeasurementObservation ({joints = [], contacts = false, screws = false, mode = 'oscillation', thresholdDegrees = 0} = {}) {
-        const key = JSON.stringify({joints, contacts, screws, mode, thresholdDegrees});
+    setMeasurementObservation ({joints = [], contacts = false, screws = false, mode = 'oscillation', thresholdDegrees = 0, bodies = []} = {}) {
+        // bodies: optional per-step poses of requested dynamic bodies (observational; empty by default).
+        const key = JSON.stringify({joints, contacts, screws, mode, thresholdDegrees, ...(bodies.length ? {bodies} : {})});
         if (key === this._measurementObservationKey) return;
-        const selection = observationSelection({revision: ++this._observationRevision, joints, contacts, screws, mode, thresholdDegrees}, this.mechanism);
+        const selection = observationSelection({revision: ++this._observationRevision, joints, contacts, screws, mode, thresholdDegrees, ...(bodies.length ? {bodies} : {})}, this.mechanism);
         this._measurementCollector?.detach();
         this._measurementObservationKey = key;
         this._measurementObservation = selection;

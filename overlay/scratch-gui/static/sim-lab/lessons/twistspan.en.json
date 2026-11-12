@@ -2,9 +2,9 @@
   "version": 1,
   "id": "twistspan",
   "language": "en",
-  "what": "One motor briefly turns the yellow upper bar, then holds it still. Two fixed-length 104 mm cords carry a separate orange assembly with no motor and no bearing connecting it to the upper bar. The orange bar twists, rises slightly and swings back under gravity. The main model uses red tie collars 64 mm apart. The supplied inner-tie comparison uses green collars 32 mm apart; all 107 rigid parts, the payload mass and its mass distribution stay the same.",
+  "what": "bifilar torsional pendulum. One motor briefly turns the yellow upper bar, then holds it still. Two fixed-length 104 mm cords carry a separate orange assembly with no motor and no bearing connecting it to the upper bar. The orange bar twists, rises slightly and swings back under gravity. The main model uses red tie collars 64 mm apart. The supplied inner-tie comparison uses green collars 32 mm apart; all 107 rigid parts, the payload mass and its mass distribution stay the same. One motor turns an upper bar; two fixed 104 mm cords suspend a separate passive payload. Compare 64 mm and 32 mm tie spacing with the same rigid parts: the recorded period changes from about 0.77 s to 1.52 s.",
   "try": [
-    "Import twistspan.ldr into Robot Lab. Load the text from twistspan.bw in Code, choose To Blocks, then Run. Start from the freshly loaded saved model. This add-on does not install itself into the example gallery.",
+    "Reset the complete scene, load this model’s example program and run it. Reset again before every repeat or comparison.",
     "During stage 1, motor A moves the upper bar to +20 degrees and holds for 18 seconds. Watch the orange bar, not the motor encoder. Count a complete oscillation from one crossing of the held upper-bar direction to the next crossing in the same direction. Use several complete cycles.",
     "Watch the small lift near a turning point and the lower position near alignment. Then watch A return to zero at 10 degrees per second and hold for another 6 seconds. The program finishes after about 27.5 seconds; the passive orange bar may continue ringing down after completion.",
     "Predict the effect of halving the tie spacing before looking at the answer. Import the complete saved twistspan-inner.ldr model afresh, use the exact same twistspan.bw program, and repeat. Its two cords move to the green collars at both ends. Do not remove the unused red collars or add or remove ballast.",
@@ -23,9 +23,7 @@
   ],
   "formula": "For small relative twist theta (radians), equal taut cords of length L, matching upper and lower half-spacing a, payload mass m and vertical-axis inertia Iz: T0 = 2*pi*sqrt(Iz*L/(m*g*a^2)). Here L = 0.104 m; a = 0.032 m (red collars) or 0.016 m (green collars). With m, Iz and L unchanged, T_inner/T_outer = a_outer/a_inner = 2. For a level symmetric payload, rise(theta) = L - sqrt(L^2 - 4*a^2*sin(theta/2)^2). This is an analytical geometric prediction; actual periods and rise come from independent native pose observations.",
   "related": [
-    "twin-tempo.ldr",
-    "sky-courier.ldr",
-    "pendulum-array.ldr",
-    "resonance-lab.ldr"
+    "samebeat.ldr",
+    "cascade.ldr"
   ]
 }

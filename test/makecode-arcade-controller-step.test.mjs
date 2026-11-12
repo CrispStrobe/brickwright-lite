@@ -4,7 +4,9 @@ import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arc
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {parseMakeCodeTs} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-import.js';
 import {compile, hasRuntime} from '../scripts/lib/pxt-node.mjs';
+import {EventEmitter} from 'node:events';
 import {SB3Creator, runProgram, projectOpcodes} from './helpers/bw-vm.mjs';
+import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 
 const source = `let horizontal = controller.dx(90)
 let vertical = controller.dy()
@@ -44,16 +46,48 @@ test('controller dx and dy keep their steps through Code, Blocks, and PXT', asyn
     }
 });
 
+// PXT controller.dx/dy: direction * step * the frame's actual delta time. Before the first frame the delta is 0.
+const updateSource = `let horizontal = 0
+let vertical = 0
+let reversed = 0
+game.onUpdate(function () {
+    horizontal = controller.dx(90)
+    vertical = controller.dy()
+    reversed = controller.dx(-60)
+})`;
+const frameDelta = run => run.vm.runtime.bwArcadeDeviceState.frameDeltaTime;
+
 test('controller reporters use signed PXT frame movement for held arrows', async () => {
+    const imported = arcadeToPseudocode(updateSource);
+    const run = await runProgram(imported.code, {frames: 6, keys: ['ArrowRight', 'ArrowUp']});
+    assert.deepEqual(run.errors, []);
+    const vars = run.vm.runtime.targets.flatMap(target => Object.values(target.variables || {}));
+    const value = name => Number(vars.find(variable => variable.name === name)?.value);
+    const dt = frameDelta(run);
+    assert.ok(dt > 0);
+    assert.ok(Math.abs(value('horizontal') - 90 * dt) < 1e-9);
+    assert.ok(Math.abs(value('vertical') + 100 * dt) < 1e-9);
+    assert.ok(Math.abs(value('reversed') + 60 * dt) < 1e-9);
+    assert.ok((run.calls.get('arcade_controllerStep') || 0) >= 3);
+});
+
+test('controller reporters scale with the frame delta, not a fixed 30 Hz', () => {
+    const arcade = new (loadExtensionClass('arcade'))(new EventEmitter())._inst;
+    const state = arcade._state();
+    state.buttons.right = true;
+    for (const dt of [0, 1 / 60, 0.04, 0.1]) {
+        state.frameDeltaTime = dt;
+        assert.equal(arcade.controllerStep({AXIS: 'x', STEP: 90}), 90 * dt);
+        assert.equal(arcade.controllerStep({AXIS: 'x', STEP: -60}), -60 * dt);
+    }
+});
+
+test('controller reporters read 0 before the first frame, as the original does', async () => {
     const imported = arcadeToPseudocode(source);
     const run = await runProgram(imported.code, {frames: 2, keys: ['ArrowRight', 'ArrowUp']});
     assert.deepEqual(run.errors, []);
     const vars = run.vm.runtime.targets.flatMap(target => Object.values(target.variables || {}));
-    const value = name => Number(vars.find(variable => variable.name === name)?.value);
-    assert.equal(value('horizontal'), 3);
-    assert.equal(value('vertical'), -100 / 30);
-    assert.equal(value('reversed'), -2);
-    assert.ok((run.calls.get('arcade_controllerStep') || 0) >= 3);
+    for (const name of ['horizontal', 'vertical', 'reversed']) assert.equal(Math.abs(Number(vars.find(variable => variable.name === name)?.value)), 0);
 });
 
 test('opposing Arcade directions cancel', async () => {
@@ -72,17 +106,20 @@ test('a reporter in the native axis socket retains its selected direction throug
 SPRITE Game:
   LOCAL axis
   LOCAL vertical
-  WHEN flag clicked:
+  WHEN arcade source starts:
     set axis to "Y"
+    arcade register update as "__bwUpdate1" capturing ""
+
+  WHEN arcade update handler "__bwUpdate1" runs:
     set vertical to (arcade controller (axis) step 90)
 `;
     const exercise = async pseudocode => {
-        const run = await runProgram(pseudocode, {frames: 2, keys: ['ArrowRight', 'ArrowUp']});
+        const run = await runProgram(pseudocode, {frames: 6, keys: ['ArrowRight', 'ArrowUp']});
         assert.deepEqual(run.errors, []);
         assert.deepEqual(run.creator.warnings, []);
         const value = run.vm.runtime.targets.flatMap(target => Object.values(target.variables || {}))
             .find(variable => variable.name.replace(/^Game_/, '') === 'vertical');
-        assert.equal(Number(value?.value), -3, 'the dynamic Y axis must read up, not right');
+        assert.ok(Math.abs(Number(value?.value) + 90 * frameDelta(run)) < 1e-9 && frameDelta(run) > 0, 'the dynamic Y axis must read up, not right');
         return run;
     };
     const run = await exercise(code);

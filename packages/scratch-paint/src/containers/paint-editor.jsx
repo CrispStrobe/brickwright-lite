@@ -27,6 +27,8 @@ import EyeDropperTool from '../helper/tools/eye-dropper';
 import Modes, {BitmapModes, VectorModes} from '../lib/modes';
 import Formats, {isBitmap, isVector} from '../lib/format';
 import bindAll from 'lodash.bindall';
+import {injectIntl, intlShape} from 'react-intl';
+import tx from '../lib/bw-messages';
 
 /**
  * The top-level paint editor component. See README for more details on usage.
@@ -76,6 +78,7 @@ class PaintEditor extends React.Component {
     constructor (props) {
         super(props);
         bindAll(this, [
+            'editorMenuActions',
             'switchModeForFormat',
             'onMouseDown',
             'onMouseUp',
@@ -96,6 +99,8 @@ class PaintEditor extends React.Component {
         this.props.setLayout(this.props.rtl ? 'rtl' : 'ltr');
     }
     componentDidMount () {
+        this._menuMounted = true;
+        this.publishMenuActions();
         document.addEventListener('keydown', this.props.onKeyPress);
 
         // document listeners used to detect if a mouse is down outside of the
@@ -115,7 +120,7 @@ class PaintEditor extends React.Component {
             this.props.setLayout(newProps.rtl ? 'rtl' : 'ltr');
         }
     }
-    componentDidUpdate (prevProps) {
+    componentDidUpdate (prevProps, prevState) {
         if (this.props.isEyeDropping && !prevProps.isEyeDropping) {
             this.startEyeDroppingLoop();
         } else if (!this.props.isEyeDropping && prevProps.isEyeDropping) {
@@ -131,14 +136,39 @@ class PaintEditor extends React.Component {
         } else if (isVector(prevProps.format) && this.props.format === Formats.BITMAP) {
             convertToBitmap(this.props.clearSelectedItems, this.props.onUpdateImage, this.props.fontInlineFn);
         }
+        if (prevProps.onEditorMenuActions !== this.props.onEditorMenuActions && this.unregisterMenuChannel) this.unregisterMenuChannel();
+        if (prevState.canvas !== this.state.canvas || ['format', 'imageId', 'editorMenuOwner', 'viewBounds', 'intl', 'onEditorMenuActions']
+            .some(key => prevProps[key] !== this.props[key])) this.publishMenuActions();
     }
     componentWillUnmount () {
+        this._menuMounted = false;
+        if (this.unregisterMenuChannel) this.unregisterMenuChannel();
         document.removeEventListener('keydown', this.props.onKeyPress);
         this.stopEyeDroppingLoop();
         document.removeEventListener('mousedown', this.onMouseDown);
         document.removeEventListener('touchstart', this.onMouseDown);
         document.removeEventListener('mouseup', this.onMouseUp);
         document.removeEventListener('touchend', this.onMouseUp);
+    }
+    publishMenuActions () {
+        if (this._menuMounted && typeof this.props.onEditorMenuActions === 'function') {
+            this.unregisterMenuChannel = this.props.onEditorMenuActions('paint', this.editorMenuActions, this.props.editorMenuOwner);
+        }
+    }
+    editorMenuActions () {
+        if (!this._menuMounted || !this.state.canvas || !paper.view || !this.props.imageId) return null;
+        const de = this.props.intl.locale.startsWith('de');
+        const label = (key, fallback) => this.props.intl.formatMessage({id: `paint.paintEditor.${key}`, defaultMessage: fallback});
+        const group = tx(this.props.intl.locale, 'transform');
+        const action = (key, fallback, enabled, run) => ({label: label(key, fallback), location: 'edit', submenu: group,
+            enabled: !!enabled && typeof run === 'function', run});
+        return {
+            'zoom-in': action('zoomIn', de ? 'Vergrößern' : 'Zoom in', true, this.handleZoomIn),
+            'zoom-out': action('zoomOut', de ? 'Verkleinern' : 'Zoom out', true, this.handleZoomOut),
+            'zoom-reset': action('zoomReset', de ? 'Zoom zurücksetzen' : 'Zoom reset', true, this.handleZoomReset),
+            'convert-bitmap': action('bitmap', 'Convert to Bitmap', isVector(this.props.format), this.props.handleSwitchToBitmap),
+            'convert-vector': action('vector', 'Convert to Vector', isBitmap(this.props.format), this.props.handleSwitchToVector)
+        };
     }
     switchModeForFormat (newFormat) {
         if ((isVector(newFormat) && (this.props.mode in VectorModes)) ||
@@ -336,6 +366,8 @@ class PaintEditor extends React.Component {
         return (
             <PaintEditorComponent
                 editorTools={this.props.editorTools}
+                onEditorMenuActions={this.props.onEditorMenuActions}
+                editorMenuOwner={this.props.editorMenuOwner}
                 artworkDocument={this.props.artworkDocument}
                 canRedo={this.props.shouldShowRedo}
                 canUndo={this.props.shouldShowUndo}
@@ -370,6 +402,9 @@ class PaintEditor extends React.Component {
 }
 
 PaintEditor.propTypes = {
+    intl: intlShape.isRequired,
+    onEditorMenuActions: PropTypes.func,
+    editorMenuOwner: PropTypes.string,
     editorTools: PropTypes.node,
     artworkDocument: PropTypes.object,
     changeColorToEyeDropper: PropTypes.func,
@@ -454,7 +489,7 @@ const mapDispatchToProps = dispatch => ({
     }
 });
 
-export default UpdateImageHOC(SelectionHOC(UndoHOC(KeyboardShortcutsHOC(connect(
+export default injectIntl(UpdateImageHOC(SelectionHOC(UndoHOC(KeyboardShortcutsHOC(connect(
     mapStateToProps,
     mapDispatchToProps
-)(PaintEditor)))));
+)(PaintEditor))))));

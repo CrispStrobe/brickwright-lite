@@ -1,0 +1,17 @@
+{
+  "author": "CrispStrobe",
+  "license": "BSD-3-Clause",
+  "archive": "twistspan-addon-2.zip",
+  "files": {
+    "models/twistspan.ldr": "e29a245634f3b264b316d567a7b305798f46b142ca924ec11d25ad2cbb349d8d",
+    "programs/twistspan.bw": "7fe17625040c1b47b2c1f9fe4476082a5fc5734733eed1472586e508884f8fb0",
+    "checks/judge-twistspan.mjs": "96398fa4758677f2ae5cfa39be0b02a104be849931a61439fd1acfdff63ee00e",
+    "checks/run-native.mjs": "c51f152d08f4d7a0c70a100fa1b5f1d993a30bfe4d6ed765ea761d50be726659",
+    "evidence/contract.json": "09ad57bd65e1a811c9c8998bcf3c3a7b896fb2029b320c6ba57f1463d1a413c2",
+    "lessons/twistspan.en.json": "6789d80226c1ca19a2594966dfdeda096b64016474bd0e2d547f168b4ef2ddb3",
+    "lessons/twistspan.de.json": "0cd3f2b18921a0879a8211d902303798a2074ebd040e10e92d113841cd5ddb85",
+    "LICENSE.txt": "4b345db1e5260dce76a731425304606d2303cb6fc85216eab5176adc79acfb52"
+  },
+  "adaptation": "Original source retained; trusted judge uses repository-relative imports. Qualification runner records current source and exposes physical disconnection/cadence inputs without changing controller behavior.",
+  "archiveSha256": "b65d7cabae406b24fe0fe5f8af22940df4010c67cee39866f50c992b54b94543"
+}

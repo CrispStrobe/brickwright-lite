@@ -147,11 +147,11 @@ test('event handlers become polling scripts of their own', () => {
 });
 
 test('a call with no mapping is reported, not swallowed', () => {
-    // (serial.writeLine, then serial.writeValue, was the example here until
-    // each got a mapping — `print`.)
-    const out = microbitToPseudocode('serial.redirectToUSB()\nbasic.clearScreen()');
-    assert.match(out.code, /# unsupported: serial\.redirectToUSB\(\)/);
-    assert.ok(out.unsupported.some(u => /serial\.redirectToUSB/.test(u)));
+    // (serial.writeLine, then serial.writeValue, then pins.analogSetPitchPin, was the example here until
+    // each got a mapping.)
+    const out = microbitToPseudocode('control.clearInterval(1, control.IntervalMode.Interval)\nbasic.clearScreen()');
+    assert.match(out.code, /# unsupported: control\.clearInterval\(\)/);
+    assert.ok(out.unsupported.some(u => /control\.clearInterval/.test(u)));
     assert.match(out.code, /clear display/, 'the rest of the program still translates');
 });
 
@@ -511,25 +511,25 @@ test('`+` on text is join; a variable that holds text joins too (it was operator
     assert.ok(!opcodesOf(code).has('operator_add'), 'a text + was still an addition');
 });
 
-test('radio.sendValue says the name is not sent (it sent the bare number as if that were the same packet)', () => {
+test('radio.sendValue keeps its name: the pair is one block, the name is not dropped', () => {
     const {code, unsupported} = microbitToPseudocode('radio.sendValue("x", 5)\n');
-    assert.match(code, /radio send number 5/);
-    assert.ok(unsupported.some(u => /radio\.sendValue\(\) — the name is not sent/.test(u)), unsupported.join('\n'));
+    assert.match(code, /radio send value "x" = 5/);
+    assert.deepEqual(unsupported, []);
 });
 
 test('a class that cannot be lowered, and an untyped object literal, are refused by name, with the calls inside them', () => {
-    // An accessor (`get kind()`) has no lowering to arrays and procedures, so
-    // this class is refused whole, saying why and naming what it calls.
+    // A heritage clause naming a base the program does not define has no lowering to arrays and
+    // procedures, so this class is refused whole, saying why and naming what it calls.
     const {unsupported} = microbitToPseudocode([
-        'class Message {',
+        'class Message extends Elsewhere {',
         '    private d: Buffer',
-        '    constructor() { this.d = control.createBuffer(13) }',
-        '    get kind(): number { return this.d.getNumber(NumberFormat.Int8LE, 0) }',
+        '    constructor() { super(); this.d = control.createBuffer(13) }',
+        '    kind(): number { return this.d.getNumber(NumberFormat.Int8LE, 0) }',
         '    send() { radio.sendBuffer(this.d) }',
         '}',
         'let c = { sprite: game.createSprite(0, 0) }'
     ].join('\n'));
-    assert.ok(unsupported.some(u => /class Message \(a get accessor \(kind\)\).*control\.createBuffer\(\).*radio\.sendBuffer\(\)/.test(u)),
+    assert.ok(unsupported.some(u => /class Message \(extends Elsewhere\).*control\.createBuffer\(\).*radio\.sendBuffer\(\)/.test(u)),
         unsupported.join('\n'));
     assert.ok(!unsupported.some(u => /constructor\(\)|send\(\),/.test(u)), 'a method definition was read as a call');
     assert.ok(unsupported.some(u => /object literal.*game\.createSprite\(\)/.test(u)), unsupported.join('\n'));
@@ -598,15 +598,13 @@ test('the logo handler is polled like the buttons; a long press and a release ar
     assert.match(code, /IF logo touched THEN:\n {6}wait until not \(logo touched\)\n {6}show number 3/);
 });
 
-test('what MicroPython\'s radio does not have is refused with the reason; serial numbers are carried now', () => {
-    // A packet's send time is not in a MicroPython packet: the time and the
-    // packet dump that prints it stay refused, by name.
-    const {unsupported} = microbitToPseudocode([
+test('a radio packet\'s send time and the packet dump are carried; serial numbers are carried too', () => {
+    const times = microbitToPseudocode([
         'let t = radio.receivedPacket(RadioPacketProperty.Time)',
         'radio.writeReceivedPacketToSerial()'
     ].join('\n'));
-    assert.ok(unsupported.some(u => /Time\) — a MicroPython radio packet carries no send time/.test(u)), unsupported.join('\n'));
-    assert.ok(unsupported.some(u => /writeReceivedPacketToSerial\(\) — the dump prints each packet's send time/.test(u)), unsupported.join('\n'));
+    assert.deepEqual(times.unsupported, []);
+    assert.match(times.code, /set t to read last radio time\n {2}radio write received packet to serial/);
     // Serial numbers ride in the packet (sb3-creator: `radio transmit serial number on`).
     const serial = microbitToPseudocode([
         'radio.setTransmitSerialNumber(true)',
@@ -960,11 +958,11 @@ test('a genuinely unclaimed asset tag remains an exact named generic refusal', a
     assert.doesNotMatch(out.code, /frames \("missing"\)/);
 });
 
-test('a claimed native animation with no resource has a precise missing-reference diagnostic and undefined frames', async () => {
+test('a claimed native animation with no resource has a precise missing-reference diagnostic and keeps the reference by name', async () => {
     const {arcadeToPseudocode} = await import('../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js');
     const out = arcadeToPseudocode('let hero = sprites.create(img`1`, SpriteKind.Player)\nanimation.runImageAnimation(hero, assets.animation`missing`, 75, false)');
     assert.deepEqual(out.unsupported, ['Missing animation asset reference: "missing"']);
-    assert.match(out.code, /arcade animate sprite \(hero\) frames \(undefined value\) interval \(75\)/);
+    assert.match(out.code, /arcade animate sprite \(hero\) frames \(\(?arcade external value "assets\.animation`missing`"\)?\) interval \(75\)/);
     assert.doesNotMatch(out.code, /frames \("(?:missing|\(image\))"\)/);
     assert.doesNotMatch(out.code, /arcade animation frames resource|arcade frame image array/);
     assert.deepEqual(out.animationResources || [], [], 'no animation resource is fabricated for the missing gallery');

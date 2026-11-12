@@ -3,9 +3,10 @@
 // Source sha256 6530f15cbddbc41419a59a41e8c13276eb6ac65645c04d02e899826c08e3f765. Regenerate: node scripts/generate-arcade-carnival.mjs
 // Host blocking operations return Promises; one factory instance owns one program's initialization.
 module.exports = function initializePxtCarnival(host) {
-const {game, info, effects, settings, control, scene, music, screen, image, img, pause} = host;
+const {game, info, effects, settings, control, scene, music, screen, image, img, pause, textsprite} = host;
 var carnival;
 (function (carnival) {
+    let textSprite = null;
     //let fanfare: effects.BackgroundEffect = undefined; // <-- I don't think this is needed anymore
     //let winStyle="WinTypes.Score"  // <-- Pretty sure this isn't needed anymore
     // Get array of player info
@@ -38,6 +39,40 @@ var carnival;
         //% block="none"
         ScoreTypes[ScoreTypes["None"] = 4] = "None";
     })(ScoreTypes = carnival.ScoreTypes || (carnival.ScoreTypes = {}));
+    let Areas;
+    (function (Areas) {
+        //% block="top"
+        Areas[Areas["Top"] = 0] = "Top";
+        //% block="middle"
+        Areas[Areas["Mid"] = 1] = "Mid";
+        //% block="bottom"
+        Areas[Areas["Bottom"] = 2] = "Bottom";
+    })(Areas = carnival.Areas || (carnival.Areas = {}));
+    /**
+    * Adds text to the top, middle, or bottom
+    * of screen as defined by games
+    */
+    //% group="Scene"
+    //% blockId=add_label_to
+    //% block="add label $myLabel to $myPosition of window || $myColor"
+    //% myLabel.defl="Whack-the-Mole"
+    //% myColor.shadow="colorindexpicker"
+    //% myColor.defl=4
+    //% myPosition.defl=Areas.Bottom
+    //% inlineInputMode=inline
+    //% help=github:docs/add_label_to
+    function addLabelTo(myLabel, myPosition, myColor) {
+        if (myColor == undefined)
+            myColor = 4;
+        textSprite = textsprite.create(myLabel, 0, myColor);
+        if (myPosition == Areas.Bottom)
+            textSprite.setPosition(80, 110);
+        if (myPosition == Areas.Mid)
+            textSprite.setPosition(80, 50);
+        if (myPosition == Areas.Top)
+            textSprite.setPosition(80, 20);
+    }
+    carnival.addLabelTo = addLabelTo;
     // Formerly of the Info Category -----
     let countdownInitialized = false;
     /**

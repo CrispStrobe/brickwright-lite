@@ -3,9 +3,10 @@
   "issue": 1435,
   "historicalBase": "7b4f2f84ac55e238bbb75663acbdc1e26f3d0358",
   "engine": {
-    "version": "1.1.0-bw.7",
+    "version": "1.1.0-bw.9",
+    "releaseTag": "bw.9-qualified-20261029",
     "pinSource": "scripts/integrate.mjs",
-    "integrity": "sha512-shojIKWdaQJrb4IcKwonFCl3585GCn2KqS3HKbpe4bEWfN2DqNNOXf0UElM+sQ+as7HOL4SyocQbs8HrB+5o9A=="
+    "integrity": "sha512-H+Q8jQqKxdnDuM0a7sb66ZHz5tPBaZPSkPXU6wufo1UrDzVseyudgCNKWuA1kV3Ii/Ci6at/+zFVcMQm2yWY6w=="
   },
   "historicalSources": {
     "core": {"file": "overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js", "sha256": "d793b51541af6a1a6ecccc61548670999bc378d2fb427456cf1fc6e19107cf58"},

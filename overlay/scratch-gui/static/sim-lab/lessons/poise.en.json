@@ -2,7 +2,7 @@
   "version": 1,
   "id": "poise",
   "language": "en",
-  "what": "Roberval balance. Two equal horizontal blue bars pivot at their centres. Upright end links keep two weighing pans level. A motor on each pan moves an eccentric weight horizontally; neither motor drives the balance beam. An orange ballast frame below the upper pivot gives the otherwise balanced linkage a definite resting position.",
+  "what": "Roberval balance. Two equal horizontal blue bars pivot at their centres. Upright end links keep two weighing pans level. A motor on each pan moves an eccentric weight horizontally; neither motor drives the balance beam. An orange ballast frame below the upper pivot gives the otherwise balanced linkage a definite resting position. A Roberval balance: two motors move equal weights across level pans, and the passive balance should stay level wherever on the pan the weights sit.",
   "try": [
     "Load Poise and its matching program, reset, and run. During each pause compare the positions of both weights with the angle of the passive blue balance bar.",
     "Watch the first pause: the left weight has moved from its outer position to its inner position while the right weight stays outside. Predict whether the balance should tilt after the movement settles.",

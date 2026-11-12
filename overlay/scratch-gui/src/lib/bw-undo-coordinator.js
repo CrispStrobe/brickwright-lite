@@ -19,6 +19,7 @@ const projectFuture = [];
 const editSeqs = new Map();
 const lastDepth = new Map();
 let seq = 0;
+let projectGeneration = 0;
 let core = null;
 
 /**
@@ -104,7 +105,8 @@ const runProject = (from, to, direction) => {
         .then(() => true, error => {
             // The step could not be applied (the project changed under it): drop
             // it rather than keep a step that will fail again.
-            to.splice(to.indexOf(entry), 1);
+            const index = to.indexOf(entry);
+            if (index !== -1) to.splice(index, 1);
             core.setError(message(error));
             return false;
         })
@@ -125,7 +127,14 @@ const redoProject = () => runProject(projectFuture, projectPast, 'redo');
 export const moveHistory = async (steps, scope = 'editor') => {
     let moved = 0;
     const back = steps < 0;
+    const generation = projectGeneration;
+    const surfaceName = core.active();
+    const surface = core.surfaces.get(surfaceName);
     for (let i = Math.abs(steps | 0); i > 0; i--) {
+        // A jump describes the timeline shown when it started. Do not continue
+        // into a different editor or a replacement project's history.
+        if (generation !== projectGeneration || (scope !== PROJECT_SURFACE &&
+            (core.active() !== surfaceName || core.surfaces.get(surfaceName) !== surface))) break;
         let ok;
         if (scope === 'all') {
             // The merged timeline: each step is whichever Undo / Redo would do next.
@@ -165,13 +174,31 @@ export const recordProjectEdit = entry => {
 
 /** A loaded project replaces every structural edit before it. */
 export const clearProjectHistory = () => {
+    projectGeneration++;
     projectPast.length = 0;
     projectFuture.length = 0;
     core.announce();
 };
 
-const undoNewest = () => (projectNewer() ? undoProject() : core.step('undo') !== false);
-const redoNewest = () => (redoProjectNewer() ? redoProject() : core.step('redo') !== false);
+const stepEditor = direction => {
+    const result = core.step(direction);
+    // Sound edits resolve after re-encoding. Preserve that completion boundary
+    // before selecting the next entry from the merged project/editor timeline.
+    if (result && typeof result.then === 'function') {
+        return Promise.resolve(result).then(value => {
+            core.announce();
+            return value !== false;
+        }, error => {
+            core.setError(message(error));
+            core.announce();
+            return false;
+        });
+    }
+    return result !== false;
+};
+
+const undoNewest = () => (projectNewer() ? undoProject() : stepEditor('undo'));
+const redoNewest = () => (redoProjectNewer() ? redoProject() : stepEditor('redo'));
 
 /**
  * The History list: the active editor's steps and the project steps in one

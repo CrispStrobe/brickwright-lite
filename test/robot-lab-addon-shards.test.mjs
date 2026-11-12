@@ -37,7 +37,7 @@ test('the published addon gates remain unique with their exact commands and acce
     assert.equal(assigned.size,11,'No omitted or duplicated published gate');
 });
 test('additional addon shards use the existing Robot Lab scope predicate',()=>{
-    for(const shard of ['robotaddon5','robotaddon6','robotaddon7','robotaddon8','robotaddon9','robotaddon10','robotaddon11','robotaddon12']){
+    for(const shard of ['robotaddon5','robotaddon6','robotaddon7','robotaddon8','robotaddon9','robotaddon10','robotaddon11','robotaddon12','robotaddon13','robotaddon14','robotaddon15','robotaddon16','robotaddon18','robotaddon19']){
         assert.equal(job.shards.filter(s=>s===shard).length,1,'Unique matrix registration');
         const exclusion="          - shard: ${{ needs.scope.outputs.robotlab != 'true' && '"+shard+"' || 'none' }}";
         assert.equal(lines.filter(line=>line===exclusion).length,1,'Same existing path-scope predicate');
@@ -57,4 +57,26 @@ test('all newly delivered primary experiments have one complete journey with unc
         const at=job.steps.indexOf(step),end=job.steps[at+1]?.line-1||lines.length,body=lines.slice(step.line-1,end).join('\n');
         assert.deepEqual([...body.matchAll(/^        run: (.*)$/gm)].map(m=>m[1]),['npm run verify:sim-lab -- --part=examples --examples='+id+(id==='atlas-six'?' --intake-capture=atlas-six':'')]);
     }
+});
+
+test('the promotions Evenhand, RimRun (Q5), Obliquity Orrery (R1) and the R2 family each have one browser gate on their own shard',()=>{
+    const selectors=[...workflow.matchAll(/--part=examples --examples=([^\s]+)/g)].flatMap(m=>m[1].split(','));
+    for(const [shard,id]of [['robotaddon13','evenhand'],['robotaddon14','rimrun'],['robotaddon15','obliquity-orrery'],['robotaddon16','cadence-geneva'],['robotaddon18','helios-transmission'],['robotaddon19','orion-cardan']]){
+        assert.equal(selectors.filter(value=>value===id).length,1,'No omitted or duplicated selector: '+id);
+        const steps=job.steps.filter(s=>s.name==='Browser gate — Robot Lab '+id+' promotion');assert.equal(steps.length,1,id);
+        const step=steps[0];assert.deepEqual(shardsOf(step),[shard]);
+        assert.equal(step.ifs,"${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == '"+shard+"' }}");
+        const at=job.steps.indexOf(step),end=job.steps[at+1]?.line-1||lines.length,body=lines.slice(step.line-1,end).join('\n');
+        assert.deepEqual([...body.matchAll(/^        run: (.*)$/gm)].map(m=>m[1]),['npm run verify:sim-lab -- --part=examples --examples='+id]);
+    }
+});
+
+test('Cross Ratio adds one bounded gate to addon1 without redistributing existing cases',()=>{
+ const name='Browser gate — Robot Lab Cross Ratio complete example';
+ const hits=job.steps.filter(s=>s.name===name);assert.equal(hits.length,1);
+ const step=hits[0];assert.deepEqual(shardsOf(step),['robotaddon1']);
+ assert.equal(step.timeout,8);assert.equal(job.timeout,30);
+ assert.equal(step.ifs,"${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon1' }}");
+ const at=job.steps.indexOf(step),end=job.steps[at+1]?.line-1||lines.length;
+ assert.match(lines.slice(step.line-1,end).join('\n'),/^        run: npm run verify:sim-lab -- --part=examples --examples=cross-ratio$/m);
 });

@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/offset-relay.ldr": "eb99c7f77b20edff60edfa13b43aed627285325d5fbe13fcb525e0a7c27aea2c",
+  "programs/offset-relay.bw": "e618e90134f78a395db299b82aa405759a445a1d0a6d8977777fd790335abc8b",
+  "LICENSE.txt": "a096c77ac7c151875cdcfcc89285d7372701076a3e53e29b3ee8abcd4e71ec9e",
+  "SOURCES.md": "bc5ae264b377cf29478088e55dc17d2a33d61ac69a705d3bc0c2590ab4b6c43e"
+ }
+}

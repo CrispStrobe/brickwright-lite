@@ -3,35 +3,6 @@
 // Checkpoint candidates are deliberately separate from the qualified registry.
 export const EXPERIMENTAL_MODELS = Object.freeze([
     {
-        "file": "bend-ripple.ldr",
-        "title": {
-            "en": "Bend Ripple — variable-bend Cardan joint",
-            "de": "Bend Ripple — Kardangelenk mit verstellbarem Knickwinkel"
-        },
-        "example": "bend-ripple.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "A single Cardan joint whose bend is a second motor input: compare the output’s lead and lag at 10° and 30° bend, and watch the output turn while the input is held.",
-            "de": "Ein einzelnes Kardangelenk, dessen Knickwinkel ein zweiter Motor verstellt: Vergleiche das Vor- und Nacheilen bei 10° und 30° und beobachte, wie sich der Ausgang bei festgehaltenem Eingang dreht."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": 0,
-                "maxDeg": 765,
-                "stepDeg": 45,
-                "speedDps": 24
-            },
-            "B": {
-                "minDeg": 0,
-                "maxDeg": 20,
-                "stepDeg": 5,
-                "speedDps": 4
-            }
-        }
-    },
-    {
         "file": "apex.ldr",
         "title": {
             "en": "Apex — Wankel rotary geometry",
@@ -113,29 +84,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "cadence-geneva.ldr",
-        "title": {
-            "en": "Cadence — Geneva indexing",
-            "de": "Cadence — Malteserkreuz-Schaltung"
-        },
-        "example": "cadence-geneva.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "A four-slot Geneva drive (Maltese cross) turns a steadily driven crank into twelve 30° dial steps with a dwell in between; a friction clutch holds the dial while it rests.",
-            "de": "Ein Malteserkreuzgetriebe mit vier Schlitzen macht aus einer gleichmäßig gedrehten Kurbel zwölf Zeigerschritte zu 30° mit Rast dazwischen; eine Rutschkupplung hält den Zeiger in der Ruhe."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": 0,
-                "maxDeg": 4320,
-                "stepDeg": 45,
-                "speedDps": 30
-            }
-        }
-    },
-    {
         "file": "equinox-differential.ldr",
         "title": {
             "en": "Equinox — differential lab",
@@ -159,67 +107,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "kestrel-flapper.ldr",
-        "title": {
-            "en": "Kestrel — flapping linkage",
-            "de": "Kestrel — Schlagflügel-Gestänge"
-        },
-        "example": "kestrel-flapper.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "A Grashof crank-rocker turns motor A’s full crank rotation into a rocking wing: one stroke each way per turn, with slightly unequal stroke times.",
-            "de": "Eine Kurbelschwinge nach Grashof macht aus der vollen Kurbeldrehung von Motor A einen schwingenden Flügel: ein Schlag in jede Richtung je Umdrehung, mit leicht ungleichen Schlagzeiten."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": 0,
-                "maxDeg": 720,
-                "stepDeg": 30,
-                "speedDps": 45
-            }
-        }
-    },
-    {
-        "file": "lumen-iris.ldr",
-        "title": {
-            "en": "Lumen — six-leaf iris",
-            "de": "Lumen — sechsblättrige Iris"
-        },
-        "example": "lumen-iris.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "One motor turns a 12-tooth pinion, a 60-tooth ring and six 20-tooth leaf gears together, so six overlapping plates open a centred iris aperture.",
-            "de": "Ein Motor dreht über ein 12er-Ritzel einen 60er-Drehkranz und sechs 20er-Lamellenräder gemeinsam; sechs überlappende Platten öffnen so eine mittige Irisblende."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -55.2168,
-                "maxDeg": 0,
-                "stepDeg": 13.8042,
-                "speedDps": 15
-            }
-        }
-    },
-    {
-        "file": "helios-transmission.ldr",
-        "title": {
-            "en": "Helios — epicyclic transmission",
-            "de": "Helios — Planetengetriebe"
-        },
-        "example": "helios-transmission.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "A stepped-planet epicyclic set adds two motor inputs: A turns the sun at constant speed while B’s carrier speed alone steps the output through ×3, ×2, ×1, standstill and reverse.",
-            "de": "Ein Umlaufgetriebe mit Stufenplaneten überlagert zwei Motoren: A dreht das Sonnenrad konstant, und allein die Trägerdrehzahl von B schaltet den Abtrieb durch ×3, ×2, ×1, Stillstand und Rückwärtslauf."
-        }
-    },
-    {
         "file": "aster-governor.ldr",
         "title": {
             "en": "Aster — centrifugal governor",
@@ -232,44 +119,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "intro": {
             "en": "Passive flyweights on a hinged rhombus lift a sliding collar as motor A spins the spindle faster; it senses speed (ω²) but, with no throttle, does not regulate it.",
             "de": "Passive Fliehgewichte an einer Gelenkraute heben eine Gleitmuffe, wenn Motor A die Spindel schneller dreht; der Regler misst die Drehzahl (ω²), regelt sie aber mangels Drossel nicht."
-        }
-    },
-    {
-        "file": "orion-cardan.ldr",
-        "title": {
-            "en": "Orion — double Cardan drive",
-            "de": "Orion — Doppel-Kardanantrieb"
-        },
-        "example": "orion-cardan.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "Two equally bent, correctly phased Cardan joints: the middle shaft speeds up and slows down twice per turn, while the output follows the input evenly.",
-            "de": "Zwei gleich abgewinkelte, richtig ausgerichtete Kardangelenke: Die Zwischenwelle wird zweimal je Umdrehung schneller und langsamer, der Abtrieb folgt dem Eingang gleichförmig."
-        }
-    },
-    {
-        "file": "meridian-linkage.ldr",
-        "title": {
-            "en": "Meridian — straight-line linkage",
-            "de": "Meridian — Geradführungs-Gestänge"
-        },
-        "example": "meridian-linkage.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "A Peaucellier–Lipkin cell inverts a crank circle through its pivot into an exact straight line: the passive output point moves straight with no guide at all.",
-            "de": "Eine Peaucellier-Lipkin-Zelle bildet einen Kurbelkreis durch ihren Drehpunkt auf eine exakte Gerade ab: Der passive Abtriebspunkt läuft ganz ohne Führung geradeaus."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -60,
-                "maxDeg": 60,
-                "stepDeg": 10,
-                "speedDps": 15
-            }
         }
     },
     {
@@ -325,93 +174,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "offset-relay.ldr",
-        "title": {
-            "en": "Offset Relay — variable-offset coupling",
-            "de": "Offset Relay — Kupplung mit variablem Versatz"
-        },
-        "example": "offset-relay.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "A Schmidt coupling: three discs joined by parallel links keep the output turning exactly with the input while motor B shifts the output shaft sideways. Experimental: not yet independently measured.",
-            "de": "Eine Schmidt-Kupplung: Drei durch parallele Lenker verbundene Scheiben halten den Ausgang exakt im Gleichlauf mit dem Eingang, während Motor B die Ausgangswelle seitlich verschiebt. Experimentell: noch nicht unabhängig gemessen."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -3,
-                "maxDeg": 2883,
-                "stepDeg": 90,
-                "speedDps": 90
-            },
-            "B": {
-                "minDeg": -160,
-                "maxDeg": 84,
-                "stepDeg": 19.1,
-                "speedDps": 15
-            }
-        }
-    },
-    {
-        "file": "rack-decoder.ldr",
-        "title": {
-            "en": "Rack Decoder — mechanical selection",
-            "de": "Rack Decoder — mechanische Auswahl"
-        },
-        "example": "rack-decoder.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "Two motor-driven racks share one free pinion: their average moves the carriage, their difference turns the pointer – a differential in straight lines. Experimental: not yet independently measured.",
-            "de": "Zwei motorgetriebene Zahnstangen teilen sich ein freies Ritzel: Ihr Mittelwert verschiebt den Schlitten, ihre Differenz dreht den Zeiger – ein Differenzial auf geraden Wegen. Experimentell: noch nicht unabhängig gemessen."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -122,
-                "maxDeg": 122,
-                "stepDeg": 19.1,
-                "speedDps": 14.3
-            },
-            "B": {
-                "minDeg": -122,
-                "maxDeg": 122,
-                "stepDeg": 19.1,
-                "speedDps": 14.3
-            }
-        }
-    },
-    {
-        "file": "tangent-table.ldr",
-        "title": {
-            "en": "Tangent Table — mechanical angle mapping",
-            "de": "Tangent Table — mechanische Winkelabbildung"
-        },
-        "example": "tangent-table.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "One motor tilts a guide, the other sets a reach; where the guides cross, a free slider shows y = x·tan θ – a variable-gain mechanical multiplier. Experimental: not yet independently measured.",
-            "de": "Ein Motor neigt eine Kulisse, der andere stellt eine Reichweite ein; wo sich die Führungen kreuzen, zeigt ein freier Schieber y = x·tan θ – ein mechanischer Multiplizierer mit veränderlicher Verstärkung. Experimentell: noch nicht unabhängig gemessen."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -16,
-                "maxDeg": 16,
-                "stepDeg": 1,
-                "speedDps": 8
-            },
-            "B": {
-                "minDeg": -2627,
-                "maxDeg": 2627,
-                "stepDeg": 597,
-                "speedDps": 300
-            }
-        }
-    },
-    {
         "file": "pan-shift.ldr",
         "title": {
             "en": "Pan Shift — load-position experiment",
@@ -437,29 +199,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
                 "maxDeg": 61,
                 "stepDeg": 5,
                 "speedDps": 5
-            }
-        }
-    },
-    {
-        "file": "remote-pivot.ldr",
-        "title": {
-            "en": "Remote Pivot — empty-centre rotation",
-            "de": "Remote Pivot — Drehung um ein freies Zentrum"
-        },
-        "example": "remote-pivot.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "A double parallelogram swings its output link about an empty point where no bearing exists – the remote centre of motion used in surgical robots. Experimental: not yet independently measured.",
-            "de": "Ein Doppelparallelogramm schwenkt seinen Ausgangslenker um einen leeren Punkt ohne Lager – das entfernte Drehzentrum, wie es Chirurgieroboter nutzen. Experimentell: noch nicht unabhängig gemessen."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -31,
-                "maxDeg": 31,
-                "stepDeg": 5,
-                "speedDps": 8
             }
         }
     },
@@ -510,58 +249,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "schmidt-shift.ldr",
-        "title": {
-            "en": "Schmidt Shift — offset coupling",
-            "de": "Schmidt Shift — Kupplung für versetzte Wellen"
-        },
-        "example": "schmidt-shift.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "One motor drives a coupling of three carriers and six connecting rods between parallel, offset shafts. Compare the input, floating middle and passive output angles through full turns and reversal.",
-            "de": "Ein Motor treibt eine Kupplung aus drei Drehträgern und sechs Koppelstangen zwischen parallelen, versetzten Wellen. Vergleiche die Winkel von Antrieb, frei getragenem Mittelträger und passivem Abtrieb bei vollen Umdrehungen und Richtungswechsel."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -360,
-                "maxDeg": 720,
-                "stepDeg": 45,
-                "speedDps": 30
-            }
-        }
-    },
-    {
-        "file": "poise.ldr",
-        "title": {
-            "en": "Poise — Roberval balance",
-            "de": "Poise — Roberval-Waage"
-        },
-        "example": "poise.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "A Roberval balance: two motors move equal weights across level pans, and the passive balance should stay level wherever on the pan the weights sit.",
-            "de": "Eine Roberval-Waage: Zwei Motoren verschieben gleiche Gewichte auf waagerechten Schalen, und die passive Waage sollte waagerecht bleiben, gleich wo die Gewichte auf der Schale liegen."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": 0,
-                "maxDeg": 180,
-                "stepDeg": 45,
-                "speedDps": 15
-            },
-            "B": {
-                "minDeg": 0,
-                "maxDeg": 180,
-                "stepDeg": 45,
-                "speedDps": 15
-            }
-        }
-    },
-    {
         "file": "poise-mass-control.ldr",
         "title": {
             "en": "Poise Mass Control — 1.5 g added to the left pan",
@@ -587,29 +274,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
                 "maxDeg": 180,
                 "stepDeg": 45,
                 "speedDps": 15
-            }
-        }
-    },
-    {
-        "file": "equal-share.ldr",
-        "title": {
-            "en": "Equal Share — whippletree force equalizer",
-            "de": "Equal Share — Kraftausgleich mit Ausgleichsbalken"
-        },
-        "example": "equal-share.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "A whippletree: one motor pushes the free centre of a balance beam against one spring on the left and two in parallel on the right, so the single spring gives way twice as far while both sides carry equal force.",
-            "de": "Ein Ausgleichsbalken: Ein Motor schiebt die frei drehbare Mitte eines Balkens gegen eine Feder links und zwei parallele rechts; die einzelne Feder gibt doppelt so weit nach, während beide Seiten gleich viel Kraft tragen."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": 0,
-                "maxDeg": 35,
-                "stepDeg": 5,
-                "speedDps": 8
             }
         }
     },
@@ -660,93 +324,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "stroke-shift.ldr",
-        "title": {
-            "en": "Stroke Shift — adjustable crank throw",
-            "de": "Stroke Shift — verstellbarer Kurbelradius"
-        },
-        "example": "stroke-shift.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "Motor B sets a real crank radius of 16, 22 or 28 mm while A holds; A then turns the crank once and back, and the same connecting rod drives a passive piston through strokes of 2r = 32, 44 and 56 mm.",
-            "de": "Motor B stellt den Kurbelradius auf 16, 22 oder 28 mm, während A hält; danach dreht A die Kurbel einmal hin und zurück, und dasselbe Pleuel bewegt einen passiven Schlitten mit Hüben von 2r = 32, 44 und 56 mm."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": 0,
-                "maxDeg": 1080,
-                "stepDeg": 90,
-                "speedDps": 180
-            },
-            "B": {
-                "minDeg": 0,
-                "maxDeg": 3582.446015,
-                "stepDeg": 1791.223007,
-                "speedDps": 360
-            }
-        }
-    },
-    {
-        "file": "triad-table.ldr",
-        "title": {
-            "en": "Triad Table — three lengths, one pose",
-            "de": "Triad Table — drei Längen, eine Pose"
-        },
-        "example": "triad-table.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "Three motor-driven screw legs (R-P-R) jointly set the x, y position and heading of one passive platform; no motor is an axis on its own. The program visits 15 poses: ±4.8 mm, ±10° and four combined poses.",
-            "de": "Drei motorgetriebene Schraubbeine (R-P-R) bestimmen gemeinsam x, y und Ausrichtung einer passiven Plattform; kein Motor ist für sich eine Achse. Das Programm fährt 15 Posen an: ±4,8 mm, ±10° und vier kombinierte Posen."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -1500,
-                "maxDeg": 1500,
-                "stepDeg": 150,
-                "speedDps": 180
-            },
-            "B": {
-                "minDeg": -1500,
-                "maxDeg": 1500,
-                "stepDeg": 150,
-                "speedDps": 180
-            },
-            "C": {
-                "minDeg": -1500,
-                "maxDeg": 1500,
-                "stepDeg": 150,
-                "speedDps": 180
-            }
-        }
-    },
-    {
-        "file": "paired-door-sync.ldr",
-        "title": {
-            "en": "Paired Door Sync — one pinion, two opposed racks",
-            "de": "Doppeltür-Synchron — ein Ritzel, zwei gegenläufige Zahnstangen"
-        },
-        "example": "paired-door-sync.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "One 16T pinion drives two 64781 racks placed on opposite sides, so the two door leaves travel with equal speed in opposite directions and their sum of positions stays constant. The measured rack markers show the declared equal-and-opposite law, and a control with the front chain removed shows that one rack alone cannot synchronize a pair.",
-            "de": "Ein 16-Zahn-Ritzel treibt zwei gegenüberliegende 64781-Zahnstangen, sodass sich beide Türblätter gleich schnell und gegenläufig bewegen und ihre Positionssumme konstant bleibt. Die gemessenen Zahnstangenmarker zeigen das erklärte gegenläufige Gesetz; eine Kontrolle ohne vordere Antriebskette zeigt, dass eine einzelne Zahnstange ein Paar nicht synchronisieren kann."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -150,
-                "maxDeg": 150,
-                "stepDeg": 15,
-                "speedDps": 15
-            }
-        }
-    },
-    {
         "file": "impulse-line.ldr",
         "title": {
             "en": "Impulse Line — contact transfer",
@@ -793,29 +370,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "final-squeeze.ldr",
-        "title": {
-            "en": "Final Squeeze — a knee press",
-            "de": "Final Squeeze — eine Kniehebelpresse"
-        },
-        "example": "final-squeeze.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "One motor straightens two equal links against a stock shock load. The passive platen advances less per degree near alignment while the ideal output force per input torque rises. The finite program stops short of dead centre and returns.",
-            "de": "Ein Motor streckt zwei gleich lange Glieder gegen eine Federlast. Die passive Druckplatte bewegt sich nahe der Strecklage je Grad weniger, während die ideale Ausgangskraft je Eingangsdrehmoment steigt. Das endliche Programm bleibt vor dem Totpunkt und kehrt zurück."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": 0,
-                "maxDeg": 25,
-                "stepDeg": 5,
-                "speedDps": 8
-            }
-        }
-    },
-    {
         "file": "travel-dial-wheel-raised.ldr",
         "title": {
             "en": "Travel Dial Control — wheel raised",
@@ -857,35 +411,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
                 "minDeg": -35,
                 "maxDeg": 35,
                 "stepDeg": 5,
-                "speedDps": 10
-            }
-        }
-    },
-    {
-        "file": "afterturn.ldr",
-        "title": {
-            "en": "Afterturn — a closed shape cycle",
-            "de": "Afterturn — ein geschlossener Formzyklus"
-        },
-        "example": "afterturn.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "Two motors turn a reaction wheel and reposition balanced masses on a freely rotating platform. Compare the remaining platform heading after both internal motions return home, then reverse the cycle and test physically fixed masses.",
-            "de": "Zwei Motoren drehen ein Reaktionsrad und versetzen ausgewuchtete Massen auf einer frei drehbaren Plattform. Vergleiche die verbleibende Plattformdrehung nach der Rückkehr beider innerer Bewegungen, kehre den Zyklus um und prüfe physisch festgesetzte Massen."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": 0,
-                "maxDeg": 900,
-                "stepDeg": 90,
-                "speedDps": 90
-            },
-            "B": {
-                "minDeg": 0,
-                "maxDeg": 70,
-                "stepDeg": 10,
                 "speedDps": 10
             }
         }
@@ -966,35 +491,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "high-select.ldr",
-        "title": {
-            "en": "High Select — mechanical maximum",
-            "de": "High Select — mechanisches Maximum"
-        },
-        "example": "high-select.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "Two independently driven supports lift a separate gravity-loaded bridge. The higher support determines its settled height. Compare lower-input motion, handover and equal-height ties, then exchange the two input sequences.",
-            "de": "Zwei unabhängig angetriebene Stützen heben eine separate, schwerkraftbelastete Brücke. Die höhere Stütze bestimmt ihre Höhe nach dem Einschwingen. Vergleiche Bewegungen der niedrigeren Eingabe, den Kontaktwechsel und gleiche Höhen; vertausche anschließend die beiden Eingabefolgen."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": 0,
-                "maxDeg": 152,
-                "stepDeg": 19,
-                "speedDps": 38
-            },
-            "B": {
-                "minDeg": 0,
-                "maxDeg": 152,
-                "stepDeg": 19,
-                "speedDps": 38
-            }
-        }
-    },
-    {
         "file": "high-select-mirror.ldr",
         "title": {
             "en": "High Select — exchanged-input comparison",
@@ -1020,29 +516,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
                 "maxDeg": 152,
                 "stepDeg": 19,
                 "speedDps": 38
-            }
-        }
-    },
-    {
-        "file": "obliquity-orrery.ldr",
-        "title": {
-            "en": "Obliquity Orrery — the tilt behind the seasons",
-            "de": "Obliquity Orrery — die Neigung hinter den Jahreszeiten"
-        },
-        "example": "obliquity-orrery.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "A parallelogram carries a tilted Earth round the Sun without turning it. Watch the axis keep its direction while the Sun's declination falls from +22.5° at midsummer to 0° at the equinox.",
-            "de": "Ein Parallelogramm führt eine geneigte Erde um die Sonne, ohne sie zu drehen. Beobachte, wie die Achse ihre Richtung behält, während die Sonnendeklination vom Hochsommer (+22,5°) bis zur Tagundnachtgleiche (0°) fällt."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -90,
-                "maxDeg": 0,
-                "stepDeg": 5,
-                "speedDps": 12
             }
         }
     },
@@ -1238,29 +711,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "phasor-twin.ldr",
-        "title": {
-            "en": "Phasor Twin — the Stirling phase loop",
-            "de": "Phasor Twin — die Stirling-Phasenschleife"
-        },
-        "example": "phasor-twin.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "Two vertical crank-slider pistons, coupled by a 40-tooth idler and two 16-tooth gears, run 90 degrees out of phase. Plotting the two passive piston displacements against each other gives a closed loop of area pi r^2; clocking both throws together collapses it to a line.",
-            "de": "Zwei senkrechte Kurbelschleifen-Kolben, über ein 40-Zahn-Zwischenrad und zwei 16-Zahn-Ritzel gekoppelt, laufen um 90 Grad versetzt. Trägt man die beiden passiven Kolbenwege gegeneinander auf, entsteht ein geschlossener Ring der Fläche pi r^2; bei gleichphasigen Kurbeln fällt er zu einer Geraden zusammen."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": 0,
-                "maxDeg": 720,
-                "stepDeg": 45,
-                "speedDps": 45
-            }
-        }
-    },
-    {
         "file": "phasor-twin-control.ldr",
         "title": {
             "en": "Phasor Twin — in phase (control)",
@@ -1284,240 +734,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "helixgate.ldr",
-        "title": {
-            "en": "HelixGate — a 24:1 worm gearbox",
-            "de": "HelixGate — ein Schneckengetriebe mit 24:1"
-        },
-        "example": "helixgate.bw",
-        "mat": "plain",
-        "manualJog": {
-            "A": {
-                "minDeg": 0,
-                "maxDeg": 720,
-                "stepDeg": 45,
-                "speedDps": 60
-            }
-        },
-        "intro": {
-            "en": "One right-hand single-start worm turns a 24-tooth gear on a perpendicular axle, moving a red L-shaped gate 30 degrees for two complete motor turns. Coast at the top to observe the virtual worm's hold.",
-            "de": "Eine rechtsgängige eingängige Schnecke dreht ein 24er-Zahnrad auf einer rechtwinkligen Welle. Zwei Motorumdrehungen bewegen den roten L-Hebel um 30 Grad. Beim Ausrollen kann die Haltewirkung beobachtet werden."
-        },
-        "experimental": true,
-        "blocked": false
-    },
-    {
-        "file": "looprelay.ldr",
-        "title": {
-            "en": "LoopRelay — chain drive, gear reversal",
-            "de": "LoopRelay — Kettenantrieb mit Zahnradumkehr"
-        },
-        "example": "looprelay.bw",
-        "mat": "plain",
-        "manualJog": {
-            "A": {
-                "minDeg": 0,
-                "maxDeg": 180,
-                "stepDeg": 5,
-                "speedDps": 12
-            }
-        },
-        "intro": {
-            "en": "A 16-tooth wheel drives a remote 24-tooth wheel through a closed 25-link chain. An 8-tooth pinion on that shaft turns a final 24-tooth output gear the opposite way: a -2:9 angular ratio.",
-            "de": "Ein 16er-Kettenrad treibt über 25 geschlossene Kettenglieder ein entferntes 24er-Rad an. Ein 8er-Ritzel auf dessen Welle treibt ein letztes 24er-Zahnrad gegenläufig an: Winkelübersetzung -2:9."
-        },
-        "experimental": true,
-        "blocked": false
-    },
-    {
-        "file": "paritydial.ldr",
-        "title": {
-            "en": "ParityDial — two outputs, one idler",
-            "de": "ParityDial — zwei Abtriebe, ein Zwischenrad"
-        },
-        "example": "paritydial.bw",
-        "mat": "plain",
-        "manualJog": {
-            "A": {
-                "minDeg": -90,
-                "maxDeg": 90,
-                "stepDeg": 5,
-                "speedDps": 15
-            }
-        },
-        "intro": {
-            "en": "One 8-tooth gear drives two 24-tooth output hands. The left path meshes once; the right path adds a 24-tooth idler, reversing its rotation direction without changing its one-third speed.",
-            "de": "Ein Zahnrad mit acht Zähnen treibt zwei Zeiger mit je 24 Zähnen an. Links greift das Antriebsrad direkt ein, rechts über ein 24er-Zwischenrad. Dadurch dreht der rechte Zeiger andersherum, aber genauso schnell wie der linke."
-        },
-        "experimental": true,
-        "blocked": false
-    },
-    {
-        "file": "counterslide.ldr",
-        "title": {
-            "en": "CounterSlide — twin-rack self-centering jaws",
-            "de": "CounterSlide — selbstzentrierende Doppelzahnstangen"
-        },
-        "example": "counterslide.bw",
-        "mat": "plain",
-        "manualJog": {
-            "A": {
-                "minDeg": -100,
-                "maxDeg": 0,
-                "stepDeg": 5,
-                "speedDps": 15
-            }
-        },
-        "intro": {
-            "en": "A single 8-tooth gear meshes with two opposing racks. The orange jaws travel inward by equal distances and reopen together; the center between them stays put.",
-            "de": "Ein einziges Zahnrad mit acht Zähnen greift in zwei gegenüberliegende Zahnstangen. Die orangefarbenen Backen fahren gleich weit zur Mitte und wieder auseinander; ihre gemeinsame Mitte bleibt stehen."
-        },
-        "experimental": true,
-        "blocked": false
-    },
-    {
-        "file": "toggle-press.ldr",
-        "title": {
-            "en": "Toggle Press — near-dead-centre ram",
-            "de": "Kniehebelpresse — Schlitten nahe dem Totpunkt"
-        },
-        "example": "toggle-press.bw",
-        "mat": "plain",
-        "manualJog": {
-            "A": {
-                "minDeg": -82,
-                "maxDeg": 0,
-                "stepDeg": 2,
-                "speedDps": 8
-            }
-        },
-        "intro": {
-            "en": "One motor turns a yellow crank. A blue coupler folds the red and orange knee links, pushing an orange ram along two guide rails. The program approaches—but does not cross—dead centre, then returns to the saved datum.",
-            "de": "Ein Motor dreht eine gelbe Kurbel. Eine blaue Koppel knickt die roten und orangefarbenen Kniehebel und schiebt einen orangefarbenen Schlitten auf zwei Führungen. Das Programm nähert sich dem Totpunkt, überschreitet ihn aber nicht, und kehrt zur gespeicherten Nullstellung zurück."
-        },
-        "experimental": true,
-        "blocked": false
-    },
-    {
-        "file": "footfall.ldr",
-        "title": {
-            "en": "Footfall — twelve-link leg-path tracer",
-            "de": "Schrittspur — zwölfgliedrige Beinmechanik"
-        },
-        "example": "footfall.bw",
-        "mat": "plain",
-        "manualJog": {
-            "A": {
-                "minDeg": -5,
-                "maxDeg": 365,
-                "stepDeg": 5,
-                "speedDps": 12
-            }
-        },
-        "intro": {
-            "en": "One motor turns a yellow crank through a full revolution. Blue couplers drive a red upper triangle and an orange lower triangle so the orange foot link traces a closed, walking-like path before returning to the saved datum.",
-            "de": "Ein Motor dreht eine gelbe Kurbel um eine volle Umdrehung. Blaue Koppeln treiben ein rotes oberes und ein orangefarbenes unteres Dreieck an, sodass der orange Fußhebel eine geschlossene, schrittähnliche Bahn zeichnet und zur gespeicherten Nullstellung zurückkehrt."
-        },
-        "experimental": true,
-        "blocked": false
-    },
-    {
-        "file": "phasekeeper.ldr",
-        "title": {
-            "en": "Phasekeeper — equal-angle double-Cardan transmission",
-            "de": "Phasenhalter — gleichwinklige Doppel-Kardankupplung"
-        },
-        "example": "phasekeeper.bw",
-        "mat": "plain",
-        "manualJog": {
-            "A": {
-                "minDeg": -5,
-                "maxDeg": 365,
-                "stepDeg": 5,
-                "speedDps": 18
-            }
-        },
-        "intro": {
-            "en": "One motor drives a yellow input yoke, a blue diagonal shaft and an orange output yoke. Each universal joint bends by the same angle, and the two blue intermediate forks are parallel, so ideal Cardan speed ripple from the first joint is cancelled by the second.",
-            "de": "Ein Motor treibt eine gelbe Eingangsgabel, eine blaue Diagonalwelle und eine orange Ausgangsgabel an. Beide Kardangelenke knicken um denselben Winkel ab, und die beiden blauen Zwischengabeln sind parallel; dadurch wird die ideale Drehzahlschwankung des ersten Gelenks vom zweiten aufgehoben."
-        },
-        "experimental": true,
-        "blocked": false
-    },
-    {
-        "file": "vectorsum.ldr",
-        "title": {
-            "en": "VectorSum — two-input differential mixer",
-            "de": "Vektorsumme — Differentialmischer mit zwei Eingängen"
-        },
-        "example": "vectorsum.bw",
-        "mat": "plain",
-        "manualJog": {
-            "A": {
-                "minDeg": -190,
-                "maxDeg": 190,
-                "stepDeg": 10,
-                "speedDps": 24
-            },
-            "B": {
-                "minDeg": -190,
-                "maxDeg": 190,
-                "stepDeg": 10,
-                "speedDps": 24
-            }
-        },
-        "intro": {
-            "en": "Two opposed angular motors drive the side gears of an open Technic differential. The red carrier represents the average of the two side-shaft angles in a shared axis convention, and a yellow 12-tooth bevel gear drives an orange output pointer from the carrier's red 28-tooth cover.",
-            "de": "Zwei gegenüberliegende Winkelmotoren treiben die Seitenräder eines offenen Technic-Differentials an. Der rote Träger entspricht im gemeinsamen Achsbezug dem Mittelwert der beiden Seitenwellenwinkel; ein gelbes 12-Zahn-Kegelrad treibt den orangefarbenen Ausgangszeiger über den roten 28-Zahn-Deckel des Trägers an."
-        },
-        "experimental": true,
-        "blocked": false
-    },
-    {
-        "file": "pointweaver.ldr",
-        "title": {
-            "en": "PointWeaver — two-motor five-bar path tracer",
-            "de": "Punktweber — Fünfgelenk-Bahnzeichner mit zwei Motoren"
-        },
-        "example": "pointweaver.bw",
-        "mat": "plain",
-        "manualJog": {
-            "A": {
-                "minDeg": -34,
-                "maxDeg": 2,
-                "stepDeg": 1,
-                "speedDps": 8
-            },
-            "B": {
-                "minDeg": -11,
-                "maxDeg": 26,
-                "stepDeg": 1,
-                "speedDps": 8
-            }
-        },
-        "intro": {
-            "en": "Two angular motors drive the base links of a planar five-bar mechanism. The blue and orange forearms meet at an orange endpoint marker. A finite program reaches four rectangular corner poses while exposing the curved endpoint edges produced by synchronized linear motor-angle interpolation.",
-            "de": "Zwei Winkelmotoren treiben die Grundglieder eines ebenen Fünfgelenkgetriebes an. Der blaue und der orange Unterarm treffen sich an einer orangefarbenen Endpunktmarke. Ein endliches Programm fährt vier rechteckige Ecklagen an und macht die gekrümmten Endpunktkanten sichtbar, die durch synchron linear interpolierte Motorwinkel entstehen."
-        },
-        "experimental": true,
-        "blocked": false
-    },
-    {
-        "file": "rimrun.ldr",
-        "title": {
-            "en": "RimRun — equal weight, different roll",
-            "de": "RimRun — gleiche Masse, anderes Rollverhalten"
-        },
-        "example": "rimrun.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "One motor lifts a shared release gate above two free rollers on a fixed incline. Their parts, mass and rolling radius match; only the balanced ballast sits nearer the axis or farther out. Compare their free rolling before the four independent spring catches, then exchange the ballast layouts between lanes with the supplied comparison model and run the same program. The native rolling comparison passes; complete-run qualification and one watchdog holding limit fail.",
-            "de": "Ein Motor hebt eine gemeinsame Startschranke über zwei freien Rollkörpern auf einer festen schiefen Ebene. Teile, Masse und Rollradius stimmen überein; nur der symmetrische Ballast sitzt näher an der Achse oder weiter außen. Vergleiche das freie Rollen vor den vier unabhängigen Federfängern, vertausche dann die Ballastanordnungen mit dem Vergleichsmodell zwischen den Spuren und starte dasselbe Programm. Der native Rollvergleich besteht die Prüfungen; die Gesamtqualifikation und ein Haltegrenzwert des Zeitwächters bestehen sie nicht."
-        }
-    },
-    {
         "file": "rimrun-swapped.ldr",
         "title": {
             "en": "RimRun — ballast layouts exchanged (comparison)",
@@ -1530,21 +746,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "intro": {
             "en": "The same two rollers with their ballast layouts exchanged between the lanes: green now carries the outer ballast, orange the inner. If the inner-ballast roller still leads, the result follows the mass distribution, not the lane.",
             "de": "Dieselben zwei Rollkörper mit vertauschten Ballastanordnungen: Grün trägt jetzt den äußeren Ballast, Orange den inneren. Führt der Rollkörper mit innerem Ballast weiterhin, folgt das Ergebnis der Massenverteilung und nicht der Spur."
-        }
-    },
-    {
-        "file": "swayshift.ldr",
-        "title": {
-            "en": "SwayShift — timing an anti-sway transfer",
-            "de": "SwayShift — Nachschwingen durch gezieltes Timing mindern"
-        },
-        "example": "swayshift.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "One motor drives a rack trolley through a 3:1 speed increase. A freely hinged rigid pendulum has a 216 mm hole span. Compare the same nominal 22 mm + 22 mm transfer with half-period or full-period timing between move starts, then observe the passive load after arrival.",
-            "de": "Ein Motor bewegt einen Zahnstangenschlitten mit dreifacher Ausgangsdrehzahl. Das frei gelagerte starre Pendel hat 216 mm Abstand zwischen den äußeren Löchern. Vergleiche dieselbe Sollfahrt von 22 mm + 22 mm mit einer halben oder einer ganzen Periode zwischen den Bewegungsstarts und beobachte das Nachschwingen."
         }
     },
     {
@@ -1564,21 +765,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "tipline.ldr",
-        "title": {
-            "en": "Tipline — sliding versus tipping",
-            "de": "Tipline — Rutschen oder Kippen"
-        },
-        "example": "tipline.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "One motor tilts two equally heavy free towers with low or high internal ballast. In the native recordings, high ballast tips near 15° and low ballast slides near 22°. Swap the ballast heights between lanes; a tall passive wall arrests the later motion.",
-            "de": "Ein Motor neigt zwei gleich schwere freie Türme mit tiefem oder hohem innerem Ballast. In den nativen Aufzeichnungen kippt die hohe Anordnung bei etwa 15°; die tiefe rutscht bei etwa 22°. Vertausche die Ballasthöhen zwischen den Spuren; eine hohe passive Wand fängt die spätere Bewegung ab."
-        }
-    },
-    {
         "file": "tipline-swapped.ldr",
         "title": {
             "en": "Tipline — ballast heights swapped (comparison)",
@@ -1591,29 +777,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "intro": {
             "en": "The same machine with the ballast heights exchanged between the towers: green now has the high ballast, orange the low. The outcomes swap lanes too: the high-ballast tower still tips first, the low-ballast tower still slides.",
             "de": "Dieselbe Maschine mit vertauschten Ballasthöhen: Grün hat jetzt den hohen Ballast, Orange den tiefen. Auch die Ergebnisse wechseln die Spur: Der Turm mit hohem Ballast kippt weiterhin zuerst, der mit tiefem rutscht."
-        }
-    },
-    {
-        "file": "twistspan.ldr",
-        "title": {
-            "en": "TwistSpan — two-cord torsion pendulum",
-            "de": "TwistSpan — Zweifaden-Torsionspendel"
-        },
-        "example": "twistspan.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "One motor turns an upper bar; two fixed 104 mm cords suspend a separate passive payload. Compare 64 mm and 32 mm tie spacing with the same rigid parts: the recorded period changes from about 0.77 s to 1.52 s.",
-            "de": "Ein Motor dreht den oberen Balken; zwei feste 104-mm-Schnüre tragen eine eigene passive Last. Vergleiche 64 mm und 32 mm Befestigungsabstand bei denselben starren Teilen: Die aufgezeichnete Periode ändert sich von etwa 0,77 s auf 1,52 s."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": 0,
-                "maxDeg": 20,
-                "stepDeg": 5,
-                "speedDps": 10
-            }
         }
     },
     {
@@ -1636,35 +799,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
                 "maxDeg": 20,
                 "stepDeg": 5,
                 "speedDps": 10
-            }
-        }
-    },
-    {
-        "file": "evenhand.ldr",
-        "title": {
-            "en": "Evenhand — counterbalanced two-joint arm",
-            "de": "Evenhand — ausgewogener Zweigelenkarm"
-        },
-        "example": "evenhand.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "Two motors move a shoulder and an elbow through nine poses. Counterweights behind each joint balance the links, so in the simulator both motors hold every pose with almost no torque. The comparison moves the same forearm weights inward and runs the same program.",
-            "de": "Zwei Motoren bewegen Schulter und Ellbogen durch neun Stellungen. Gegengewichte hinter jedem Gelenk gleichen die Glieder aus, sodass beide Motoren im Simulator jede Stellung fast ohne Drehmoment halten. Der Vergleich rückt dieselben Unterarmgewichte nach innen und nutzt dasselbe Programm."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -20,
-                "maxDeg": 20,
-                "stepDeg": 5,
-                "speedDps": 20
-            },
-            "B": {
-                "minDeg": -30,
-                "maxDeg": 30,
-                "stepDeg": 5,
-                "speedDps": 25
             }
         }
     },
@@ -1699,42 +833,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
     }
 ]);
 export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
-    "bend-ripple.ldr": {
-        "pieces": 156,
-        "motors": 2,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "gears",
-        "description": {
-            "en": "A single Cardan joint whose bend is a second motor input: compare the output’s lead and lag at 10° and 30° bend, and watch the output turn while the input is held.",
-            "de": "Ein einzelnes Kardangelenk, dessen Knickwinkel ein zweiter Motor verstellt: Vergleiche das Vor- und Nacheilen bei 10° und 30° und beobachte, wie sich der Ausgang bei festgehaltenem Eingang dreht."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "variable-bend Cardan joint",
-            "de": "Kardan mit veränderlichem Winkel"
-        },
-        "keywords": [
-            "Cardan joint",
-            "universal joint",
-            "Hooke joint",
-            "speed ripple",
-            "bend angle",
-            "Kardangelenk",
-            "Kreuzgelenk",
-            "Knickwinkel",
-            "Drehzahlschwankung",
-            "Cardan",
-            "angular velocity ripple",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
     "apex.ldr": {
         "pieces": 477,
         "motors": 1,
@@ -1839,41 +937,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "experimental": true
     },
-    "cadence-geneva.ldr": {
-        "pieces": 200,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "A four-slot Geneva drive (Maltese cross) turns a steadily driven crank into twelve 30° dial steps with a dwell in between; a friction clutch holds the dial while it rests.",
-            "de": "Ein Malteserkreuzgetriebe mit vier Schlitzen macht aus einer gleichmäßig gedrehten Kurbel zwölf Zeigerschritte zu 30° mit Rast dazwischen; eine Rutschkupplung hält den Zeiger in der Ruhe."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "Geneva indexing",
-            "de": "Malteserkreuz-Schaltung"
-        },
-        "keywords": [
-            "Geneva drive",
-            "Maltese cross",
-            "intermittent motion",
-            "indexing",
-            "dwell",
-            "Malteserkreuz",
-            "Schrittgetriebe",
-            "Rastgetriebe",
-            "Taktgetriebe",
-            "Geneva",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
     "equinox-differential.ldr": {
         "pieces": 98,
         "motors": 3,
@@ -1902,120 +965,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "Kegelrad",
             "Achswellenrad",
             "angular velocity sum",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "kestrel-flapper.ldr": {
-        "pieces": 61,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "A Grashof crank-rocker turns motor A’s full crank rotation into a rocking wing: one stroke each way per turn, with slightly unequal stroke times.",
-            "de": "Eine Kurbelschwinge nach Grashof macht aus der vollen Kurbeldrehung von Motor A einen schwingenden Flügel: ein Schlag in jede Richtung je Umdrehung, mit leicht ungleichen Schlagzeiten."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "flapping linkage",
-            "de": "Schlagflügel-Gestänge"
-        },
-        "keywords": [
-            "crank-rocker",
-            "four-bar linkage",
-            "Grashof",
-            "flapping wing",
-            "ornithopter",
-            "quick return",
-            "dead centre",
-            "Kurbelschwinge",
-            "Viergelenk",
-            "Schlagflügel",
-            "Totlage",
-            "Schnellrücklauf",
-            "crank rocker",
-            "flapping linkage",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "lumen-iris.ldr": {
-        "pieces": 146,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "One motor turns a 12-tooth pinion, a 60-tooth ring and six 20-tooth leaf gears together, so six overlapping plates open a centred iris aperture.",
-            "de": "Ein Motor dreht über ein 12er-Ritzel einen 60er-Drehkranz und sechs 20er-Lamellenräder gemeinsam; sechs überlappende Platten öffnen so eine mittige Irisblende."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "six-leaf iris",
-            "de": "sechsblättrige Iris"
-        },
-        "keywords": [
-            "iris diaphragm",
-            "aperture",
-            "iris",
-            "turntable",
-            "gear ring",
-            "synchronised leaves",
-            "Irisblende",
-            "Blende",
-            "Lamellen",
-            "Drehkranz",
-            "Zahnkranz",
-            "radial linkage",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "helios-transmission.ldr": {
-        "pieces": 156,
-        "motors": 2,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "gears",
-        "description": {
-            "en": "A stepped-planet epicyclic set adds two motor inputs: A turns the sun at constant speed while B’s carrier speed alone steps the output through ×3, ×2, ×1, standstill and reverse.",
-            "de": "Ein Umlaufgetriebe mit Stufenplaneten überlagert zwei Motoren: A dreht das Sonnenrad konstant, und allein die Trägerdrehzahl von B schaltet den Abtrieb durch ×3, ×2, ×1, Stillstand und Rückwärtslauf."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "epicyclic transmission",
-            "de": "Planetengetriebe"
-        },
-        "keywords": [
-            "epicyclic gear",
-            "planetary gear",
-            "compound planet",
-            "stepped planet",
-            "power split",
-            "Willis equation",
-            "eCVT",
-            "Umlaufgetriebe",
-            "Planetengetriebe",
-            "Stufenplanet",
-            "Leistungsverzweigung",
-            "Willis-Gleichung",
-            "epicyclic",
             "experimental",
             "prototype",
             "unverified",
@@ -2052,80 +1001,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "Muffe",
             "Fliehgewichte",
             "Drehzahlregler",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "orion-cardan.ldr": {
-        "pieces": 118,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "gears",
-        "description": {
-            "en": "Two equally bent, correctly phased Cardan joints: the middle shaft speeds up and slows down twice per turn, while the output follows the input evenly.",
-            "de": "Zwei gleich abgewinkelte, richtig ausgerichtete Kardangelenke: Die Zwischenwelle wird zweimal je Umdrehung schneller und langsamer, der Abtrieb folgt dem Eingang gleichförmig."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "double Cardan drive",
-            "de": "Doppel-Kardanantrieb"
-        },
-        "keywords": [
-            "Cardan joint",
-            "universal joint",
-            "Hooke joint",
-            "double Cardan",
-            "drive shaft",
-            "constant velocity",
-            "phasing",
-            "Kardangelenk",
-            "Kreuzgelenk",
-            "Gelenkwelle",
-            "Doppelkardan",
-            "Gleichlauf",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "meridian-linkage.ldr": {
-        "pieces": 91,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "A Peaucellier–Lipkin cell inverts a crank circle through its pivot into an exact straight line: the passive output point moves straight with no guide at all.",
-            "de": "Eine Peaucellier-Lipkin-Zelle bildet einen Kurbelkreis durch ihren Drehpunkt auf eine exakte Gerade ab: Der passive Abtriebspunkt läuft ganz ohne Führung geradeaus."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "straight-line linkage",
-            "de": "Geradführungs-Gestänge"
-        },
-        "keywords": [
-            "Peaucellier–Lipkin",
-            "Peaucellier linkage",
-            "inversor",
-            "exact straight-line linkage",
-            "circle inversion",
-            "straight-line mechanism",
-            "Peaucellier-Lipkin",
-            "Inversor",
-            "Geradführung",
-            "Kreisinversion",
-            "straight-line linkage",
-            "geometric closure",
             "experimental",
             "prototype",
             "unverified",
@@ -2210,120 +1085,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "experimental": true
     },
-    "offset-relay.ldr": {
-        "pieces": 456,
-        "motors": 2,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "gears",
-        "description": {
-            "en": "A Schmidt coupling: three discs joined by parallel links keep the output turning exactly with the input while motor B shifts the output shaft sideways. Experimental: not yet independently measured.",
-            "de": "Eine Schmidt-Kupplung: Drei durch parallele Lenker verbundene Scheiben halten den Ausgang exakt im Gleichlauf mit dem Eingang, während Motor B die Ausgangswelle seitlich verschiebt. Experimentell: noch nicht unabhängig gemessen."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "variable-offset coupling",
-            "de": "Kupplung mit variablem Versatz"
-        },
-        "keywords": [
-            "Schmidt coupling",
-            "offset coupling",
-            "parallel offset coupling",
-            "parallelogram linkage",
-            "constant velocity",
-            "shaft misalignment",
-            "Schmidt-Kupplung",
-            "Parallelversatz",
-            "Wellenversatz",
-            "Parallelogramm",
-            "Gleichlauf",
-            "parallel shafts",
-            "phase transmission",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "rack-decoder.ldr": {
-        "pieces": 245,
-        "motors": 2,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "Two motor-driven racks share one free pinion: their average moves the carriage, their difference turns the pointer – a differential in straight lines. Experimental: not yet independently measured.",
-            "de": "Zwei motorgetriebene Zahnstangen teilen sich ein freies Ritzel: Ihr Mittelwert verschiebt den Schlitten, ihre Differenz dreht den Zeiger – ein Differenzial auf geraden Wegen. Experimentell: noch nicht unabhängig gemessen."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "mechanical selection",
-            "de": "mechanische Auswahl"
-        },
-        "keywords": [
-            "rack differential",
-            "linear differential",
-            "rack and pinion",
-            "sum and difference",
-            "average",
-            "Zahnstangen-Differenzial",
-            "Zahnstange",
-            "Ritzel",
-            "Mittelwert",
-            "Differenz",
-            "mechanical decoder",
-            "position logic",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "tangent-table.ldr": {
-        "pieces": 297,
-        "motors": 2,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "One motor tilts a guide, the other sets a reach; where the guides cross, a free slider shows y = x·tan θ – a variable-gain mechanical multiplier. Experimental: not yet independently measured.",
-            "de": "Ein Motor neigt eine Kulisse, der andere stellt eine Reichweite ein; wo sich die Führungen kreuzen, zeigt ein freier Schieber y = x·tan θ – ein mechanischer Multiplizierer mit veränderlicher Verstärkung. Experimentell: noch nicht unabhängig gemessen."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "mechanical angle mapping",
-            "de": "mechanische Winkelabbildung"
-        },
-        "keywords": [
-            "tangent mechanism",
-            "mechanical multiplier",
-            "variable gain",
-            "slotted guide",
-            "analog computer",
-            "y = x tan θ",
-            "Tangens",
-            "Kulisse",
-            "mechanischer Multiplizierer",
-            "Analogrechner",
-            "veränderliche Verstärkung",
-            "tangent",
-            "analog computation",
-            "line intersection",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
     "pan-shift.ldr": {
         "pieces": 197,
         "motors": 2,
@@ -2356,44 +1117,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "Kräftepaar",
             "balance",
             "load position",
-            "parallelogram",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "remote-pivot.ldr": {
-        "pieces": 153,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "A double parallelogram swings its output link about an empty point where no bearing exists – the remote centre of motion used in surgical robots. Experimental: not yet independently measured.",
-            "de": "Ein Doppelparallelogramm schwenkt seinen Ausgangslenker um einen leeren Punkt ohne Lager – das entfernte Drehzentrum, wie es Chirurgieroboter nutzen. Experimentell: noch nicht unabhängig gemessen."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "empty-centre rotation",
-            "de": "Drehung um ein freies Zentrum"
-        },
-        "keywords": [
-            "remote centre of motion",
-            "remote center of motion",
-            "RCM",
-            "double parallelogram",
-            "virtual pivot",
-            "surgical robot",
-            "parallelogram linkage",
-            "entferntes Drehzentrum",
-            "Doppelparallelogramm",
-            "virtueller Drehpunkt",
-            "Chirurgieroboter",
-            "remote center",
             "parallelogram",
             "experimental",
             "prototype",
@@ -2473,73 +1196,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "experimental": true
     },
-    "schmidt-shift.ldr": {
-        "pieces": 170,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "One motor drives a coupling of three carriers and six connecting rods between parallel, offset shafts. Compare the input, floating middle and passive output angles through full turns and reversal.",
-            "de": "Ein Motor treibt eine Kupplung aus drei Drehträgern und sechs Koppelstangen zwischen parallelen, versetzten Wellen. Vergleiche die Winkel von Antrieb, frei getragenem Mittelträger und passivem Abtrieb bei vollen Umdrehungen und Richtungswechsel."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "Schmidt coupling",
-            "de": "Schmidt-Kupplung"
-        },
-        "keywords": [
-            "Schmidt coupling",
-            "Schmidt-Kupplung",
-            "parallel offset shafts",
-            "parallel versetzte Wellen",
-            "constant velocity coupling",
-            "Gleichlaufkupplung",
-            "connecting rods",
-            "Koppelstangen",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "poise.ldr": {
-        "pieces": 159,
-        "motors": 2,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "forces",
-        "description": {
-            "en": "A Roberval balance: two motors move equal weights across level pans, and the passive balance should stay level wherever on the pan the weights sit.",
-            "de": "Eine Roberval-Waage: Zwei Motoren verschieben gleiche Gewichte auf waagerechten Schalen, und die passive Waage sollte waagerecht bleiben, gleich wo die Gewichte auf der Schale liegen."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "Roberval balance",
-            "de": "Roberval-Waage"
-        },
-        "keywords": [
-            "Roberval balance",
-            "Roberval-Waage",
-            "equal-arm balance",
-            "parallelogram",
-            "load position",
-            "weighing",
-            "Waage",
-            "Lastposition",
-            "Parallelogramm",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
     "poise-mass-control.ldr": {
         "pieces": 162,
         "motors": 2,
@@ -2565,40 +1221,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "Kontrollversuch",
             "Zusatzmasse",
             "Roberval-Waage",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "equal-share.ldr": {
-        "pieces": 148,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "forces",
-        "description": {
-            "en": "A whippletree: one motor pushes the free centre of a balance beam against one spring on the left and two in parallel on the right, so the single spring gives way twice as far while both sides carry equal force.",
-            "de": "Ein Ausgleichsbalken: Ein Motor schiebt die frei drehbare Mitte eines Balkens gegen eine Feder links und zwei parallele rechts; die einzelne Feder gibt doppelt so weit nach, während beide Seiten gleich viel Kraft tragen."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "whippletree force equalizer",
-            "de": "Kraftausgleich mit Ausgleichsbalken"
-        },
-        "keywords": [
-            "whippletree",
-            "whiffletree",
-            "force equalizer",
-            "parallel springs",
-            "stiffness",
-            "Ausgleichsbalken",
-            "Waagscheit",
-            "parallele Federn",
-            "Kraftverteilung",
             "experimental",
             "prototype",
             "unverified",
@@ -2667,84 +1289,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "radialer Vorschub",
             "Planetenträger",
             "Zahnstange",
-            "experimental",
-            "prototype",
-            "experimentell",
-            "unverified"
-        ],
-        "experimental": true
-    },
-    "stroke-shift.ldr": {
-        "pieces": 295,
-        "motors": 2,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "Motor B sets a real crank radius of 16, 22 or 28 mm while A holds; A then turns the crank once and back, and the same connecting rod drives a passive piston through strokes of 2r = 32, 44 and 56 mm.",
-            "de": "Motor B stellt den Kurbelradius auf 16, 22 oder 28 mm, während A hält; danach dreht A die Kurbel einmal hin und zurück, und dasselbe Pleuel bewegt einen passiven Schlitten mit Hüben von 2r = 32, 44 und 56 mm."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "adjustable crank throw",
-            "de": "verstellbarer Kurbelradius"
-        },
-        "keywords": [
-            "adjustable crank throw",
-            "variable stroke",
-            "slider-crank",
-            "connecting rod",
-            "linear actuator",
-            "passive piston",
-            "crank radius",
-            "verstellbarer Kurbelradius",
-            "verstellbarer Hub",
-            "Schubkurbel",
-            "Pleuel",
-            "Linearaktuator",
-            "experimental",
-            "prototype",
-            "experimentell",
-            "unverified"
-        ],
-        "experimental": true
-    },
-    "triad-table.ldr": {
-        "pieces": 258,
-        "motors": 3,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "Three motor-driven screw legs (R-P-R) jointly set the x, y position and heading of one passive platform; no motor is an axis on its own. The program visits 15 poses: ±4.8 mm, ±10° and four combined poses.",
-            "de": "Drei motorgetriebene Schraubbeine (R-P-R) bestimmen gemeinsam x, y und Ausrichtung einer passiven Plattform; kein Motor ist für sich eine Achse. Das Programm fährt 15 Posen an: ±4,8 mm, ±10° und vier kombinierte Posen."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "three lengths, one pose",
-            "de": "drei Längen, eine Pose"
-        },
-        "keywords": [
-            "parallel robot",
-            "3-RPR",
-            "planar parallel platform",
-            "XY-theta stage",
-            "positioning table",
-            "inverse kinematics",
-            "pose",
-            "yaw",
-            "linear actuator",
-            "singularity",
-            "Parallelroboter",
-            "Positioniertisch",
-            "ebene Parallelplattform",
-            "inverse Kinematik",
-            "Gierwinkel",
-            "Linearaktuator",
             "experimental",
             "prototype",
             "experimentell",
@@ -2863,45 +1407,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "experimental": true
     },
-    "final-squeeze.ldr": {
-        "pieces": 167,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "forces",
-        "description": {
-            "en": "One motor straightens two equal links against a stock shock load. The passive platen advances less per degree near alignment while the ideal output force per input torque rises. The finite program stops short of dead centre and returns.",
-            "de": "Ein Motor streckt zwei gleich lange Glieder gegen eine Federlast. Die passive Druckplatte bewegt sich nahe der Strecklage je Grad weniger, während die ideale Ausgangskraft je Eingangsdrehmoment steigt. Das endliche Programm bleibt vor dem Totpunkt und kehrt zurück."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "equal-link knee press with passive spring-loaded platen",
-            "de": "Kniehebelpresse mit gleichen Gliedern und passiver federbelasteter Druckplatte"
-        },
-        "keywords": [
-            "knee press",
-            "toggle press",
-            "equal-link slider-crank",
-            "mechanical advantage",
-            "virtual work",
-            "shock absorber",
-            "platen",
-            "Kniehebelpresse",
-            "Kniehebel",
-            "Totpunkt",
-            "virtuelle Arbeit",
-            "Kraftübersetzung",
-            "Feder",
-            "Druckplatte",
-            "experimental",
-            "experimentell",
-            "prototype",
-            "unverified"
-        ],
-        "experimental": true
-    },
     "travel-dial-wheel-raised.ldr": {
         "pieces": 197,
         "motors": 1,
@@ -2964,42 +1469,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "Drehpunkt",
             "Doppelparallelogramm",
             "Koppelgetriebe",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "afterturn.ldr": {
-        "pieces": 296,
-        "motors": 2,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "inertia",
-        "description": {
-            "en": "Two motors turn a reaction wheel and reposition balanced masses on a freely rotating platform. Compare the remaining platform heading after both internal motions return home, then reverse the cycle and test physically fixed masses.",
-            "de": "Zwei Motoren drehen ein Reaktionsrad und versetzen ausgewuchtete Massen auf einer frei drehbaren Plattform. Vergleiche die verbleibende Plattformdrehung nach der Rückkehr beider innerer Bewegungen, kehre den Zyklus um und prüfe physisch festgesetzte Massen."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "Geometric-phase reorientation through a closed internal shape cycle",
-            "de": "Umorientierung durch einen geschlossenen inneren Formzyklus"
-        },
-        "keywords": [
-            "geometric phase",
-            "shape cycle",
-            "reaction wheel",
-            "variable inertia",
-            "angular momentum",
-            "free yaw",
-            "geometrische Phase",
-            "Formzyklus",
-            "Reaktionsrad",
-            "veränderliches Trägheitsmoment",
-            "Drehimpuls",
             "experimental",
             "prototype",
             "unverified",
@@ -3119,45 +1588,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "experimental": true
     },
-    "high-select.ldr": {
-        "pieces": 288,
-        "motors": 2,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "forces",
-        "description": {
-            "en": "Two independently driven supports lift a separate gravity-loaded bridge. The higher support determines its settled height. Compare lower-input motion, handover and equal-height ties, then exchange the two input sequences.",
-            "de": "Zwei unabhängig angetriebene Stützen heben eine separate, schwerkraftbelastete Brücke. Die höhere Stütze bestimmt ihre Höhe nach dem Einschwingen. Vergleiche Bewegungen der niedrigeren Eingabe, den Kontaktwechsel und gleiche Höhen; vertausche anschließend die beiden Eingabefolgen."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "gravity-loaded unilateral maximum selector",
-            "de": "schwerkraftbelasteter Maximumwähler mit einseitigen Kontakten"
-        },
-        "keywords": [
-            "mechanical maximum",
-            "maximum selector",
-            "MAX",
-            "rack",
-            "gravity",
-            "contact",
-            "handover",
-            "commutativity",
-            "mechanisches Maximum",
-            "Maximumwähler",
-            "Zahnstange",
-            "Schwerkraft",
-            "Kontaktwechsel",
-            "Kommutativität",
-            "experimental",
-            "experimentell",
-            "prototype",
-            "unverified"
-        ],
-        "experimental": true
-    },
     "high-select-mirror.ldr": {
         "pieces": 288,
         "motors": 2,
@@ -3194,45 +1624,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "experimentell",
             "prototype",
             "unverified"
-        ],
-        "experimental": true
-    },
-    "obliquity-orrery.ldr": {
-        "pieces": 52,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "A parallelogram carries a tilted Earth round the Sun without turning it. Watch the axis keep its direction while the Sun's declination falls from +22.5° at midsummer to 0° at the equinox.",
-            "de": "Ein Parallelogramm führt eine geneigte Erde um die Sonne, ohne sie zu drehen. Beobachte, wie die Achse ihre Richtung behält, während die Sonnendeklination vom Hochsommer (+22,5°) bis zur Tagundnachtgleiche (0°) fällt."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "Parallel-crank orrery with a fixed tilted axis",
-            "de": "Parallelkurbel-Orrery mit fest geneigter Achse"
-        },
-        "keywords": [
-            "orrery",
-            "obliquity",
-            "axial tilt",
-            "solar declination",
-            "seasons",
-            "solstice",
-            "equinox",
-            "parallelogram linkage",
-            "Schiefe der Ekliptik",
-            "Achsneigung",
-            "Sonnendeklination",
-            "Jahreszeiten",
-            "Sonnenwende",
-            "Parallelogramm",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
         ],
         "experimental": true
     },
@@ -3693,302 +2084,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "experimental": true
     },
-    "helixgate.ldr": {
-        "pieces": 20,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "gears",
-        "description": {
-            "en": "One right-hand single-start worm turns a 24-tooth gear on a perpendicular axle, moving a red L-shaped gate 30 degrees for two complete motor turns. Coast at the top to observe the virtual worm's hold.",
-            "de": "Eine rechtsgängige eingängige Schnecke dreht ein 24er-Zahnrad auf einer rechtwinkligen Welle. Zwei Motorumdrehungen bewegen den roten L-Hebel um 30 Grad. Beim Ausrollen kann die Haltewirkung beobachtet werden."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "worm gearing",
-            "de": "Schneckengetriebe"
-        },
-        "keywords": [
-            "worm gear",
-            "worm drive",
-            "24:1",
-            "right-angle transmission",
-            "Schneckengetriebe",
-            "experimental",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "looprelay.ldr": {
-        "pieces": 54,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "gears",
-        "description": {
-            "en": "A 16-tooth wheel drives a remote 24-tooth wheel through a closed 25-link chain. An 8-tooth pinion on that shaft turns a final 24-tooth output gear the opposite way: a -2:9 angular ratio.",
-            "de": "Ein 16er-Kettenrad treibt über 25 geschlossene Kettenglieder ein entferntes 24er-Rad an. Ein 8er-Ritzel auf dessen Welle treibt ein letztes 24er-Zahnrad gegenläufig an: Winkelübersetzung -2:9."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "compound chain and gear drive",
-            "de": "Ketten- und Zahnradtrieb"
-        },
-        "keywords": [
-            "chain drive",
-            "sprocket",
-            "compound ratio",
-            "direction reversal",
-            "Kettenantrieb",
-            "experimental",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "paritydial.ldr": {
-        "pieces": 31,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "gears",
-        "description": {
-            "en": "One 8-tooth gear drives two 24-tooth output hands. The left path meshes once; the right path adds a 24-tooth idler, reversing its rotation direction without changing its one-third speed.",
-            "de": "Ein Zahnrad mit acht Zähnen treibt zwei Zeiger mit je 24 Zähnen an. Links greift das Antriebsrad direkt ein, rechts über ein 24er-Zwischenrad. Dadurch dreht der rechte Zeiger andersherum, aber genauso schnell wie der linke."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "gear-train parity",
-            "de": "Drehsinn und Zwischenrad"
-        },
-        "keywords": [
-            "idler gear",
-            "gear parity",
-            "direction reversal",
-            "Zwischenrad",
-            "experimental",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "counterslide.ldr": {
-        "pieces": 44,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "gears",
-        "description": {
-            "en": "A single 8-tooth gear meshes with two opposing racks. The orange jaws travel inward by equal distances and reopen together; the center between them stays put.",
-            "de": "Ein einziges Zahnrad mit acht Zähnen greift in zwei gegenüberliegende Zahnstangen. Die orangefarbenen Backen fahren gleich weit zur Mitte und wieder auseinander; ihre gemeinsame Mitte bleibt stehen."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "opposed rack and pinion",
-            "de": "gegenläufige Zahnstangen"
-        },
-        "keywords": [
-            "rack and pinion",
-            "self-centering jaws",
-            "symmetric gripper",
-            "Zahnstange",
-            "selbstzentrierend",
-            "experimental",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "toggle-press.ldr": {
-        "pieces": 142,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "One motor turns a yellow crank. A blue coupler folds the red and orange knee links, pushing an orange ram along two guide rails. The program approaches—but does not cross—dead centre, then returns to the saved datum.",
-            "de": "Ein Motor dreht eine gelbe Kurbel. Eine blaue Koppel knickt die roten und orangefarbenen Kniehebel und schiebt einen orangefarbenen Schlitten auf zwei Führungen. Das Programm nähert sich dem Totpunkt, überschreitet ihn aber nicht, und kehrt zur gespeicherten Nullstellung zurück."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "toggle linkage",
-            "de": "Kniehebelgetriebe"
-        },
-        "keywords": [
-            "toggle linkage",
-            "dead centre",
-            "toggle press",
-            "Kniehebel",
-            "Totpunkt",
-            "experimental",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "footfall.ldr": {
-        "pieces": 120,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "One motor turns a yellow crank through a full revolution. Blue couplers drive a red upper triangle and an orange lower triangle so the orange foot link traces a closed, walking-like path before returning to the saved datum.",
-            "de": "Ein Motor dreht eine gelbe Kurbel um eine volle Umdrehung. Blaue Koppeln treiben ein rotes oberes und ein orangefarbenes unteres Dreieck an, sodass der orange Fußhebel eine geschlossene, schrittähnliche Bahn zeichnet und zur gespeicherten Nullstellung zurückkehrt."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "Jansen linkage",
-            "de": "Jansen-Beinmechanismus"
-        },
-        "keywords": [
-            "Jansen linkage",
-            "walking linkage",
-            "foot trajectory",
-            "Strandbeest",
-            "Jansen-Mechanismus",
-            "experimental",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "phasekeeper.ldr": {
-        "pieces": 81,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "gears",
-        "description": {
-            "en": "One motor drives a yellow input yoke, a blue diagonal shaft and an orange output yoke. Each universal joint bends by the same angle, and the two blue intermediate forks are parallel, so ideal Cardan speed ripple from the first joint is cancelled by the second. The placement list has 81 entries; add two real universal-joint crosses for 83 physical pieces.",
-            "de": "Ein Motor treibt eine gelbe Eingangsgabel, eine blaue Diagonalwelle und eine orange Ausgangsgabel an. Beide Kardangelenke knicken um denselben Winkel ab, und die beiden blauen Zwischengabeln sind parallel; dadurch wird die ideale Drehzahlschwankung des ersten Gelenks vom zweiten aufgehoben. Die Teileliste enthält 81 Platzierungen; mit zwei echten Kardankreuzen sind es 83 Bauteile."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "double Cardan joint",
-            "de": "Doppelkardangelenk"
-        },
-        "keywords": [
-            "double Cardan",
-            "universal joint",
-            "Hooke joint",
-            "constant velocity",
-            "Kardangelenk",
-            "Gleichlauf",
-            "experimental",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "vectorsum.ldr": {
-        "pieces": 122,
-        "motors": 2,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "gears",
-        "description": {
-            "en": "Two opposed angular motors drive the side gears of an open Technic differential. The red carrier represents the average of the two side-shaft angles in a shared axis convention, and a yellow 12-tooth bevel gear drives an orange output pointer from the carrier's red 28-tooth cover.",
-            "de": "Zwei gegenüberliegende Winkelmotoren treiben die Seitenräder eines offenen Technic-Differentials an. Der rote Träger entspricht im gemeinsamen Achsbezug dem Mittelwert der beiden Seitenwellenwinkel; ein gelbes 12-Zahn-Kegelrad treibt den orangefarbenen Ausgangszeiger über den roten 28-Zahn-Deckel des Trägers an."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "differential angle averaging",
-            "de": "Winkelmittelwert im Differential"
-        },
-        "keywords": [
-            "open differential",
-            "angle averaging",
-            "mechanical adder",
-            "Differenzial",
-            "Differential",
-            "experimental",
-            "experimentell"
-        ],
-        "experimental": true,
-        "formula": "C = (B − A)/2; pointer = −(28/12) C (common positive axis of motor B)"
-    },
-    "pointweaver.ldr": {
-        "pieces": 128,
-        "motors": 2,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "Two angular motors drive the base links of a planar five-bar mechanism. The blue and orange forearms meet at an orange endpoint marker. A finite program reaches four rectangular corner poses while exposing the curved endpoint edges produced by synchronized linear motor-angle interpolation.",
-            "de": "Zwei Winkelmotoren treiben die Grundglieder eines ebenen Fünfgelenkgetriebes an. Der blaue und der orange Unterarm treffen sich an einer orangefarbenen Endpunktmarke. Ein endliches Programm fährt vier rechteckige Ecklagen an und macht die gekrümmten Endpunktkanten sichtbar, die durch synchron linear interpolierte Motorwinkel entstehen."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "five-bar parallel linkage",
-            "de": "Fünfgelenk-Parallelmechanismus"
-        },
-        "keywords": [
-            "five-bar linkage",
-            "parallel robot",
-            "Cartesian interpolation",
-            "Fünfgelenk",
-            "Bahnplanung",
-            "experimental",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "rimrun.ldr": {
-        "pieces": 506,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "inertia",
-        "description": {
-            "en": "One motor lifts a shared release gate above two free rollers on a fixed incline. Their parts, mass and rolling radius match; only the balanced ballast sits nearer the axis or farther out. Compare their free rolling before the four independent spring catches, then exchange the ballast layouts between lanes with the supplied comparison model and run the same program. The native rolling comparison passes; complete-run qualification and one watchdog holding limit fail.",
-            "de": "Ein Motor hebt eine gemeinsame Startschranke über zwei freien Rollkörpern auf einer festen schiefen Ebene. Teile, Masse und Rollradius stimmen überein; nur der symmetrische Ballast sitzt näher an der Achse oder weiter außen. Vergleiche das freie Rollen vor den vier unabhängigen Federfängern, vertausche dann die Ballastanordnungen mit dem Vergleichsmodell zwischen den Spuren und starte dasselbe Programm. Der native Rollvergleich besteht die Prüfungen; die Gesamtqualifikation und ein Haltegrenzwert des Zeitwächters bestehen sie nicht."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "gravity-driven rolling: matched mass and radius, different axial inertia, lane-swap control",
-            "de": "schwerkraftgetriebenes Rollen: gleiche Masse und gleicher Radius, anderes Trägheitsmoment, Spurtausch als Kontrolle"
-        },
-        "keywords": [
-            "RimRun",
-            "rolling inertia",
-            "moment of inertia",
-            "radial ballast",
-            "same mass",
-            "rolling race",
-            "inclined plane",
-            "no-slip rolling",
-            "energy partition",
-            "lane swap",
-            "shared release gate",
-            "Trägheitsmoment",
-            "Rollversuch",
-            "schiefe Ebene",
-            "Ballast",
-            "gleiche Masse",
-            "Spurtausch",
-            "Startschranke",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
     "rimrun-swapped.ldr": {
         "pieces": 506,
         "motors": 1,
@@ -4032,45 +2127,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "experimental": true
     },
-    "swayshift.ldr": {
-        "pieces": 204,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "forces",
-        "description": {
-            "en": "One motor drives a rack trolley through a 3:1 speed increase. A freely hinged rigid pendulum has a 216 mm hole span. Compare the same nominal 22 mm + 22 mm transfer with half-period or full-period timing between move starts, then observe the passive load after arrival.",
-            "de": "Ein Motor bewegt einen Zahnstangenschlitten mit dreifacher Ausgangsdrehzahl. Das frei gelagerte starre Pendel hat 216 mm Abstand zwischen den äußeren Löchern. Vergleiche dieselbe Sollfahrt von 22 mm + 22 mm mit einer halben oder einer ganzen Periode zwischen den Bewegungsstarts und beobachte das Nachschwingen."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "3:1 gear-driven rack trolley and passive rigid pendulum: finite command shaping",
-            "de": "Zahnstangenschlitten mit 3:1-Zahnradantrieb und passivem starrem Pendel: Formung endlicher Fahrbefehle"
-        },
-        "keywords": [
-            "SwayShift",
-            "input shaping",
-            "command shaping",
-            "anti-sway",
-            "residual vibration",
-            "passive pendulum",
-            "rack trolley",
-            "half period",
-            "phase cancellation",
-            "Eingangsformung",
-            "Nachschwingen",
-            "Pendel",
-            "Zahnstangenschlitten",
-            "halbe Periode",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
     "swayshift-in-phase": {
         "pieces": 204,
         "motors": 1,
@@ -4103,51 +2159,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "Pendel",
             "Zahnstangenschlitten",
             "halbe Periode",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "tipline.ldr": {
-        "pieces": 174,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "forces",
-        "description": {
-            "en": "One motor tilts two equally heavy free towers with low or high internal ballast. In the native recordings, high ballast tips near 15° and low ballast slides near 22°. Swap the ballast heights between lanes; a tall passive wall arrests the later motion.",
-            "de": "Ein Motor neigt zwei gleich schwere freie Türme mit tiefem oder hohem innerem Ballast. In den nativen Aufzeichnungen kippt die hohe Anordnung bei etwa 15°; die tiefe rutscht bei etwa 22°. Vertausche die Ballasthöhen zwischen den Spuren; eine hohe passive Wand fängt die spätere Bewegung ab."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "matched-load incline: center of mass, friction and first instability",
-            "de": "Neigungsversuch mit gleichen Lasten: Schwerpunkt, Reibung und erste Instabilität"
-        },
-        "keywords": [
-            "Tipline",
-            "inclined plane",
-            "tilting deck",
-            "sliding",
-            "tipping",
-            "center of mass",
-            "ballast height",
-            "same mass",
-            "friction",
-            "static stability",
-            "lane swap",
-            "schiefe Ebene",
-            "Rutschen",
-            "Kippen",
-            "Schwerpunkt",
-            "Ballasthöhe",
-            "Reibung",
-            "Standfestigkeit",
-            "passive catch wall",
-            "Auffangwand",
             "experimental",
             "prototype",
             "unverified",
@@ -4200,44 +2211,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "experimental": true
     },
-    "twistspan.ldr": {
-        "pieces": 107,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "forces",
-        "description": {
-            "en": "One motor turns an upper bar; two fixed 104 mm cords suspend a separate passive payload. Compare 64 mm and 32 mm tie spacing with the same rigid parts: the recorded period changes from about 0.77 s to 1.52 s.",
-            "de": "Ein Motor dreht den oberen Balken; zwei feste 104-mm-Schnüre tragen eine eigene passive Last. Vergleiche 64 mm und 32 mm Befestigungsabstand bei denselben starren Teilen: Die aufgezeichnete Periode ändert sich von etwa 0,77 s auf 1,52 s."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "bifilar torsional pendulum",
-            "de": "bifilares Torsionspendel"
-        },
-        "keywords": [
-            "bifilar",
-            "two cords",
-            "fixed-length suspension",
-            "torsional pendulum",
-            "gravity",
-            "moment of inertia",
-            "attachment spacing",
-            "passive oscillation",
-            "Zweifadenpendel",
-            "Torsionspendel",
-            "Schwerkraft",
-            "Trägheitsmoment",
-            "Fadenabstand",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
     "twistspan-inner.ldr": {
         "pieces": 107,
         "motors": 1,
@@ -4274,44 +2247,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "unverified",
             "experimentell"
         ],
-        "experimental": true
-    },
-    "evenhand.ldr": {
-        "pieces": 97,
-        "motors": 2,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "forces",
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "Counterbalanced two-joint arm: gravity torque about each joint",
-            "de": "Ausgewogener Zweigelenkarm: Schweremoment um jedes Gelenk"
-        },
-        "keywords": [
-            "counterweight",
-            "counterbalance",
-            "gravity torque",
-            "two-joint arm",
-            "serial arm",
-            "holding torque",
-            "lever arm",
-            "Gegengewicht",
-            "Gewichtsausgleich",
-            "Schweremoment",
-            "Zweigelenkarm",
-            "Haltemoment",
-            "Hebelarm",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "description": {
-            "en": "Two motors move a shoulder and an elbow through nine poses. Counterweights behind each joint balance the links, so in the simulator both motors hold every pose with almost no torque. The comparison moves the same forearm weights inward and runs the same program.",
-            "de": "Zwei Motoren bewegen Schulter und Ellbogen durch neun Stellungen. Gegengewichte hinter jedem Gelenk gleichen die Glieder aus, sodass beide Motoren im Simulator jede Stellung fast ohne Drehmoment halten. Der Vergleich rückt dieselben Unterarmgewichte nach innen und nutzt dasselbe Programm."
-        },
         "experimental": true
     },
     "evenhand-control.ldr": {

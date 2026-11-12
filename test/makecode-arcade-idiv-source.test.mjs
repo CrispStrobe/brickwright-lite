@@ -38,7 +38,7 @@ test('idiv selected source exposes real converted editable operands and downstre
     current(result.files);
 });
 
-test('idiv actual mutable Number aliases ordinary helpers and captured entry dominance qualify', {todo:"Math.idiv source/PXT path \u2014 see docs/ARCADE-888-OPEN-FAILURES.md"},()=>{
+test('idiv actual mutable Number aliases ordinary helpers and captured entry dominance qualify',()=>{
     for(const source of ['let a=7;let b=a;a=9;let q=Math.idiv(b,a)',
         'function quotient(a,b){return Math.idiv(a,b)};let q=quotient(7,2)',
         'let captured=7;function read(){return captured};let q=Math.idiv(read(),2)',
@@ -93,4 +93,37 @@ test('idiv absence leaves the actual original Program and ordinary namespace beh
 test('idiv does not reinterpret ordinary quotient conversion as input-converting SDK division',()=>{
     const {creator}=current('let q=(1/0.5)|0'),result=projectToArcade(creator.project);assert.deepEqual(result.unsupported,[]);
     assert.equal(visit(parseMakeCodeTs(result.files['main.ts']),idiv),false);current(result.files);
+});
+
+// Nested functions that read only their enclosing function's never-written
+// parameters agree with original PXT through Lite's VM and its export.
+test('nested parameter captures agree with original PXT through the VM and export',async()=>{
+    const {runPxtArcade}=await import('./helpers/pxt-arcade-runtime.mjs');
+    const {runProgram,clearStrayTimers}=await import('./helpers/bw-vm.mjs');
+    const cases=[
+        ['function outer(a:number){function read(){return a};return Math.idiv(read(),2)};let q=outer(7)',{q:3}],
+        ['let g=0;function outer(a:number){function inc(){g=a+1};inc();return g};let q=outer(7)',{q:8,g:8}],
+        ['function outer(a:number,b:number){function mix(c:number){return a*10+b+c};return mix(1)+mix(2)};let q=outer(4,5)',{q:93}]];
+    for(const[source,expected]of cases){
+        const files={'main.ts':source,'pxt.json':JSON.stringify({dependencies:{device:'*'},files:['main.ts']})};
+        const original=await runPxtArcade(files,{fakeClock:true,waitForGlobals:expected});
+        for(const[key,value]of Object.entries(expected))assert.equal(original[key],value,'original '+key+': '+source);
+        const {imported}=current(source);
+        const run=await runProgram(imported.code,{frames:20,storage:true});
+        try{
+            const vars=Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
+            assert.deepEqual(run.errors,[]);
+            for(const[key,value]of Object.entries(expected))assert.equal(Number(vars[key]),value,'Lite '+key+': '+source);
+            const exported=projectToArcade(JSON.parse(run.vm.toJSON()));assert.deepEqual(exported.unsupported,[]);
+            const back=await runPxtArcade(exported.files,{fakeClock:true,waitForGlobals:expected});
+            for(const[key,value]of Object.entries(expected))assert.equal(back[key],value,'export '+key+': '+source);
+        }finally{run.vm.quit();clearStrayTimers();}
+    }
+});
+
+test('nested captures of written parameters or enclosing locals are not lifted',()=>{
+    for(const source of ['function outer(a:number){function read(){return a};a=9;return Math.idiv(read(),2)};let q=outer(7)',
+        'function outer(a:number){let b=a;function read(){return b};return Math.idiv(read(),2)};let q=outer(7)',
+        'function outer(a:number){function read(){return a};let f=read;return Math.idiv(f(),2)};let q=outer(7)'])
+        assert.ok(arcadeToPseudocode(source).unsupported.length,source);
 });

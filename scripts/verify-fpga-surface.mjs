@@ -117,8 +117,8 @@ try {
     }
     await fpgaTab.click();
     await page.waitForTimeout(2000);
-    const summary = page.getByText(/on a full canvas/i).first();
-    if (await summary.count()) await summary.click().catch(() => {});
+    await page.getByTestId('bw-fpga-workspace-design').click();
+    await page.getByTestId('bw-fpga-editor').selectOption('canvas');
     await page.waitForSelector('.react-flow', {timeout: 60000});
     await page.waitForTimeout(1500);
 
@@ -157,10 +157,12 @@ try {
     // its shape by test/fpga-soft-core.test.mjs). Done here rather than in a new
     // gate so it costs the wait census no new sleep — the wait is for the CPU
     // appearing, not a fixed guess.
-    const socBtn = page.getByRole('button', {name: /PicoRV32/i}).first();
-    check('the PicoRV32 soft-core is offered as an example', (await socBtn.count()) > 0);
-    if (await socBtn.count()) {
-        await socBtn.click();
+    const examplePicker = page.getByTestId('bw-fpga-example');
+    const socExample = examplePicker.locator('option').filter({hasText: /PicoRV32/i}).first();
+    check('the PicoRV32 soft-core is offered as an example', (await socExample.count()) > 0);
+    if (await socExample.count()) {
+        await examplePicker.selectOption(await socExample.getAttribute('value'));
+        await page.getByTestId('bw-fpga-load-example').click();
         const loaded = await page.waitForFunction(
             () => [...document.querySelectorAll('textarea')].some(t => /module\s+picorv32/.test(t.value || '')),
             {timeout: 15000}).then(() => true).catch(() => false);

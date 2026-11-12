@@ -1,0 +1,17 @@
+{
+  "author": "CrispStrobe",
+  "license": "BSD-3-Clause",
+  "archive": "swayshift-addon.zip",
+  "files": {
+    "models/swayshift.ldr": "f5198199c280fc362ed09dd29bb82d68c2c5a6ef1e5baee4ce4d27be87037bf7",
+    "programs/swayshift.bw": "6a540c8116e07e613e7ee051d31394de81f0dc8183d1ac2472deb3bbb66c78d2",
+    "checks/judge-swayshift.mjs": "d8bb1037208eab7c767ed4046e913f2dd0635d49af60b8bcee931d3dd249d6d0",
+    "checks/run-native.mjs": "26738fcc9b1ff21e2e47b5688803117cb9490655bbb671178bdeecae7de2b29d",
+    "evidence/contract.json": "992786698b4375aacf6801173e9d693eafcc3f564f557e162cea28103965a318",
+    "lessons/swayshift.en.json": "bfa3d7cf47486e3b1a6fbfd4b1569b12c06164c5b5f5baf0e07e5656772be042",
+    "lessons/swayshift.de.json": "2e9ade565d64ef929fda5d6978a5c61a1fdace3866ab165e1d2696139c28d4e9",
+    "LICENSE.txt": "4b345db1e5260dce76a731425304606d2303cb6fc85216eab5176adc79acfb52"
+  },
+  "adaptation": "Original source retained; trusted judge uses repository-relative imports. Qualification runner records current source and exposes physical disconnection/cadence inputs without changing controller behavior.",
+  "archiveSha256": "5c51b852c1d95be7946c4e4eefcaee69ed3c3e3a6009103a2cf64bf54fca778e"
+}

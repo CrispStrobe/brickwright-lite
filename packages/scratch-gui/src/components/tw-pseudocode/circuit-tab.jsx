@@ -9,11 +9,14 @@ import {advanceDebugPhase} from '../../lib/bw-debug/debug-phase-transition.js';
 import {shouldLoadCircuitDesigner} from '../../lib/bw-debug/circuit-designer-load-policy.js';
 import {getReactPerformanceProbe, profileReactSubtree} from '../../lib/bw-debug/react-perf-profiler.js';
 import {shouldRefreshDesignerDebugState} from '../../lib/bw-debug/debug-ui-refresh.js';
+import {s040PartIds, sameS040PartIds} from '../../lib/bw-debug/s040-part-ids.js';
+import {circuitAutosaveRecord, readCircuitOwner} from '../../lib/circuit-autosave-record.js';
 import {setProjectTitle} from '../../reducers/project-title';
 import {activateTab} from '../../reducers/editor-tab';
 import {noCircuitMessage} from '../../lib/example-device-only.js';
 import {getIsAnyCreatingNewState} from '../../reducers/project-state';
-import {activateUndoSurface, notifyUndoState, registerUndoSurface} from '../../lib/global-undo.js';
+import {activateUndoSurface, getUndoState, notifyUndoState, registerUndoSurface} from '../../lib/global-undo.js';
+import {notifyEditorMenuActions, registerEditorMenuActions} from '../../lib/editor-menu-actions.js';
 import {confirmAsync} from '../../lib/native-dialog.js';
 import {applyBenchTemperature, clampBenchTemperature, loadBenchTemperature, saveBenchTemperature} from
     '../../lib/bench-temperature.js';
@@ -28,32 +31,20 @@ import {applyBenchTemperature, clampBenchTemperature, loadBenchTemperature, save
  */
 const PANEL_L10N = {
     en: {
-        'drc.noExport': 'This build of the circuit designer does not export runDrc yet.',
-        'drc.noCircuit': 'The designer has not handed over its circuit yet (onCircuitReady has not fired), so the design-rule check cannot run. Open the Designer once and come back.',
-        'drc.clean': 'No design-rule warnings for this circuit.',
-        'bom.noExport': 'This build of the circuit designer does not export generateBom yet.',
-        'bom.noCircuit': 'The designer has not handed over its circuit yet (onCircuitReady has not fired), so the parts list cannot be built. Open the Designer once and come back.',
-        'bom.empty': 'No parts on the board yet.',
-        'bom.exportCsv': 'Export as CSV',
-        'examples.noBrowser': 'This build of the circuit designer does not include the examples browser yet.',
-        'examples.notVendored': 'The example gallery is not part of this build yet (examples/index.json: {message}). The examples exist — they are published by bw-cfront and need vendoring into the app.',
+        'designer.loading': 'Loading the circuit designer…',
+        'designer.failed': 'The circuit designer failed to load: {error}',
+        'designer.reload': 'Reload the editor',
+        'examples.notVendored': 'The example gallery is not part of this build (examples/index.json: {message}).',
         'examples.indexFailed': 'The starter project index could not be loaded.',
-        'app.republished': 'A new version was published while this tab was open. Reloading…',
-        'a11y.dismiss': 'Dismiss'
+        'app.republished': 'A new version was published while this tab was open. Reloading…'
     },
     de: {
-        'drc.noExport': 'Dieser Build des Schaltungs-Designers exportiert runDrc noch nicht.',
-        'drc.noCircuit': 'Der Designer hat seine Schaltung noch nicht übergeben (onCircuitReady wurde nicht ausgelöst), daher kann die Entwurfsregelprüfung nicht laufen. Öffne einmal den Designer und komm zurück.',
-        'drc.clean': 'Keine Entwurfsregel-Warnungen für diese Schaltung.',
-        'bom.noExport': 'Dieser Build des Schaltungs-Designers exportiert generateBom noch nicht.',
-        'bom.noCircuit': 'Der Designer hat seine Schaltung noch nicht übergeben (onCircuitReady wurde nicht ausgelöst), daher kann die Stückliste nicht erstellt werden. Öffne einmal den Designer und komm zurück.',
-        'bom.empty': 'Noch keine Bauteile auf der Platine.',
-        'bom.exportCsv': 'Als CSV exportieren',
-        'examples.noBrowser': 'Dieser Build des Schaltungs-Designers enthält den Beispiel-Browser noch nicht.',
-        'examples.notVendored': 'Die Beispielgalerie gehört noch nicht zu diesem Build (examples/index.json: {message}). Die Beispiele existieren — sie werden von bw-cfront veröffentlicht und müssen in die App übernommen werden.',
+        'designer.loading': 'Schaltungs-Designer wird geladen…',
+        'designer.failed': 'Der Schaltungs-Designer konnte nicht geladen werden: {error}',
+        'designer.reload': 'Editor neu laden',
+        'examples.notVendored': 'Die Beispielgalerie gehört nicht zu diesem Build (examples/index.json: {message}).',
         'examples.indexFailed': 'Der Index der Startprojekte konnte nicht geladen werden.',
-        'app.republished': 'Eine neue Version wurde veröffentlicht, während dieser Tab offen war. Wird neu geladen…',
-        'a11y.dismiss': 'Schließen'
+        'app.republished': 'Eine neue Version wurde veröffentlicht, während dieser Tab offen war. Wird neu geladen…'
     }
 };
 const pt = makeT(PANEL_L10N);
@@ -125,16 +116,17 @@ const HostMount = ({host, style}) => (
 const stcDrives = stc => !!(stc && ((stc.pins && stc.pins.length) ||
     (stc.parts && stc.parts.length)));
 
-const SOLO_L10N = {
-    en: {noCode: 'The debugger needs a program and a chip to drive. Declare pins in the Code tab, e.g. PIN led1 IS P1.0 OUTPUT ACTIVE LOW — or switch back to the circuit view in the header above.'},
-    de: {noCode: 'Der Debugger braucht ein Programm und einen Chip. Deklariere Pins im Code-Tab, z. B. PIN led1 IS P1.0 OUTPUT ACTIVE LOW — oder wechsle oben zurück zur Schaltungsansicht.'}
-};
-
 // Progress-only debugger refresh. Pauses, errors and phase transitions arrive
 // through separate content changes immediately; live counters/partial serial
 // text are human-facing and do not justify rebuilding this React subtree at
 // animation speed (or at the old 10 Hz floor).
 const DEBUG_LIVE_REFRESH_MS = 250;
+
+// These modes share the right column with panes owned by gui.jsx. Remember
+// their selection too, so a controller/device face never covers a stale
+// debugger portal that still thinks the column belongs to it.
+const CIRCUIT_DOCKS = new Set(['top', 'right', 'off', 'solo']);
+const DEVICE_DOCKS = new Set(['controller', 'microbit', 'arcade', 'cpx', 'arduboy', 'makecode', 'spikearena']);
 
 class CircuitTab extends React.Component {
     constructor (props) {
@@ -164,10 +156,10 @@ class CircuitTab extends React.Component {
         try {
             hideStage = localStorage.getItem('bw-hide-stage') === '1';
             const d = localStorage.getItem('bw-debug-dock');
-            if (d === 'top' || d === 'right' || d === 'off' || d === 'solo') debugDock = d;
+            if (CIRCUIT_DOCKS.has(d) || DEVICE_DOCKS.has(d)) debugDock = d;
         } catch { /* private mode: defaults */ }
-        this.state = {Designer: null, ui: null, error: null, reloading: false, stc: null,
-            board: null, debugState: null, panel: 'designer', circuit: null, hintDismissed,
+        this.state = {Designer: null, ui: null, panels: null, error: null, reloading: false, stc: null,
+            board: null, debugState: null, s040PartIds: [], panel: 'designer', circuit: null, hintDismissed,
             debugHintDismissed, hideStage, debugDock, showInStage, rightPaneHidden,
             examples: null, examplesError: null, curriculum: null,
             circuitData: null, loadingExample: null,
@@ -179,7 +171,9 @@ class CircuitTab extends React.Component {
         this.handleRunnerChange = this.handleRunnerChange.bind(this);
         this.handleBenchTemperature = this.handleBenchTemperature.bind(this);
         this.handleCircuitReady = this.handleCircuitReady.bind(this);
+        this.handleDesignerMenuActions = this.handleDesignerMenuActions.bind(this);
         this.loadExample = this.loadExample.bind(this);
+        this.selectPanel = this.selectPanel.bind(this);
         this._boxRef = React.createRef();
         this._measureBox = this._measureBox.bind(this);
         this.handleDeclarationChange = this.handleDeclarationChange.bind(this);
@@ -238,6 +232,9 @@ class CircuitTab extends React.Component {
     }
 
     componentDidMount () {
+        this._menuMounted = true;
+        this._designerMenuActions = [];
+        this.unregisterMenu = registerEditorMenuActions('circuit', () => this.editorMenuActions());
         this.subscribeCpxRuntime(this.props.vm?.runtime);
         // The Designer's own ↶ / ↷ buttons run its undo and redo (they also
         // refresh its view); the model's history (bw-circuit-ui model/history.js)
@@ -386,6 +383,9 @@ class CircuitTab extends React.Component {
             }
         };
         this._onBundleLoaded = event => {
+            // A refused future or invalid sidecar leaves the current project
+            // untouched. Its announcement is for the refusal notice only.
+            if (['future', 'invalid', 'storage-failed'].includes(event?.detail?.outcome)) return;
             try {
                 const raw = localStorage.getItem('bw-circuit-autosave');
                 if (raw) {
@@ -448,7 +448,7 @@ class CircuitTab extends React.Component {
                 // dock — debugger, serial console, input line — was
                 // display:none while every existence probe still passed
                 // (the browser gate's :visible click caught it).
-                if (value === 'right' || value === 'controller') {
+                if (value === 'right' || DEVICE_DOCKS.has(value)) {
                     try { localStorage.setItem('bw-right-pane-hidden', '0'); } catch { /* private mode */ }
                     this.setState({rightPaneHidden: false});
                 }
@@ -580,8 +580,25 @@ class CircuitTab extends React.Component {
     _findUndoButton = () => this._findHistoryButton('↶')
 
     componentDidUpdate (prevProps, prevState) {
+        if (prevProps.isVisible !== this.props.isVisible || prevProps.locale !== this.props.locale ||
+            prevState.panel !== this.state.panel) notifyEditorMenuActions();
         if (prevProps.vm?.runtime !== this.props.vm?.runtime) this.subscribeCpxRuntime(this.props.vm?.runtime);
         if (this.props.isVisible && !prevProps.isVisible) activateUndoSurface('circuit');
+        // Hiding the tab can unmount the Designer (debugger docked right/solo) and
+        // cancel its debounced autosave, so re-entering restored an older circuit.
+        // Flush that autosave instead: the same key and rule as bw-circuit-ui's
+        // (non-empty circuits only), from the Designer that was actually mounted.
+        // Host circuitData is untouched, so a bench delivered while hidden wins.
+        // The record must be bw-circuit-ui's own (lib/circuit-autosave-record.js):
+        // a differently shaped record for the same circuit made opening a project
+        // with a refused sidecar rewrite the known circuit (task I5).
+        if (prevProps.isVisible && !this.props.isVisible && !this._boxRef.current && this._designerShown) {
+            const record = circuitAutosaveRecord(this.state.circuit, readCircuitOwner(localStorage));
+            if (record !== null) {
+                try { localStorage.setItem('bw-circuit-autosave', record); } catch (e) { /* storage blocked */ }
+            }
+        }
+        this._designerShown = Boolean(this.props.isVisible && this._boxRef.current);
         // The event that opens this lazily rendered bench can precede the
         // DebugPanel listener in the same React commit. Replay the retained
         // image after that commit; the transition guard prevents a loop when
@@ -656,6 +673,12 @@ class CircuitTab extends React.Component {
                 this.state.debugDock === 'right' && this._stageRightRendered;
             this._stageHost.style.display =
                 (portalNow && this._portalRendered) || rightHere ? 'block' : 'none';
+            // The host shows the debugger either on the dedicated Circuit tab
+            // (rightHere) or, while coding, through the solo debugger portal.
+            const debuggerDock = this.state.debugDock === 'right' || this.state.debugDock === 'solo' ||
+                this._controllerSplitLive();
+            const debuggerHere = rightHere || (debuggerDock && portalNow && this._portalRendered);
+            this._layoutStageHost(debuggerHere && (rightHere || !!this._soloDebuggerLive));
         }
     }
 
@@ -679,6 +702,10 @@ class CircuitTab extends React.Component {
     }
 
     componentWillUnmount () {
+        this.releaseEsp32S040Input();
+        this._menuMounted = false;
+        this._designerMenuActions = [];
+        if (this.unregisterMenu) this.unregisterMenu();
         this._cpxRuntime?.removeListener('CPX_STATE', this.handleCpxState);
         this._cpxInputs?.release();
         this._cpxInputs = null;
@@ -686,6 +713,7 @@ class CircuitTab extends React.Component {
         if (this._unregisterUndo) this._unregisterUndo();
         cancelAnimationFrame(this._hostResizeFrame);
         cancelAnimationFrame(this._circuitFileReplayFrame);
+        if (this._hostMO) this._hostMO.disconnect();
         this._circuitFileReplayFrame = null;
         this._circuitFilePending = null;
         if (this._hostRO) { this._hostRO.disconnect(); this._hostRO = null; }
@@ -781,7 +809,7 @@ class CircuitTab extends React.Component {
     }
 
     setDock (d) {
-        if (d !== 'top' && d !== 'right' && d !== 'off' && d !== 'solo') return;
+        if (!CIRCUIT_DOCKS.has(d) && !DEVICE_DOCKS.has(d)) return;
         this.setState({debugDock: d});
         try { localStorage.setItem('bw-debug-dock', d); } catch { /* private mode */ }
     }
@@ -883,6 +911,29 @@ class CircuitTab extends React.Component {
         return this._debugHost;
     }
 
+    /** A live debugger and the Widgets dock (data-bw-stage-dock, gui.jsx)
+     *  both claim the whole stage column. Stacked, one always covers the
+     *  other: the Widgets "Full screen" button sat exactly over the
+     *  debugger's Pause, and raising the debugger hid the machine display
+     *  instead. So split the column: the dock keeps the top half and the
+     *  host takes the bottom half (z-index 2 over the dock's 1, below the
+     *  stage header). Anything else keeps the full-column host at z-index
+     *  0, under dock panes such as Arcade, exactly as before. */
+    _layoutStageHost (debuggerLive) {
+        this._debuggerLive = !!debuggerLive;
+        const host = this._stageHost;
+        const dock = host.parentElement &&
+            host.parentElement.querySelector(':scope > [data-bw-stage-dock]');
+        const split = !!(debuggerLive && dock);
+        if (this._splitDock && this._splitDock !== dock) this._splitDock.style.maxHeight = '';
+        this._splitDock = split ? dock : null;
+        if (dock) dock.style.maxHeight = split ? 'calc(50% - 44px)' : '';
+        host.style.top = split ? '50%' : '0';
+        host.style.zIndex = split ? '2' : '0';
+        if (split) host.dataset.bwDebuggerSplit = 'true';
+        else delete host.dataset.bwDebuggerSplit;
+    }
+
     _ensureStageHost () {
         if (this._stageHost && document.contains(this._stageHost)) return this._stageHost;
         const wrap = document.querySelector('div[class*="stage-and-target-wrapper"]');
@@ -910,6 +961,15 @@ class CircuitTab extends React.Component {
             });
             this._hostRO.observe(wrap);
         }
+        // The Widgets dock mounts lazily, after this tab's own update, so the
+        // split must also be re-applied when the column's children change.
+        if (typeof MutationObserver !== 'undefined') {
+            if (this._hostMO) this._hostMO.disconnect();
+            this._hostMO = new MutationObserver(() => {
+                if (this._stageHost && this._stageHost.style.display !== 'none') this._layoutStageHost(this._debuggerLive);
+            });
+            this._hostMO.observe(wrap, {childList: true});
+        }
         return host;
     }
 
@@ -934,11 +994,27 @@ class CircuitTab extends React.Component {
         }
     }
 
+    /** The Widgets controller dock beside a debugger that has a live machine
+     *  or program. #1691 began remembering device docks here; before that a
+     *  'controller' selection left the circuit dock in place, and the split
+     *  column (Widgets above, debugger below) is that dock's documented
+     *  layout in gui.jsx. Other device panes still own the whole column. */
+    _controllerSplitLive () {
+        return this.state.debugDock === 'controller' &&
+            !!(stcDrives(this.state.stc) || this.state.machineBooted);
+    }
+
     /** While coding (any other tab), the circuit takes the stage's column —
      *  the owner's default: you watch the LED you are programming, not an
      *  empty Scratch stage. Only when there is circuit content to show. */
     _stagePortalOn () {
         if (this.props.isVisible || !this.state.showInStage) return false;
+        // gui.jsx owns controller and device panes. Leave their column clear
+        // while retaining the same debugger portal and runner off screen.
+        // The controller (Widgets) dock is the one exception: beside a live
+        // machine or program it shares the column with the debugger, split by
+        // _layoutStageHost, so Pause stays reachable next to the machine.
+        if (!CIRCUIT_DOCKS.has(this.state.debugDock) && !this._controllerSplitLive()) return false;
         // This is a presentation choice, not a capability check. Debugger
         // mode must still show the designer for an empty project so the user
         // can build the circuit before adding MCU code.
@@ -1008,7 +1084,12 @@ class CircuitTab extends React.Component {
             // own tests — servo/555/h-bridge netlists failed as "unknown kind"
             // with their drivers sitting right there. Register at injection.
             if (typeof engine.registerAllDevices === 'function') engine.registerAllDevices();
-            const ui = await import(/* webpackChunkName: "bw-circuit-ui" */ 'bw-circuit-ui');
+            // The host's panel switch and panel views (Robot Lab conventions) come with
+            // the designer, never on first load: this tab is mounted from the start.
+            const [ui, panels] = await Promise.all([
+                import(/* webpackChunkName: "bw-circuit-ui" */ 'bw-circuit-ui'),
+                import(/* webpackChunkName: "bw-circuit-panels" */ './circuit-panels.jsx')
+            ]);
             // Inject only once the designer is genuinely needed. Keeping the
             // DRC and retro extractors at module scope made webpack promote the
             // board/Circuit UI graph into the cold Code-tab journey even though
@@ -1089,7 +1170,7 @@ class CircuitTab extends React.Component {
             // legitimately not have them yet — which the panel strip reports
             // rather than hides.
             this._markReactUpdate('host:designer-load');
-            this.setState({Designer: ui.CircuitDesigner, ui});
+            this.setState({Designer: ui.CircuitDesigner, ui, panels});
         } catch (e) {
             // A chunk that 404s because the deploy moved on is not an error the
             // user can act on, and catching it here made it INVISIBLE to the
@@ -1755,16 +1836,17 @@ class CircuitTab extends React.Component {
     drcWarnings () {
         const {ui, circuit, board} = this.state;
         if (!ui || typeof ui.runDrc !== 'function') {
-            return {error: pt(this.props.locale, 'drc.noExport')};
+            return {error: 'noExport'};
         }
         if (!circuit) {
-            return {error: pt(this.props.locale, 'drc.noCircuit')};
+            return {error: 'noCircuit'};
         }
         try {
             return {warnings: ui.runDrc(circuit, board || circuit.board) || []};
         } catch (e) {
             // A checker that throws must not read as a clean circuit.
-            return {error: `The design-rule check failed: ${e.message}`};
+            // (Codes, not sentences: circuit-panels-model.js words them per locale.)
+            return {error: 'failed', message: e.message};
         }
     }
 
@@ -1778,6 +1860,9 @@ class CircuitTab extends React.Component {
      * freezes coherently and no pause() is needed (DEBUG-CONTROL-MODEL §3.1).
      */
     handleRunnerChange (runner, ui) {
+        // An accepted touch-up emits inside release(). It must not recreate
+        // the owner being released, including during this component's unmount.
+        if (this._releasingEsp32S040Input) return;
         const board = runner.board();
         // The runner builds its own board for a run; it sits on the same bench.
         applyBenchTemperature(board, this.state.benchC);
@@ -1786,6 +1871,15 @@ class CircuitTab extends React.Component {
         // null, and passing the last debugState through kept the designer's
         // status panel glowing green RUNNING forever. No session — no panel.
         const phase = ui && ui.phase;
+        const previousS040 = this._esp32S040InputOwner;
+        const ownerId = runner.esp32S040PartId || null;
+        if (previousS040 && (previousS040.runner !== runner || previousS040.partId !== ownerId ||
+            phase === 'idle' || phase === 'error')) this.releaseEsp32S040Input();
+        if (ownerId && phase !== 'idle' && phase !== 'error' && !this._esp32S040InputOwner) {
+            this._esp32S040InputOwner = this.createEsp32S040InputOwner(runner, ownerId);
+        }
+        const s040 = this._esp32S040InputOwner || null;
+        const s040Changed = s040 !== (previousS040 || null);
         // A runner update already carries a complete snapshot. Live progress
         // arrives periodically, but an unchanged phase is not another phase
         // transition: dispatching it again wakes every guided-lesson observer
@@ -1879,7 +1973,7 @@ class CircuitTab extends React.Component {
         // do not wake a hidden consumer for progress it cannot display.
         if (shouldRefreshDesignerDebugState({
             dock: this.state.debugDock,
-            boardChanged: board !== this.state.board,
+            boardChanged: board !== this.state.board || s040Changed,
             haltedChanged: halted !== prev.halted,
             haltReasonChanged: haltReason !== prev.haltReason,
             tasksChanged: tasksStamp !== (prev._tasksStamp ?? null),
@@ -1893,6 +1987,9 @@ class CircuitTab extends React.Component {
             this.setState({
                 board,
                 debugState: {
+                    esp32S040PartId: s040?.partId || null,
+                    onEsp32S040Input: s040?.input || null,
+                    video: s040?.video,
                     halted,
                     skewNs: why ? why.skewNs : 0n,
                     haltReason,
@@ -1938,9 +2035,46 @@ class CircuitTab extends React.Component {
      *  reboot, unmount): its board is no longer anything's, so the designer
      *  takes its own back (task B8). */
     handleRunnerGone () {
+        this.releaseEsp32S040Input();
         if (this.state.board === null && this.state.debugState === null) return;
         this._markReactUpdate('host:runner-state');
         this.setState({board: null, debugState: null});
+    }
+
+    createEsp32S040InputOwner (runner, partId) {
+        let active = true;
+        let pressed = false;
+        return {
+            runner, partId,
+            video: () => active && typeof runner.video === 'function' ? runner.video() : null,
+            input: changes => {
+                if (!active) return {accepted: false, reason: 'This S040 input owner has been released'};
+                const result = runner.setInputs(changes);
+                if (result?.accepted) {
+                    for (const change of changes) {
+                        if (change.component === 'touch' && change.channel === 'pressed') pressed = change.value === 1;
+                    }
+                }
+                return result;
+            },
+            release: () => {
+                if (!active) return;
+                active = false;
+                if (pressed) {
+                    pressed = false;
+                    runner.setInputs([{component: 'touch', channel: 'pressed', value: 0}]);
+                }
+            }
+        };
+    }
+
+    releaseEsp32S040Input () {
+        const owner = this._esp32S040InputOwner;
+        this._esp32S040InputOwner = null;
+        if (!owner) return;
+        this._releasingEsp32S040Input = true;
+        try { owner.release(); }
+        finally { this._releasingEsp32S040Input = false; }
     }
 
     /** Resolve a Scratch block id to something a person can read: the
@@ -2016,7 +2150,7 @@ class CircuitTab extends React.Component {
         this._portalRendered = false;
         if (reloading) {
             return (
-                <div style={{...box, color: '#64748b'}}>
+                <div role="status" style={{...box, padding: 24, color: '#64748b'}}>
                     {pt(this.props.locale, 'app.republished')}
                 </div>
             );
@@ -2027,11 +2161,16 @@ class CircuitTab extends React.Component {
             // race, and looping the reload would hide it). Offer the manual
             // action rather than leaving a dead panel — the user's tab may have
             // been open across two deploys, which is not their fault.
+            // Laid out as the Robot Lab tab's states: a centred message, one action.
             return (
-                <div style={{...box, color: '#b91c1c'}}>
-                    <div>{`The circuit designer failed to load: ${error}`}</div>
+                <div style={{...box, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24}}>
+                    <p role="alert" style={{maxWidth: 460, margin: 0, textAlign: 'center', color: '#b91c1c', fontSize: 14}}>
+                        {pt(this.props.locale, 'designer.failed', {error})}
+                    </p>
                     <button
-                        style={{marginTop: 10, padding: '6px 12px', borderRadius: 6, cursor: 'pointer'}}
+                        type="button"
+                        style={{padding: '8px 16px', borderRadius: 8, border: '1px solid #4338ca', background: '#4f46e5',
+                            color: '#fff', fontWeight: 600, cursor: 'pointer'}}
                         onClick={() => {
                             try {
                                 sessionStorage.removeItem('bw-chunk-recovery');
@@ -2039,7 +2178,7 @@ class CircuitTab extends React.Component {
                             location.reload();
                         }}
                     >
-                        {'Reload the editor'}
+                        {pt(this.props.locale, 'designer.reload')}
                     </button>
                 </div>
             );
@@ -2055,20 +2194,19 @@ class CircuitTab extends React.Component {
         // applies while portalled: on the dedicated Circuit tab, 'right'
         // keeps the designer beside the panel (below) and 'solo' falls back
         // to the instruments-column dock, so the designer stays reachable.
-        if ((this.state.debugDock === 'solo' || this.state.debugDock === 'right') && this._stagePortalOn()) {
+        if ((this.state.debugDock === 'solo' || this.state.debugDock === 'right' ||
+            this._controllerSplitLive()) && this._stagePortalOn()) {
             this._portalOn = true;
+            // Read by the host layout pass: only a debugger with a live machine
+            // or program shares the column with a dock pane (_layoutStageHost).
+            this._soloDebuggerLive = !!(stcDrives(stc) || this.state.machineBooted);
             const solo = (
                 // paddingTop clears the stage-header row: the panel (and the
                 // no-code warning) rendered flush against the tab strip and
                 // read as misplaced (owner report, 2026-08-17 — and 7 hours
                 // before that).
                 <div style={{...box, overflow: 'auto', paddingTop: 48}} data-debugger-solo-pane>
-                    {stcDrives(stc) || this.state.machineBooted ? <HostMount host={this._ensureDebugHost()} /> : (
-                        <div style={{color: '#64748b', fontSize: 12.5, padding: 8, marginTop: 6}} data-no-code-indicator>
-                            {(SOLO_L10N[String(this.props.locale || 'en').slice(0, 2)]
-                                || SOLO_L10N.en).noCode}
-                        </div>
-                    )}
+                    <HostMount host={this._ensureDebugHost()} />
                 </div>
             );
             this._portalRendered = true;
@@ -2082,15 +2220,18 @@ class CircuitTab extends React.Component {
             // already-running debugger portal mounted while that chunk loads;
             // unmounting DebugPanel destroys its runner and replays the media.
             return [
-                <div key="designer-loading" style={{...box, color: '#64748b'}}>{'Loading the circuit designer…'}</div>,
-                (this.state.machineBooted || stcDrives(stc)) &&
+                <div key="designer-loading" role="status" style={{...box, padding: 24, color: '#64748b'}}>
+                    {pt(this.props.locale, 'designer.loading')}
+                </div>,
+                (this.state.machineBooted || stcDrives(stc) || !this.state.rightPaneHidden) &&
                     ReactDOM.createPortal(this.renderDebugPanel(), this._ensureDebugHost(), 'debug-panel')
             ];
         }
         this._portalOn = this._stagePortalOn();
         // On the dedicated Circuit tab 'solo' behaves as 'top': the designer
         // with the compact debugger in its Instruments column.
-        const dock = this.state.debugDock === 'solo' ? 'top' : this.state.debugDock;
+        const dock = this.state.debugDock === 'solo' ? 'top'
+            : CIRCUIT_DOCKS.has(this.state.debugDock) ? this.state.debugDock : 'off';
         const content = (
             <div ref={this._boxRef} style={box} onPointerDown={() => activateUndoSurface('circuit')}>
                 {/* The standalone-circuit invitation and the debugger hint used to render here
@@ -2098,7 +2239,6 @@ class CircuitTab extends React.Component {
                     pushed the board down and duplicated the top-bar Warnings selector, which
                     (with its count) is now the single home for anything the user needs flagged.
                     The guidance they carried lives in the Examples/docs, not a persistent banner. */}
-                {this.state.panel === 'designer' ? null : this.renderPanelStrip()}
                 <div style={{display: 'flex', flex: '1 1 auto', minHeight: 0, gap: 8}}>
                 <div style={{flex: '1 1 auto', minWidth: 0, display: 'flex', flexDirection: 'column'}}>
                 {/* The tab container is `overflow: clip` so a deep sidebar scroll cannot
@@ -2121,6 +2261,8 @@ class CircuitTab extends React.Component {
                     {profileReactSubtree(React, 'CircuitDesigner', (<Designer
                         cpxState={this.state.cpxState}
                         onCpxInput={this.state.handleCpxInput}
+                        esp32S040PartId={this.state.debugState?.esp32S040PartId || null}
+                        onEsp32S040Input={this.state.debugState?.onEsp32S040Input || null}
                     performanceProbe={this._performanceProbe}
                     stc={stc}
                     examples={this.state.examples || undefined}
@@ -2128,6 +2270,7 @@ class CircuitTab extends React.Component {
                     onLoadExample={this.loadExample}
                     board={this.state.board || undefined}
                     debugState={this.state.debugState || undefined}
+                    onEditorMenuActions={this.handleDesignerMenuActions}
                     onCircuitReady={c => { window.__circuit = c; if (this.props.vm && this.props.vm.runtime) this.props.vm.runtime.circuitModel = c; this.handleCircuitReady(c); }}
                     circuitData={this.state.circuitData || undefined}
                     onBoardReady={(board) => {
@@ -2140,6 +2283,12 @@ class CircuitTab extends React.Component {
                         const vm = this.props.vm;
                         if (vm && vm.runtime) {
                             vm.runtime.circuitBoard = board;
+                            // A published board mutates independently of debugger props.
+                            // Publish only changes to the S040 selection to avoid render loops.
+                            const ids = s040PartIds(board);
+                            if (!sameS040PartIds(ids, this.state.s040PartIds)) {
+                                this.setState({s040PartIds: ids});
+                            }
                             // Producer-asserts-the-consumer: verify the circuit extension
                             // can read it (it uses a lazy getter on this.runtime.circuitBoard).
                             console.assert(vm.runtime.circuitBoard === board,
@@ -2162,6 +2311,7 @@ class CircuitTab extends React.Component {
                         onCircuitEdit={this.handleCircuitEdit}
                         onDeclarationChange={this.handleDeclarationChange}
                         panelNav={this.renderPanelStrip()}
+                        lang={String(this.props.locale || 'en').slice(0, 2) === 'de' ? 'de' : 'en'}
                         // The control is the designer's (its "More circuit controls"
                         // menu, bw-circuit-ui BenchTemperature.jsx); the value is ours.
                         benchTemperature={this.state.benchC}
@@ -2222,14 +2372,7 @@ class CircuitTab extends React.Component {
                     <div style={{height: '100%', width: '100%', boxSizing: 'border-box',
                         overflow: 'auto', padding: 8, paddingTop: 48,
                         display: 'flex', flexDirection: 'column'}} data-debugger-solo-pane>
-                        {stcDrives(stc) || this.state.machineBooted
-                            ? <HostMount host={this._ensureDebugHost()} />
-                            : (
-                                <div style={{color: '#64748b', fontSize: 12.5, padding: 8, marginTop: 6}} data-no-code-indicator>
-                                    {(SOLO_L10N[String(this.props.locale || 'en').slice(0, 2)]
-                                        || SOLO_L10N.en).noCode}
-                                </div>
-                            )}
+                        <HostMount host={this._ensureDebugHost()} />
                     </div>, host);
             }
         }
@@ -2250,6 +2393,7 @@ class CircuitTab extends React.Component {
                         clockHz={(stc && Number(stc.clock)) || 11059200}
                         runToken={this.state.runToken}
                         stopToken={this.state.stopToken}
+                        s040PartIds={this.state.s040PartIds}
                         onRunnerChange={this.handleRunnerChange}
                         onRunnerGone={this.handleRunnerGone}
                     />))}
@@ -2263,6 +2407,44 @@ class CircuitTab extends React.Component {
      * the designer's (which the Scratch VM's reporters read through
      * runtime.circuitBoard) and a debug runner's while its run lives.
      */
+    handleDesignerMenuActions (actions) {
+        if (!this._menuMounted) return;
+        this._designerMenuActions = Array.isArray(actions) ? actions : [];
+        notifyEditorMenuActions();
+    }
+
+    editorMenuActions () {
+        if (!this._menuMounted || this.props.isVisible !== true || getUndoState().surface !== 'circuit') return null;
+        const entries = Object.create(null);
+        const de = String(this.props.locale || '').startsWith('de');
+        // The designer's file commands replace the host File bridge, so they sit
+        // flat in File with the host's names. The supplier's `file` group key is
+        // not a label to show.
+        const fileLabels = de ?
+            {open: 'Schaltung öffnen…', save: 'Schaltung speichern', import: 'Schaltung importieren…', export: 'Schaltung exportieren…'} :
+            {open: 'Open circuit…', save: 'Save circuit', import: 'Import circuit…', export: 'Export circuit…'};
+        // Older qualified CUI pins simply omit this optional publication. The
+        // original host File bridge remains available until supplier adoption.
+        for (const action of this._designerMenuActions || []) {
+            if (!action || ['undo', 'redo'].includes(action.name) || typeof action.name !== 'string' ||
+                typeof action.label !== 'string' || typeof action.run !== 'function' ||
+                !['file', 'edit'].includes(action.location)) continue;
+            const entry = {...action, enabled: action.enabled === true};
+            if (action.location === 'file') {
+                delete entry.submenu;
+                if (Object.hasOwn(fileLabels, action.name)) entry.label = fileLabels[action.name];
+            }
+            entries[action.name] = entry;
+        }
+        const panels = de ? [['designer', 'Designer'], ['warnings', 'Warnungen'], ['bom', 'Stückliste'], ['examples', 'Beispiele']] :
+            [['designer', 'Designer'], ['warnings', 'Warnings'], ['bom', 'Parts list'], ['examples', 'Examples']];
+        for (const [panel, label] of panels) {
+            entries[`host-panel-${panel}`] = {label, location: 'edit', submenu: de ? 'Bereiche' : 'Panels',
+                enabled: true, checked: this.state.panel === panel, radio: true, run: () => this.setState({panel})};
+        }
+        return entries;
+    }
+
     handleBenchTemperature (value) {
         const c = clampBenchTemperature(value);
         if (c === null) return;
@@ -2274,185 +2456,43 @@ class CircuitTab extends React.Component {
         for (const board of boards) applyBenchTemperature(board, c);
     }
 
-    /** Designer | Warnings | Parts list | Examples. */
+    /** Show one of the tab's panels; Examples fetches its gallery (and the Codex) on the way. */
+    selectPanel (panel) {
+        this.setState({panel});
+        if (panel === 'examples') { this.loadExamples(); this.loadCurriculum(); }
+    }
+
+    /**
+     * Designer | Warnings | Parts list | Examples (circuit-panels.jsx, loaded with the
+     * designer). In the designer's toolbar this is its panel navigation; the other panels
+     * carry it in their own header row.
+     */
     renderPanelStrip () {
-        const {panel} = this.state;
-        const drc = this.drcWarnings();
-        // Only a real count earns a badge. "0" when the check could not run would
-        // say "this circuit is clean", which is the opposite of what we know.
-        const count = drc.warnings ? drc.warnings.length : null;
-        const danger = drc.warnings ? drc.warnings.filter(w => w.severity === 'danger').length : 0;
-        const tabs = [
-            ['designer', 'Designer', null],
-            ['warnings', 'Warnings', count],
-            ['bom', 'Parts list', null],
-            ['examples', 'Examples', null]
-        ];
-        const tabIcons = {designer: '▦', warnings: '⚠', bom: '☷', examples: '▤'};
-        const tabTitles = {designer: 'Designer', warnings: 'Warnings', bom: 'Parts list', examples: 'Examples'};
-        return (
-            <div data-panel-navigation style={{display: 'flex', alignItems: 'center', gap: 6, marginBottom: 0, flex: '0 0 auto',
-                fontSize: 11.5, lineHeight: 1.6}}>
-            <div style={{display: 'inline-flex', gap: 1, padding: 1,
-                borderRadius: 5, background: '#f1f5f9'}}>
-                {tabs.map(([id, label, badge]) => (
-                    <button
-                        key={id}
-                        onClick={() => {
-                            // The Designer button is a no-op when the designer is already the
-                            // current panel — this strip only exists inside the Circuit tab, so
-                            // "select Designer" from here is redundant. Grey it and swallow the
-                            // click so it reads as the current view, not a live selector.
-                            if (panel === id && id === 'designer') return;
-                            this.setState({panel: id});
-                            if (id === 'examples') { this.loadExamples(); this.loadCurriculum(); }
-                        }}
-                        title={tabTitles[id]}
-                        aria-label={tabTitles[id]}
-                        aria-pressed={panel === id}
-                        aria-disabled={panel === id && id === 'designer'}
-                        style={{
-                            width: 34, minWidth: 34, height: 34, padding: 0, border: 'none', borderRadius: 4,
-                            cursor: panel === id && id === 'designer' ? 'default' : 'pointer',
-                            fontSize: 17, lineHeight: 1, position: 'relative', fontWeight: 600,
-                            background: panel === id ? (id === 'designer' ? '#e2e8f0' : '#1d4ed8') : 'transparent',
-                            boxShadow: panel === id && id !== 'designer' ? '0 1px 2px rgba(15,23,42,.25)' : 'none',
-                            color: panel === id ? (id === 'designer' ? '#94a3b8' : '#fff') : '#64748b'
-                        }}
-                    >
-                        <span aria-hidden="true">{tabIcons[id]}</span>
-                        {badge ? (
-                            <span style={{position: 'absolute', top: 1, right: 1, minWidth: 13, padding: '0 2px', borderRadius: 8, fontSize: 9,
-                                background: danger ? '#fecaca' : '#fef3c7',
-                                color: danger ? '#991b1b' : '#92400e'}}
-                            >{badge}</span>
-                        ) : null}
-                    </button>
-                ))}
-            </div>
-            <span style={{flex: 1}} />
-            </div>
-        );
+        const {panels, panel} = this.state;
+        if (!panels) return null;
+        return (<panels.PanelSwitch panel={panel} drc={this.drcWarnings()} locale={this.props.locale}
+            onSelect={this.selectPanel} />);
     }
 
     renderPanel () {
-        const {panel, ui, circuit} = this.state;
-        const note = (text) => (
-            <div style={{padding: '10px 12px', borderRadius: 6, background: '#f8fafc',
-                border: '1px solid #e2e8f0', fontSize: 13, color: '#475569'}}
-            >{text}</div>
+        const {panels, panel, ui, circuit, examples, examplesError} = this.state;
+        if (!panels || panel === 'designer') return null;
+        const stc = this.readStc();
+        return (
+            <panels.PanelView
+                panel={panel}
+                locale={this.props.locale}
+                onSelect={this.selectPanel}
+                drc={this.drcWarnings()}
+                ui={ui}
+                circuit={circuit}
+                examples={examples}
+                examplesError={examplesError}
+                currentDevice={stc && stc.device ? String(stc.device).toLowerCase() : null}
+                onLoadExample={this.loadExample}
+                onDismissError={() => this.setState({examplesError: null})}
+            />
         );
-
-        if (panel === 'warnings') {
-            const drc = this.drcWarnings();
-            if (drc.error) return note(drc.error);
-            if (!drc.warnings.length) return note(pt(this.props.locale, 'drc.clean'));
-            if (ui && ui.DrcPanel) return <ui.DrcPanel warnings={drc.warnings} />;
-            // The data is real even when their panel is not in the build; render it
-            // plainly rather than withhold it.
-            return (
-                <ul style={{margin: 0, paddingLeft: 18, fontSize: 13}}>
-                    {drc.warnings.map((w, i) => (
-                        <li key={i} style={{marginBottom: 6,
-                            color: w.severity === 'danger' ? '#991b1b' : '#92400e'}}
-                        >{`${w.rule}: ${w.message || ''} (${w.partId || 'circuit'})`}</li>
-                    ))}
-                </ul>
-            );
-        }
-
-        if (panel === 'bom') {
-            if (!ui || typeof ui.generateBom !== 'function') {
-                return note(pt(this.props.locale, 'bom.noExport'));
-            }
-            if (!circuit) {
-                return note(pt(this.props.locale, 'bom.noCircuit'));
-            }
-            // The vendor exports bomToCsv and nothing ever surfaced it, so a
-            // parts list you could read was not a parts list you could take to
-            // a supplier. Offer the CSV next to the table; a <details> keeps it
-            // out of the way until wanted, and a textarea is selectable in every
-            // browser without asking for clipboard permission.
-            const csvBlock = typeof ui.bomToCsv === 'function' ? (
-                <details style={{marginTop: 10}} data-testid="bw-bom-csv">
-                    <summary style={{cursor: 'pointer', fontSize: 13}}>{pt(this.props.locale, 'bom.exportCsv')}</summary>
-                    <textarea
-                        readOnly
-                        onFocus={e => e.target.select()}
-                        value={ui.bomToCsv(ui.generateBom(circuit.parts) || [])}
-                        style={{width: '100%', minHeight: 140, marginTop: 6, fontFamily: 'monospace', fontSize: 12}}
-                    />
-                </details>
-            ) : null;
-            if (ui.BomPanel) {
-                return (<div><ui.BomPanel parts={circuit.parts} />{csvBlock}</div>);
-            }
-            const bom = ui.generateBom(circuit.parts) || [];
-            const table = bom.length ? (
-                <table style={{fontSize: 13, borderCollapse: 'collapse'}}>
-                    <tbody>
-                        {bom.map((row, i) => (
-                            <tr key={i}>
-                                <td style={{padding: '2px 10px 2px 0'}}>{row.qty || row.quantity}</td>
-                                <td style={{padding: '2px 10px 2px 0'}}>{row.kind || row.name}</td>
-                                <td style={{padding: '2px 0'}}>{row.value || ''}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            ) : note(pt(this.props.locale, 'bom.empty'));
-            return bom.length ? (<div>{table}{csvBlock}</div>) : table;
-        }
-
-        if (panel === 'examples') {
-            if (!ui || !ui.ExamplesBrowser) {
-                return note(pt(this.props.locale, 'examples.noBrowser'));
-            }
-            // An empty array here used to read as "there are no examples", which
-            // is a different and much worse statement than "this build does not
-            // ship them". bw-cfront publishes examples/index.json — 53 entries,
-            // bilingual titles, and a `kind` of "circuit" or "program" — so the
-            // browser is fed from that or says why it is not.
-            const {examples, examplesError} = this.state;
-            if (!examples) return note(examplesError || 'Loading examples…');
-            const stc = this.readStc();
-            const currentDevice = stc && stc.device ? String(stc.device).toLowerCase() : null;
-            // An advisory renders as a DISMISSIBLE STRIP above the list —
-            // it used to replace the entire browser, so one sticky message
-            // rendered "where the actual examples list should have been"
-            // (owner report, with screenshot).
-            return (
-                <div style={{display: 'flex', flexDirection: 'column', minHeight: 0, height: '100%'}}>
-                    {examplesError ? (
-                        <div style={{
-                            display: 'flex', alignItems: 'center', gap: '8px',
-                            padding: '6px 10px', fontSize: '12px',
-                            background: 'rgba(230, 126, 34, 0.12)',
-                            borderBottom: '1px solid rgba(230, 126, 34, 0.4)',
-                            flexShrink: 0
-                        }}>
-                            <span style={{flex: 1}}>{examplesError}</span>
-                            <button
-                                type="button"
-                                onClick={() => this.setState({examplesError: null})}
-                                style={{border: 'none', background: 'none', cursor: 'pointer', fontSize: '14px', lineHeight: 1}}
-                                aria-label={pt(this.props.locale, 'a11y.dismiss')}
-                            >{'×'}</button>
-                        </div>
-                    ) : null}
-                    <div style={{flex: 1, minHeight: 0, overflow: 'auto'}}>
-                        <ui.ExamplesBrowser
-                            examples={examples}
-                            onLoadExample={this.loadExample}
-                            currentDevice={currentDevice}
-                            lang={(typeof navigator !== 'undefined' && navigator.language || 'en')
-                                .slice(0, 2) === 'de' ? 'de' : 'en'}
-                        />
-                    </div>
-                </div>
-            );
-        }
-        return null;
     }
 }
 

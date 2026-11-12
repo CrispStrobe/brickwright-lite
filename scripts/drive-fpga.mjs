@@ -94,7 +94,7 @@ export async function openFpga (baseUrl, opts = {}) {
     /** Show a tab and WAIT for a control that only exists when it is showing. */
     const showFpga = async () => {
         for (let i = 0; i < 8; i++) {
-            if (await page.locator('[data-testid="bw-fpga-ic-gate"]').isVisible().catch(() => false)) return;
+            if (await page.locator('[data-testid="bw-fpga-workspace"]').isVisible().catch(() => false)) return;
             // (4)+(5) clicking the strip is not always enough after a round
             // trip; the app's own activation event is what the tab itself uses.
             if (i % 2 === 0) await tab(/FPGA/).click().catch(() => {});
@@ -111,6 +111,8 @@ export async function openFpga (baseUrl, opts = {}) {
     /** Open the learning-path panel, waiting for it rather than guessing. */
     const openLearn = async () => {
         await showFpga();
+        await page.getByTestId('bw-fpga-workspace-design').click();
+        await page.getByTestId('bw-fpga-editor').selectOption('canvas');
         const learn = page.locator('[data-testid="bw-fpga-rf-learn"]');
         await learn.waitFor({state: 'visible', timeout: 60000});
         const panel = page.locator('[data-testid="bw-fpga-challenges"]');
@@ -136,6 +138,8 @@ export async function openFpga (baseUrl, opts = {}) {
     /** Build one of the ⚙ picker's circuits and wait for it on the board. */
     const buildCircuit = async key => {
         await showFpga();
+        await page.getByTestId('bw-fpga-workspace-design').click();
+        await page.getByTestId('bw-fpga-realization').selectOption('circuit');
         await page.selectOption('[data-testid="bw-fpga-ic-circuit"]', key);
         await page.click('[data-testid="bw-fpga-build-circuit"]');
         await page.waitForFunction(() => window.__circuit &&

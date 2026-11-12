@@ -609,9 +609,13 @@ const GUIComponent = props => {
             // mode, and surface the code tab where the dock renders — exactly as
             // the FPGA mirror does for its LEDs.
             controllerPanel.setMode('play');
-            window.dispatchEvent(new CustomEvent('bw-settings-change',
-                {detail: {key: 'bw-debug-dock', value: 'controller'}}));
-            if (props.onActivateTab) props.onActivateTab(CODE_TAB_INDEX);
+            // A caller may populate Widgets while keeping its debugger visible.
+            // Existing machine callers still focus the controller by default.
+            if (p.focusController !== false) {
+                window.dispatchEvent(new CustomEvent('bw-settings-change',
+                    {detail: {key: 'bw-debug-dock', value: 'controller'}}));
+                if (props.onActivateTab) props.onActivateTab(CODE_TAB_INDEX);
+            }
         };
         const onStart = e => start(e && e.detail);
         const onStop = () => stop();
@@ -972,7 +976,7 @@ const GUIComponent = props => {
                                 minWidth: 0, minHeight: 0, flexShrink: 1,
                                 ...(isExplicitFraction(rightSize) ? {flex: '1 1 0%'} : {})
                             } : {
-                                display: 'flex', width: '100%', maxWidth: 'none', height: '100%',
+                                display: 'flex', width: '100%', maxWidth: costumesTabVisible ? '100vw' : 'none', height: '100%',
                                 flex: 'none', flexBasis: 'auto', minWidth: 0
                             })}
                         >
@@ -1235,7 +1239,12 @@ const GUIComponent = props => {
                                 <React.Suspense fallback={
                                     <div style={{padding: 24, color: '#64748b'}}>Loading controller…</div>
                                 }>
-                                    <div style={dockFullScreenStyle || {position: 'relative', flex: 1, minHeight: 0, borderTop: '1px solid #ffffff', background: '#f8fafc'}}>
+                                    {/* zIndex 1 makes this wrapper a stacking context: the panel's own
+                                        zIndex:10 stays inside it, above the in-stage circuit portal
+                                        (z-index 0). While the debugger has a live machine or program,
+                                        circuit-tab.jsx splits the column at data-bw-stage-dock: Widgets
+                                        on top, debugger below (z-index 2), so neither covers the other. */}
+                                    <div data-bw-stage-dock="controller" style={dockFullScreenStyle || {position: 'relative', zIndex: 1, flex: 1, minHeight: 0, borderTop: '1px solid #ffffff', background: '#f8fafc'}}>
                                         <ControllerPanelView
                                             panel={controllerPanel}
                                             board={board}

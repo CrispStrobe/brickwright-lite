@@ -6,18 +6,36 @@ const BW=createRequire(import.meta.url)(VM_SRC+'/util/bw-values.js');
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
+import {arrayOperation} from './helpers/arrays-current-operation.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 import {compile} from '../scripts/lib/pxt-node.mjs';
+test.afterEach(()=>clearStrayTimers());
 const vars=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
 async function execute(imported){
     assert.deepEqual(imported.unsupported,[]);
-    const run=await runProgram(imported.code,{frames:80,uploads:imported.costumes,storage:true});
+    // A paused source call keeps its VM-owned program-clock wait timer past the
+    // first 80 frames; the default stray-timer sweep would cancel it while the
+    // call is still waiting. Each test sweeps after its last route instead.
+    const run=await runProgram(imported.code,{frames:80,uploads:imported.costumes,storage:true,retainExtensionTimers:true});
     assert.deepEqual(run.errors,[],JSON.stringify({vars:vars(run),code:imported.code}));assert.deepEqual(run.creator.warnings,[]);return run;
 }
-async function roundtrip(source,check){
+async function roundtrip(source,check,diagnostic=null){
     const imported=arcadeToPseudocode(source),run=await execute(imported);await check(run);
     await check(await execute({...imported,code:run.creator.decompile()}));
-    const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});assert.deepEqual(exported.unsupported,[]);
+    const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});
+    if(exported.unsupported.length&&diagnostic){
+        // The selected caller uses a checked-in fixture. Keep the original
+        // assertion and expose the actual post-VM draft when export refuses.
+        try {
+            const detail=JSON.stringify({unsupported:exported.unsupported,details:exported.unsupportedDetails||[],draft:exported.refusalEvidence?.nativeAdditionDraft||null});
+            diagnostic(/\/(?:home|mnt|tmp|Users)\/|[A-Za-z]:\\\\/.test(detail)?
+                'Arcade value arithmetic refusal contains a local path; retain privately':
+                `Arcade value arithmetic export refusal: ${detail}`);
+        } catch {
+            // Evidence collection must never replace the original assertion.
+        }
+    }
+    assert.deepEqual(exported.unsupported,[]);
     const built=await compile('arcade',exported.files);assert.equal(built.success,true,JSON.stringify({diagnostics:built.diagnostics,ts:exported.ts}));
     await check(await execute(arcadeToPseudocode(exported.ts)));
     await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,80);await check(run);
@@ -44,14 +62,15 @@ if(nan!==nan){checks+=1}
 if(!(nan<1) && !(nan>=1)){checks+=2}
 if("10"<"2"){checks+=4}
 if("2"<10){checks+=8}
-if(!(absent<=0)){checks+=16}`,run=>{
-        const v=vars(run),p=run.vm.runtime._primitives;
+if(!(absent<=0)){checks+=16}`,async run=>{
+        const v=vars(run);
         assert.equal(Number(v.checks),31);
-        const actual=Array.from({length:11},(_,i)=>p.arrays_referenceItem({ARRAY:v.values,INDEX:i}));
+        const actual=[];
+        for(let i=0;i<11;i++)actual.push(await arrayOperation(run.vm,'referenceItem',{ARRAY:v.values,INDEX:i}));
         assert.deepEqual(actual,['52',3,3,2,NaN,Infinity,-Infinity,-1,1,5,-5]);
     });
 });
-test('compound stores, numeric increments and paused calls retain actual value types',async()=>{
+test('compound stores, numeric increments and paused calls retain actual value types',async t=>{
     await roundtrip(`let force:any=undefined
 let text:any="5"
 text+=2
@@ -67,12 +86,19 @@ function echo(value:any){return value}
 let copiedZero=echo(minusZero)
 let values=[text,counter,rows[0],rows[1],returned,minusZero,copiedZero]`,async run=>{
         const deadline=Date.now()+20000; // wall-clock guard only: the loop exits as soon as the program has run (3 s was too short on a busy CI runner)
-        while(vars(run).values?.bwReference?.kind!=='array' && Date.now()<deadline){await stepFrames(run.vm,4);await new Promise(done=>setTimeout(done,10));}
-        const v=vars(run),p=run.vm.runtime._primitives;
-        const actual=Array.from({length:7},(_,i)=>p.arrays_referenceItem({ARRAY:v.values,INDEX:i}));
+        // After a saved-SB3 reload the variable still holds the saved Array
+        // reference until the restarted program's paused call completes and
+        // stores a fresh one; wait for a live reference, not just its shape.
+        const live=async()=>{const value=vars(run).values;if(value?.bwReference?.kind!=='array')return false;
+            try{await arrayOperation(run.vm,'referenceLength',{ARRAY:value});return true;}
+            catch(error){if(/null or expired/.test(String(error?.message??error))&&Date.now()<deadline)return false;throw error;}};
+        while(!await live() && Date.now()<deadline){await stepFrames(run.vm,4);await new Promise(done=>setTimeout(done,10));}
+        const v=vars(run);
+        const actual=[];
+        for(let i=0;i<7;i++)actual.push(await arrayOperation(run.vm,'referenceItem',{ARRAY:v.values,INDEX:i}));
         assert.deepEqual(actual,['52',6,'52',NaN,NaN,0,0]);
         assert.equal(v.text,'52');assert.equal(v.counter,6);assert.ok(Number.isNaN(v.returned));assert.ok(Object.is(v.minusZero,0));
-    });
+    },message=>t.diagnostic(message));
 });
 
 test('numeric array reads select native missing-value arithmetic without a lazy-expression marker',async()=>{
@@ -141,7 +167,7 @@ let ordinary="NaN"`),run=await execute(imported);
     const v=vars(run);assert.ok(Number.isNaN(v.nan));assert.equal(v.positive,Infinity);assert.equal(v.negative,-Infinity);assert.ok(Object.is(v.minusZero,0));assert.equal(v.ordinary,'NaN');
 });
 
-test('numeric sums retain their type through index variables and procedure returns', {todo:"Array export authority cannot yet prove the Array receiver \u2014 see docs/ARCADE-888-OPEN-FAILURES.md"},async()=>{
+test('numeric sums retain their type through index variables and procedure returns',async()=>{
     await roundtrip(`let rows=[[3,4]]
 function shift(index:number){return index+1}
 let column=0

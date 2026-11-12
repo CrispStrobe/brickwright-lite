@@ -1,6 +1,6 @@
 # Compose the published Arcade and MakeCode repair histories
 
-CLAIMED — owner: Arcade integration, branch
+IMPLEMENTED — final composed-head qualification pending. Owner: Arcade integration, branch
 `lane/arcade-repair-composition-claim-20261022`, base `35ba06990`.
 
 The user requested reconciliation of PR1219/PR1222 with the unmerged Arcade
@@ -47,3 +47,19 @@ qualification of unchanged originals or explicitly authentic recovered context.
 Maintain this claim and additive integration/status prose in
 `docs/ARCADE-COMPATIBILITY-NEXT-STEPS.md` and
 `docs/CONVERSION-CAPABILITIES-AND-GUI-GAPS.md`.
+
+## Composition checkpoint
+
+Claim #1228 merged before manual conflict resolution. The composition preserves
+normal history through published MakeCode repair `400706ab` and current main.
+The relocated constraint validator remains the sole implementation; its current
+producer option factory receives the corrected Array-length option. Camera,
+lexical readiness and nullable-length facts remain. The locked Playwright step
+retains the Array source-admission step and its original bounds/evidence.
+
+Independent source review confirms all three Array implementation files, the
+identity controls and original-return diagnostic capture remain unchanged from
+the Arcade parent; incoming helper/test/export/verifier changes remain intact.
+No local JavaScript or native/SDK replay was used to qualify this merge. The
+complete final-head automatic hosted set is still required; neither parent's
+passing tests qualify the composition. No application completion is claimed.

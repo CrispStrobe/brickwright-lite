@@ -26,14 +26,13 @@ import React from 'react';
 import {connect} from 'react-redux';
 import {setProjectTitle} from '../../reducers/project-title';
 import {pickLocale, browserLocale} from '../../lib/bw-i18n.js';
-import {activateUndoSurface, notifyUndoState, registerUndoSurface} from '../../lib/global-undo.js';
+import {activateUndoSurface, getUndoState, notifyUndoState, registerUndoSurface} from '../../lib/global-undo.js';
 import {SIM_LAB_STORAGE_KEY, simLabRecordFromText, readSimLabStorage, isStorableName} from '../../lib/bw-sim/model/sim-lab-persist.js';
 import SimLabPalette from './sim-lab-palette.jsx';
 import SimLabInfo from './sim-lab-info.jsx';
 import SimLabReadings from './sim-lab-readings.jsx';
 import SimLabConnections from './sim-lab-connections.jsx';
 import SimLabBrickButtons from './sim-lab-brick-buttons.jsx';
-import {programUsesBrickButtons} from './sim-lab-brick-handlers.js';
 import SimLabMeasurements, {measurementWords} from './sim-lab-measurements.jsx';
 import {measurementDefinitions} from '../../lib/bw-sim/measurements/schema.js';
 import {CONTROL_PAIR_SCHEMA, restoreControlPair} from '../../lib/bw-sim/measurements/control-pairs.js';
@@ -61,6 +60,7 @@ import {Icon, Popup, Separator, ToolButton, splitToolbar, toolStyles, tooltipOf}
 import {TOOLBAR_TEXT} from './sim-lab-toolbar-text.js';
 import {sharedSpikeHubState} from '../../lib/virtual-hub/shared-spike-hub.js';
 import {ROBOT_LAB_EVENTS} from '../../lib/robot-lab-events.js';
+import {notifyEditorMenuActions, registerEditorMenuActions} from '../../lib/editor-menu-actions.js';
 
 /**
  * The LEGO extensions that program a radio hub (hub `protocol`, bw-sim/hubs/lwp3 and hubs/wedo2), in the
@@ -480,6 +480,8 @@ class SimLabPane extends React.Component {
     }
 
     async componentDidMount () {
+        this._menuMounted = true;
+        this.unregisterMenu = registerEditorMenuActions('robots', () => this.editorMenuActions());
         this.onProgramStart = () => { if (this.state.manualOverride) this.setManualOverride(false); };
         this.props.vm?.runtime?.on('PROJECT_RUN_START', this.onProgramStart);
         window.__bwSimLab = {
@@ -819,7 +821,37 @@ class SimLabPane extends React.Component {
         }
     }
 
+    componentDidUpdate (prevProps, prevState) {
+        // The main menus reflect commands, selection and UI toggles, never the
+        // physics frame/readings counters. Re-read guards at each menu click.
+        const fields = ['mode', 'status', 'programLoading', 'editorTick', 'selection', 'placing',
+            'gizmoMode', 'hidden', 'editGroup', 'pick', 'showPorts', 'showMotion', 'showSensors',
+            'readings', 'measurementsOpen', 'showStats', 'challengesOpen', 'drawer', 'paletteOpen',
+            'propsDocked', 'propsOpen', 'paneWidth', 'coarse', 'modelFile', 'view3d'];
+        if (prevProps.isVisible !== this.props.isVisible || prevProps.locale !== this.props.locale ||
+            fields.some(field => prevState[field] !== this.state[field])) notifyEditorMenuActions();
+    }
+
+    editorMenuActions () {
+        // An arena dock can mount this component too. Only the explicitly
+        // visible full Robot tab with the current undo surface owns commands.
+        if (!this._menuMounted || this.props.isVisible !== true || getUndoState().surface !== 'robots') return null;
+        const actions = {};
+        const add = (item, location, submenu = '') => {
+            if (!item || typeof item.run !== 'function' || item.id === 'undo' || item.id === 'redo') return;
+            actions[item.id] = {label: item.label, location, submenu, enabled: !item.disabled, run: item.run,
+                ...(item.kind === 'switch' ? {checked: item.pressed === true} : {})};
+        };
+        for (const group of this.toolbarGroups()) {
+            for (const item of group.items) add(item, 'edit', group.label);
+        }
+        for (const item of this.fileActions()) add(item, 'file');
+        return actions;
+    }
+
     componentWillUnmount () {
+        this._menuMounted = false;
+        if (this.unregisterMenu) this.unregisterMenu();
         this.props.vm?.runtime?.removeListener('PROJECT_RUN_START', this.onProgramStart);
         // Flush first: a Build-mode edit made just before handing the hub to the
         // arena must still be in the next save.
@@ -1444,11 +1476,11 @@ class SimLabPane extends React.Component {
             // The program the emulated hub runs: the Code tab's blocks, compiled by the SPIKE
             // arena's firmware compiler and uploaded before lockstep. A block it cannot express
             // is named in the pane; the route still opens, with no program (the robot stands).
-            const compiled = this.compileFirmware();
-            refusal = compiled.error;
+            // The route compiles once state.read shows the image's instruction ABI (ops 7/8 or not).
             try {
                 firmware = await this.lib.openFirmwareRoute({capabilities: this.renodeCapabilities(), hubState: this.hub,
-                    program: compiled.program, onProgramChange: control => this.onFirmwareProgram(control)});
+                    compile: abi => this.compileFirmware(abi), onProgramChange: control => this.onFirmwareProgram(control)});
+                refusal = firmware.compiled?.error ?? null;
             } catch (error) {
                 if (token !== this.loadToken) return;
                 // The packaged runtime has no lockstep/v1: not a failure, an unavailable route.
@@ -1587,9 +1619,12 @@ class SimLabPane extends React.Component {
         });
     }
 
-    /** The Code tab's program for the firmware route: {program} or {error} (which block, why). */
-    compileFirmware () {
-        return this.lib.compileRouteProgram(this.props.vm, {topology: 'default'});
+    /**
+     * The Code tab's program for the firmware route: {program} or {error} (which block, why),
+     * for the instruction ABI the open route's image advertised (1 until one has).
+     */
+    compileFirmware (abi = this.firmware?.abi ?? 1) {
+        return this.lib.compileRouteProgram(this.props.vm, {topology: 'default', abi});
     }
 
     /**
@@ -3029,18 +3064,23 @@ class SimLabPane extends React.Component {
         );
     }
 
-    /** "Open…" and "Save as" the three formats: a File menu on the bar, rows in the More menu. */
-    renderFile (inMenu) {
+    /** One set of file commands for the toolbar and the shared File menu. */
+    fileActions () {
         const A = this.ttext.actions;
         const T = this.text;
         const busy = this.state.status === 'loading' || this.state.programLoading;
         const model = this.editor ? this.editor.model : this.session?.model;
-        const rows = [
+        return [
             {id: 'open', label: A.open, title: T.importHelp, icon: 'open', disabled: busy || !this.lib, run: () => this.file.current.click()},
             ...SAVE_FORMATS.map(format => ({id: `save-${format}`, label: `${A.save} ${T.saveFormats[format]}`, title: T.saveHelp, icon: 'save',
                 disabled: busy || !model, run: () => this.saveAs(format)}))
         ];
-        const items = rows.map(item => <ToolButton key={item.id} item={item} T={this.ttext} coarse={this.state.coarse} inMenu />);
+    }
+
+    /** "Open…" and "Save as" the three formats: a File menu on the bar, rows in the More menu. */
+    renderFile (inMenu) {
+        const A = this.ttext.actions;
+        const items = this.fileActions().map(item => <ToolButton key={item.id} item={item} T={this.ttext} coarse={this.state.coarse} inMenu />);
         if (inMenu) return items;
         const s = toolStyles(this.state.coarse);
         return (
@@ -3415,8 +3455,6 @@ class SimLabPane extends React.Component {
                 {message && <div role="alert" data-testid="bw-sim-lab-message" style={{fontSize: 12, color: '#b91c1c'}}>{message}</div>}
                 {this.renderInfo()}
                 {this.renderBlockers()}
-                {simulate && this.session && !this.session.lockstep && programUsesBrickButtons(this.props.vm) &&
-                    this.renderBrickButtons()}
                 <div data-testid="bw-sim-lab-main" style={{display: 'flex', flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative'}}>
                     {this.renderPalettePanel()}
                     <div ref={this.viewWrap} style={{flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative', display: 'flex',
@@ -3486,7 +3524,7 @@ class SimLabPane extends React.Component {
 
                 </div>
                 {simulate && this.state.controlsOpen && !this.state.programLoading && this.session && !this.session.lockstep && this.renderMixer(button,
-                    programUsesBrickButtons(this.props.vm) || !this.api?.brickButtons()?.length ? null : this.renderBrickButtons())}
+                    !this.api?.brickButtons()?.length ? null : this.renderBrickButtons())}
                 {build && this.state.shortcuts && (
                     <SimLabShortcuts T={this.etext} wheelMode={this.state.wheelMode} onWheelMode={mode => this.setWheelMode(mode)}
                         mousePreset={this.state.mousePreset} onMousePreset={preset => this.setMousePreset(preset)}

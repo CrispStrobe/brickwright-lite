@@ -1,0 +1,17 @@
+{
+  "author": "CrispStrobe",
+  "license": "BSD-3-Clause",
+  "archive": "tipline-addon.zip",
+  "files": {
+    "models/tipline.ldr": "890b7a6da4b3db341d25a4637214e3b06f49d7f8bd97bcd17b7bbc98bdfaa3ef",
+    "programs/tipline.bw": "50513368569cb159fc7a24e6efc7f6444e8d6a00477b3eb8ff3560ff48b605d4",
+    "checks/judge-tipline.mjs": "f47b3d66acb7968b5493e9475cf1f7f423d08b73fdb70b175c21b5f431fa7694",
+    "checks/run-native.mjs": "62e9ea78f098b2423a00f008b1941ff82527a4df95ecdaa9f5bd6117286d7d5b",
+    "checks/contract.json": "fb4cf932ab02199d13806ce8f2c1598b91cca66dba3bbd727b1e4fc90f08d79d",
+    "lessons/tipline.en.json": "0aff825d2bd67cc304df6e3e0efa2bef48d3e16380918cecd6608f05d2bbc65c",
+    "lessons/tipline.de.json": "c0ef3f72a7d1d6bbfab04f39c898b313f96a368705f7d38c3572ffd2cd71b261",
+    "LICENSE.txt": "4b345db1e5260dce76a731425304606d2303cb6fc85216eab5176adc79acfb52"
+  },
+  "adaptation": "Original source retained; trusted judge uses repository-relative imports. Qualification runner records current source and exposes physical disconnection/cadence inputs without changing controller behavior.",
+  "archiveSha256": "a639c17e60dbb5e0c58b26d851f7970c33d4074b842f219a607b1ddb655f1d99"
+}

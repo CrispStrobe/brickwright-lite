@@ -154,9 +154,9 @@ const F5_SOURCES = {
     'interval hat of a cloned sprite': [
         'let iceSprite: Sprite = null',
         'game.onUpdateInterval(1000, function () {',
-        // Art from an extension package we do not carry keeps the older
-        // cloned-sprite translation (corpus arcade-a03d93d1…).
-        '    iceSprite = sprites.create(lab2imgs.icecube, SpriteKind.Enemy)',
+        // Art computed by a call keeps the older cloned-sprite translation. (A plain
+        // named image we do not carry is created natively with a stand-in instead.)
+        '    iceSprite = sprites.create(pickArt(2), SpriteKind.Enemy)',
         '    iceSprite.setPosition(randint(8, 152), 0)',
         '})'
     ].join('\n'),
@@ -272,7 +272,7 @@ test('Arcade maths keeps every argument both ways (min/max/pow kept only the fir
 });
 
 // ── What Lite's own export carries comes back as itself (task F8) ───────────
-test('stop blocks and not survive export and re-import, without the run-token machinery', {todo:"other export/roundtrip regression \u2014 see docs/ARCADE-888-OPEN-FAILURES.md"}, () => {
+test('stop blocks and not survive export and re-import, without the run-token machinery', () => {
     const src = [
         'DEVICE ARCADE',
         'SPRITE Game:',
@@ -296,6 +296,24 @@ test('stop blocks and not survive export and re-import, without the run-token ma
     assert.match(back.code, /^\s*stop other scripts in sprite$/m);
     assert.match(back.code, /arcade repeat while compare value \(Game_n\) op "<" with \(\(0 \+ \(10\)\)\)/);
     assert.doesNotMatch(back.code, /op "===" with \(\(compare value \(1\) op "<" with \(0\)\)\)/, 'a condition came back as a value comparison');
+});
+
+// The lift accepts only the exporter's own sprite prologue. Any other Sprite
+// route or a prologue that can observe the stop storage keeps the helpers.
+test('stop machinery stays unlifted when the sprite prologue is not the exporter recipe', () => {
+    const src = ['DEVICE ARCADE', 'SPRITE Game:', 'WHEN flag clicked:', '  set n to 0', '  REPEAT UNTIL not (n < 10):',
+        '    change n by 1', '  stop other scripts in sprite', 'WHEN flag clicked:', '  FOREVER:', '    change m by 1', ''].join('\n');
+    const {files} = exportOf(src);
+    const position = /GameSprite\.setPosition\([^\n]*\)/;
+    assert.match(files['main.ts'], position);
+    for (const edit of [
+        ts => ts.replace(position, 'GameSprite.setPosition(_tokens, 0)'),
+        ts => ts.replace(position, 'GameSprite.setPosition(info.life(), 0)'),
+        ts => ts.replace(position, m => m + '\nlet Foe = sprites.create(img`\n    5\n`, SpriteKind.Enemy)'),
+        ts => ts.replace(position, m => m + '\nGameSprite.x = _stopMark')]) {
+        const back = importProjectFiles({...files, 'main.ts': edit(files['main.ts'])}, {target: 'arcade', name: 'rt'});
+        assert.match(back.code, /_tok|_stopMark|_som_/, 'a foreign prologue must not lift the stop machinery');
+    }
 });
 
 // These authored controls use actual PXT input, not the unresolved lab2imgs
@@ -357,7 +375,7 @@ test('interval sprite creation and named image arrays execute through actual aut
 });
 
 
-test('exported stock stop-other and stop-all retain actual native lifecycle behavior', {todo:"procedure constraint producer not yet proven \u2014 see docs/ARCADE-888-OPEN-FAILURES.md",skip, timeout: 300000}, async () => {
+test('exported stock stop-other and stop-all retain actual native lifecycle behavior', {skip, timeout: 300000}, async () => {
     const src = `DEVICE ARCADE
 SPRITE Game:
 WHEN flag clicked:
@@ -376,4 +394,108 @@ WHEN flag clicked:
     const exported = exportOf(src);
     assert.deepEqual(exported.unsupported, []);
     await checkAuthoredRoutes(exported.files, {n: 10, after: 0}, {duration: 400, originalPrefix: 'Game_', requireStopped: true});
+});
+
+// Second export of a reimported program: the start script starts each former
+// flag script as an `arcade run parallel` handler. In original PXT (the first
+// export) every flag script takes its own run token, so `stop other scripts`
+// keeps only the run that issued it. A handler that borrowed the start script's
+// token would be kept as well and go on counting (original 5, borrowed 15/16).
+const STOP_OTHER_ONLY = `DEVICE ARCADE
+SPRITE Game:
+WHEN flag clicked:
+  set n to 0
+  REPEAT UNTIL not (n < 5):
+    change n by 1
+  stop other scripts in sprite
+  set atStop to m
+  REPEAT UNTIL not (n < 15):
+    change n by 1
+  IF n > 100 THEN:
+    stop all
+  set later to m
+WHEN flag clicked:
+  FOREVER:
+    change m by 1
+`;
+async function secondExportOf (src) {
+    const first = exportOf(src);
+    assert.deepEqual(first.unsupported, []);
+    const imported = importProjectFiles(first.files, {target: 'arcade'});
+    assert.deepEqual(imported.unsupported, []);
+    const run = await runProgram(imported.code, {frames: 0, frameAuthority: 'timed', uploads: imported.costumes, storage: true});
+    try {
+        return {first, imported, second: projectToArcade(run.creator.project, {costumeSvg: (_t, c) => run.creator.assets.get(c.assetId)?.data ?? null})};
+    } finally { run.vm.quit(); clearStrayTimers(); }
+}
+const parallelBodies = ts => ts.split('control.runInParallel(function () {\n').slice(1);
+
+test('second export gives each reimported parallel handler its own run token, as original PXT does', {skip, timeout: 300000}, async () => {
+    const {first, imported, second} = await secondExportOf(STOP_OTHER_ONLY);
+    assert.match(imported.code, /arcade run parallel as "__bwParallel1"/);
+    assert.deepEqual(second.unsupported, []);
+    const want = {Game_n: 15};
+    const original = await runPxtArcade(first.files, {fakeClock: true, waitForGlobals: want});
+    assert.deepEqual([original.Game_atStop, original.Game_later], [5, 5], 'original PXT: stop other scripts ends the counter');
+    const back = await runPxtArcade(second.files, {fakeClock: true, waitForGlobals: want});
+    for (const key of ['Game_n', 'Game_atStop', 'Game_later', 'Game_m']) assert.equal(back[key], original[key], key);
+    // Mutation control: the same second export with the handlers' own tokens
+    // removed (borrowing the start script's) keeps the counter running.
+    let seen = 0;
+    const borrowed = second.files['main.ts'].replace(/control\.runInParallel\(function \(\) \{\n    const _t = _tok\(\)\n/g,
+        whole => seen++ ? 'control.runInParallel(function () {\n' : whole);
+    assert.notEqual(borrowed, second.files['main.ts']);
+    const mutant = await runPxtArcade({...second.files, 'main.ts': borrowed}, {fakeClock: true, waitForGlobals: want});
+    assert.notEqual(mutant.Game_later, original.Game_later, 'a borrowed token is observable');
+});
+
+test('only stop-carrying parallel handlers take a run token on second export', {skip, timeout: 300000}, async () => {
+    // Refusal control: without stop machinery no handler takes a token.
+    const plain = await secondExportOf('DEVICE ARCADE\nSPRITE Game:\nWHEN flag clicked:\n  set n to 1\nWHEN flag clicked:\n  FOREVER:\n    change m by 1\n');
+    assert.deepEqual(plain.second.unsupported, []);
+    assert.doesNotMatch(plain.second.files['main.ts'], /_tok\(\)/);
+    const stopped = await secondExportOf(STOP_OTHER_ONLY);
+    const bodies = parallelBodies(stopped.second.files['main.ts']);
+    assert.equal(bodies.length, 3, 'start script plus two handlers');
+    for (const body of bodies) assert.match(body, /^    const _t = _tok\(\)\n/);
+});
+
+// The second export writes the sprite prologue inside the start script as
+// `GameSprite = null` / `GameSprite = sprites.create(...)` after a root
+// `let GameSprite: Sprite`. The lift accepts exactly that recipe; every near
+// miss below keeps the run-token helpers as user code.
+test('stop machinery lifts from the exporter null prologue and only from that exact form', {timeout: 300000}, async () => {
+    const {second} = await secondExportOf(STOP_OTHER_ONLY);
+    const ts = second.files['main.ts'];
+    const pair = /( {4})GameSprite = null\n {4}(GameSprite = sprites\.create\(img`[^`]*`, SpriteKind\.Player\))\n( {4}GameSprite\.setPosition\([^\n]*\))\n/;
+    assert.match(ts, /^let GameSprite: Sprite$/m);
+    assert.match(ts, pair);
+    const lifted = importProjectFiles(second.files, {target: 'arcade', name: 'rt'});
+    assert.deepEqual(lifted.unsupported, []);
+    assert.doesNotMatch(lifted.code, /_tok|_dead|_stopAll|_stopMark|_som_|_sok_/, lifted.code);
+    assert.match(lifted.code, /^\s*stop all$/m);
+    assert.match(lifted.code, /^\s*stop other scripts in sprite$/m);
+    const nearMisses = {
+        'statement between null and create': s => s.replace(pair, (m, i, c, p) => `${i}GameSprite = null\n${i}info.setScore(1)\n${i}${c}\n${p}\n`),
+        'create without the null reset': s => s.replace(pair, (m, i, c, p) => `${i}${c}\n${p}\n`),
+        'reset to undefined instead of null': s => s.replace(pair, (m, i, c, p) => `${i}GameSprite = undefined\n${i}${c}\n${p}\n`),
+        'initialized root declaration': s => s.replace(/^let GameSprite: Sprite$/m, 'let GameSprite: Sprite = null'),
+        'root declaration of another type': s => s.replace(/^let GameSprite: Sprite$/m, 'let GameSprite: any'),
+        'pair in a nested block': s => s.replace(pair, (m, i, c, p) => `${i}if (Game_n == 0) {\n${i}GameSprite = null\n${i}${c}\n${i}}\n${p}\n`),
+        'unrelated assignment between null and create': s => s.replace(pair, (m, i, c, p) => `${i}GameSprite = null\n${i}Game_m = (0 + 0)\n${i}${c}\n${p}\n`),
+        'position reads a foreign value': s => s.replace(pair, (m, i, c) => `${i}GameSprite = null\n${i}${c}\n${i}GameSprite.setPosition(info.life(), 0)\n`),
+        'pair in a root update handler': s => s.replace(pair, '') + `game.onUpdate(function () {\n${ts.match(pair)[0]}})\n`,
+        'position reads the stop storage': s => s.replace(pair, (m, i, c) => `${i}GameSprite = null\n${i}${c}\n${i}GameSprite.setPosition(_tokens, 0)\n`),
+        'second creation outside the recipe': s => s.replace(pair, m => `${m}    GameSprite = sprites.create(img\`\n    5\n\`, SpriteKind.Enemy)\n`),
+        'receiver is not the declared prologue sprite': s => s.replace(/^let GameSprite: Sprite$/m, 'let GameSprite: Sprite\nlet OtherSprite: Sprite')
+            .replace(pair, (m, i, c, p) => `${i}OtherSprite = null\n${i}${c}\n${p}\n`),
+        'pair inside a nested parallel handler': s => s.replace(pair, '').replace(/(control\.runInParallel\(function \(\) \{\n {4}const _t = _tok\(\)\n)([\s\S]*?control\.runInParallel\(function \(\) \{\n {4}const _t = _tok\(\)\n)/,
+            (m, a, b) => a + b + ts.match(pair)[0])
+    };
+    for (const [name, edit] of Object.entries(nearMisses)) {
+        const edited = edit(ts);
+        assert.notEqual(edited, ts, name);
+        const back = importProjectFiles({...second.files, 'main.ts': edited}, {target: 'arcade', name: 'rt'});
+        assert.match(back.code, /_tok|_stopMark|_som_/, `${name}: a near-miss prologue must not lift the stop machinery`);
+    }
 });

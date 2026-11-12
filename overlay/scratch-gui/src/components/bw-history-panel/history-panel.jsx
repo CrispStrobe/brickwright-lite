@@ -8,7 +8,7 @@ import {subscribeUndoState} from '../../lib/global-undo.js';
 import {moveHistory, timeline} from '../../lib/bw-undo-coordinator.js';
 import {
     subscribeAutosave, writeSettings, listVersions, saveNow, restoreVersion, readVersion, deleteVersion,
-    chooseFolder, clearFolder, regrantFolder, folderPickerAvailable, fixedFolder
+    chooseFolder, clearFolder, regrantFolder, folderPickerAvailable, fixedFolder, isAndroidApp
 } from '../../lib/bw-autosave.js';
 import downloadBlob from '../../lib/download-blob';
 
@@ -19,6 +19,7 @@ const t = makeT({en: {
     where: 'Where', browser: 'In this browser (always)', folder: 'Also in folder: {name}',
     noFolder: 'No folder chosen', choose: 'Choose folder…', fixed: 'Also save into the app\'s Autosave folder (Files app)', change: 'Change folder…', forget: 'Stop using folder',
     regrant: 'Allow folder access again', folderUnsupported: 'This browser can only keep autosaves inside the browser. Use the desktop app or Chrome/Edge to also save into a folder.',
+    androidStorage: 'Autosaves stay inside this app. Download a saved version below to keep a file.',
     saveNow: 'Save version now', saving: 'Saving…', last: 'Last saved {time}', never: 'Not saved yet',
     list: 'Saved versions', empty: 'No versions yet.', restore: 'Restore', confirm: 'Replace current project?',
     download: 'Download', remove: 'Delete', restored: 'Version restored. The project before it was saved as a version.',
@@ -32,6 +33,7 @@ const t = makeT({en: {
     where: 'Speicherort', browser: 'In diesem Browser (immer)', folder: 'Zusätzlich im Ordner: {name}',
     noFolder: 'Kein Ordner gewählt', choose: 'Ordner wählen…', fixed: 'Zusätzlich im Autosave-Ordner der App speichern (Dateien-App)', change: 'Ordner ändern…', forget: 'Ordner nicht mehr verwenden',
     regrant: 'Ordnerzugriff erneut erlauben', folderUnsupported: 'Dieser Browser kann Autospeicherungen nur im Browser ablegen. Mit der Desktop-App oder Chrome/Edge auch in einem Ordner.',
+    androidStorage: 'Autospeicherungen bleiben in dieser App. Lade unten eine gespeicherte Version herunter, um eine Datei zu behalten.',
     saveNow: 'Version jetzt speichern', saving: 'Speichert…', last: 'Zuletzt gespeichert {time}', never: 'Noch nicht gespeichert',
     list: 'Gespeicherte Versionen', empty: 'Noch keine Versionen.', restore: 'Wiederherstellen', confirm: 'Aktuelles Projekt ersetzen?',
     download: 'Herunterladen', remove: 'Löschen', restored: 'Version wiederhergestellt. Der vorherige Stand wurde als Version gesichert.',
@@ -196,7 +198,7 @@ class HistoryPanel extends React.Component {
                         {folder && folder.kind === 'browser' && autosave.folderError ? <button type="button" style={button}
                             onClick={() => this.run(() => regrantFolder().then(() => ''))}>{t(L, 'regrant')}</button> : null}
                     </div>
-                </> : <span>{t(L, 'folderUnsupported')}</span>}
+                </> : <span>{t(L, isAndroidApp() ? 'androidStorage' : 'folderUnsupported')}</span>}
                 {autosave.folderError ? <span role="alert" style={{color: '#b91c1c'}}>{autosave.folderError}</span> : null}
             </div>
             <div style={row}>

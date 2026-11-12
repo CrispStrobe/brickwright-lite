@@ -106,7 +106,7 @@ function issuedSignal({publicationThrows=false}={}){
     try{Primitive.invoke(runtime,thread,container,operation,args,util,primitive);assert.fail('private raise must reject');}catch(error){signal=error;}
     assert.equal(Exceptions.diagnostic(runtime,signal)?.value,'owned');return {runtime,events,signal,owner};
 }
-function frameContext(runtime,error){const scene={};return {_runtime:runtime,_terrainEpoch:1,_terrainStopped:false,_dialogs:[],_state:()=>scene,_sceneFrames:new WeakMap(),_pendingSceneSeconds:new WeakMap(),
+function frameContext(runtime,error){const scene={};return {_runtime:runtime,_terrainEpoch:1,_terrainStopped:false,_dialogs:[],_state:()=>scene,_sceneFrames:new WeakMap(),_pendingSceneSeconds:new WeakMap(),_frameFaults:new WeakSet(),
     _runTerrainGenerator:run,_advanceFrameSteps:function*(){yield Promise.reject(error);}};}
 test('only actual successfully published same-runtime exception suppresses duplicate frame reporting',async()=>{
     const r=issuedSignal();try{assert.equal(r.events.length,1);assert.equal(Exceptions.reported(r.runtime,r.signal),true);await advance.call(frameContext(r.runtime,r.signal),0.02);assert.equal(r.events.length,1);}finally{r.owner.dispose();}

@@ -403,6 +403,889 @@
         "arm_near_outer_bush_front"
       ],
       "disconnectLaw": true
+    },
+    {
+      "id": "phasor-twin",
+      "judge": "stirling-quadrature-v1",
+      "parts": 63,
+      "ports": [
+        "A"
+      ],
+      "hubless": true,
+      "observeBase": "base_cross_60",
+      "coldMs": 500,
+      "timeLimitMs": 60000,
+      "afterMs": 500,
+      "frameMs": 20,
+      "frozenOutput": "pistonrod_B",
+      "disconnect": [
+        "conrod_B",
+        "wristpin_B"
+      ],
+      "disconnectInputDeg": 700,
+      "disconnectLaw": true
+    },
+    {
+      "id": "final-squeeze",
+      "judge": "knee-press-v1",
+      "parts": 168,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 60000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "platen_crossbar",
+      "disconnect": [
+        "passive_link"
+      ],
+      "disconnectInputDeg": 20,
+      "disconnectLoss": "batch-c"
+    },
+    {
+      "id": "high-select",
+      "judge": "max-select-v1",
+      "parts": 288,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 60000,
+      "afterMs": 500,
+      "frameMs": 10,
+      "frozenOutput": "bridge_spine_0",
+      "disconnect": [
+        "bridge_A_foot",
+        "bridge_A_foot_brick_-10",
+        "bridge_A_foot_brick_10",
+        "bridge_B_foot",
+        "bridge_B_foot_brick_-10",
+        "bridge_B_foot_brick_10"
+      ],
+      "disconnectInputDeg": 140,
+      "disconnectLoss": "batch-c"
+    },
+    {
+      "id": "tipline",
+      "judge": "tip-versus-slide-v1",
+      "parts": 174,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 2000,
+      "timeLimitMs": 65000,
+      "afterMs": 3000,
+      "frameMs": 16.666666666666668,
+      "frozenOutput": "right_load_base",
+      "disconnect": [
+        "deck_axle_left",
+        "deck_bush_left_130",
+        "deck_bush_left_170",
+        "deck_bush_left_220"
+      ],
+      "disconnectInputDeg": 20,
+      "disconnectLaw": true,
+      "secondFrameMs": 20
+    },
+    {
+      "id": "twistspan",
+      "judge": "bifilar-torsion-v1",
+      "parts": 107,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 2000,
+      "timeLimitMs": 43000,
+      "afterMs": 3000,
+      "frameMs": 16.666666666666668,
+      "frozenOutput": "payload_bar",
+      "disconnect": [
+        "drive_axle",
+        "drive_spacer_-460",
+        "drive_spacer_-440",
+        "drive_lower_retainer"
+      ],
+      "disconnectInputDeg": 15,
+      "disconnectLaw": true,
+      "secondFrameMs": 20
+    },
+    {
+      "id": "swayshift",
+      "judge": "timed-sway-cancellation-v1",
+      "parts": 204,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 2000,
+      "timeLimitMs": 30000,
+      "afterMs": 2000,
+      "frameMs": 16.666666666666668,
+      "frozenOutput": "pendulum_upper",
+      "disconnect": [
+        "transmission_motor"
+      ],
+      "disconnectInputDeg": 65,
+      "disconnectLaw": true,
+      "withSpike": true,
+      "secondFrameMs": 10
+    },
+    {
+      "id": "poise",
+      "judge": "roberval-balance-v1",
+      "parts": 159,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 70000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "left_weight",
+      "disconnect": [
+        "lower_bar"
+      ],
+      "disconnectInputDeg": 150,
+      "disconnectLoss": "batch-b"
+    },
+    {
+      "id": "bend-ripple",
+      "judge": "cardan-bend-v1",
+      "parts": 156,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 125000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "output_fork",
+      "disconnect": [
+        "output_fork"
+      ],
+      "disconnectInputDeg": 700,
+      "disconnectLoss": "batch-a"
+    },
+    {
+      "id": "offset-relay",
+      "judge": "variable-offset-relay-v1",
+      "parts": 456,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 110000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "output_beam_x",
+      "disconnect": [
+        "stage1_link_x_-1",
+        "stage1_link_x_1",
+        "stage1_link_y_-1",
+        "stage1_link_y_1"
+      ],
+      "disconnectInputDeg": 2500,
+      "disconnectLoss": "batch-a"
+    },
+    {
+      "id": "rack-decoder",
+      "judge": "rack-pinion-differential-v1",
+      "parts": 245,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 125000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "carrier_bearing",
+      "disconnect": [
+        "passive_pinion"
+      ],
+      "disconnectInputDeg": 100,
+      "disconnectLoss": "batch-a"
+    },
+    {
+      "id": "remote-pivot",
+      "judge": "double-parallelogram-remote-centre-v1",
+      "parts": 153,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 75000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "output_beam",
+      "disconnect": [
+        "distal_L"
+      ],
+      "disconnectInputDeg": 25,
+      "disconnectLoss": "batch-a"
+    },
+    {
+      "id": "schmidt-shift",
+      "judge": "schmidt-coupling-v1",
+      "parts": 170,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 90000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "output_frame",
+      "disconnect": [
+        "link_1_0",
+        "link_1_1",
+        "link_1_2"
+      ],
+      "disconnectInputDeg": 650,
+      "disconnectLoss": "batch-a"
+    },
+    {
+      "id": "equal-share",
+      "judge": "whippletree-share-v1",
+      "parts": 148,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 40000,
+      "afterMs": 500,
+      "frameMs": 10,
+      "withSpike": true,
+      "frozenOutput": "equalizer",
+      "disconnect": [
+        "right_back_rod"
+      ],
+      "disconnectInputDeg": 30,
+      "disconnectLoss": "batch-b"
+    },
+    {
+      "id": "stroke-shift",
+      "judge": "variable-crank-v1",
+      "parts": 295,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 90000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "output_marker",
+      "disconnect": [
+        "rod_near",
+        "rod_far"
+      ],
+      "disconnectInputDeg": 1000,
+      "disconnectLoss": "batch-b"
+    },
+    {
+      "id": "triad-table",
+      "judge": "planar-3rpr-v1",
+      "parts": 258,
+      "ports": [
+        "A",
+        "B",
+        "C"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 180000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "platform_frame",
+      "disconnect": [
+        "platform_axle_C"
+      ],
+      "disconnectInputDeg": 700,
+      "disconnectLoss": "batch-b",
+      "expectedIssues": [
+        {
+          "code": "locked-hinges",
+          "parts": [
+            "leg_body_cross_0_A",
+            "leg_body_cross_20_A",
+            "leg_body_pin_0_A",
+            "leg_body_pin_20_A"
+          ]
+        },
+        {
+          "code": "locked-hinges",
+          "parts": [
+            "leg_body_cross_0_B",
+            "leg_body_cross_20_B",
+            "leg_body_pin_0_B",
+            "leg_body_pin_20_B"
+          ]
+        },
+        {
+          "code": "locked-hinges",
+          "parts": [
+            "actuator_body_C",
+            "leg_body_pin_0_C",
+            "leg_body_pin_20_C"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kestrel-flapper",
+      "judge": "crank-rocker-v1",
+      "parts": 61,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 50000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "rocker",
+      "disconnect": [
+        "coupler"
+      ],
+      "disconnectInputDeg": 700,
+      "disconnectLoss": "batch-a"
+    },
+    {
+      "id": "meridian-linkage",
+      "judge": "peaucellier-inversor-v1",
+      "parts": 91,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 70000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "marker_output",
+      "disconnect": [
+        "cell_BQ"
+      ],
+      "disconnectInputDeg": 55,
+      "disconnectLoss": "batch-a"
+    },
+    {
+      "id": "lumen-iris",
+      "judge": "geared-iris-v1",
+      "parts": 146,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 30000,
+      "afterMs": 500,
+      "frameMs": 10,
+      "frozenOutput": "leaf_plate_3",
+      "disconnect": [
+        "ring_top"
+      ],
+      "disconnectInputDeg": 50,
+      "disconnectLoss": "batch-a"
+    },
+    {
+      "id": "tangent-table",
+      "judge": "tangent-table-v1",
+      "parts": 297,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 125000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "output_carriage",
+      "disconnect": [
+        "radial_sleeve"
+      ],
+      "disconnectInputDeg": 12,
+      "disconnectLoss": "batch-a"
+    },
+    {
+      "id": "afterturn",
+      "judge": "afterturn-shape-cycle-v1",
+      "parts": 296,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 70000,
+      "afterMs": 500,
+      "frameMs": 20,
+      "withSpike": true,
+      "frozenOutput": "hub",
+      "disconnect": [
+        "rod_left",
+        "rod_right"
+      ],
+      "disconnectInputDeg": 800,
+      "disconnectLaw": true,
+      "notRun": [
+        "per-model browser run (qualify-robot-lab-models --mode=full, chromium and webkit)",
+        "saved-project replay",
+        "export",
+        "manual controls"
+      ]
+    },
+    {
+      "id": "toggle-press",
+      "judge": "toggle-ram-v1",
+      "parts": 139,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 90000,
+      "afterMs": 2000,
+      "frameMs": 25,
+      "frozenOutput": "slider_cross",
+      "disconnect": [
+        "upper_toggle_UK"
+      ],
+      "disconnectInputDeg": 70,
+      "disconnectLoss": "nine-intake",
+      "expectedIssues": [
+        {
+          "code": "locked-hinges",
+          "parts": [
+            "pivot_bridge",
+            "pivot_bridge_axle_20",
+            "pivot_bridge_axle_220"
+          ]
+        }
+      ],
+      "notRun": [
+        "per-model browser run (qualify-robot-lab-models --mode=full, chromium and webkit)",
+        "saved-project replay",
+        "export",
+        "manual controls"
+      ]
+    },
+    {
+      "id": "footfall",
+      "judge": "twelve-link-leg-v1",
+      "parts": 119,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 90000,
+      "afterMs": 2000,
+      "frameMs": 25,
+      "frozenOutput": "lower_triangle_h_FG",
+      "disconnect": [
+        "blue_transfer_f_DF"
+      ],
+      "disconnectInputDeg": 340,
+      "disconnectLoss": "nine-intake",
+      "notRun": [
+        "per-model browser run (qualify-robot-lab-models --mode=full, chromium and webkit)",
+        "saved-project replay",
+        "export",
+        "manual controls"
+      ]
+    },
+    {
+      "id": "phasekeeper",
+      "judge": "double-cardan-v1",
+      "parts": 79,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 90000,
+      "afterMs": 2000,
+      "frameMs": 25,
+      "frozenOutput": "output_pointer",
+      "disconnect": [
+        "joint_2_intermediate_yoke"
+      ],
+      "disconnectInputDeg": 340,
+      "disconnectLoss": "nine-intake",
+      "notRun": [
+        "per-model browser run (qualify-robot-lab-models --mode=full, chromium and webkit)",
+        "saved-project replay",
+        "export",
+        "manual controls"
+      ]
+    },
+    {
+      "id": "vectorsum",
+      "judge": "open-differential-v1",
+      "parts": 122,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 90000,
+      "afterMs": 2000,
+      "frameMs": 25,
+      "frozenOutput": "output_pointer",
+      "disconnect": [
+        "satellite_1",
+        "satellite_2",
+        "satellite_3"
+      ],
+      "disconnectInputDeg": 170,
+      "disconnectLoss": "nine-intake",
+      "notRun": [
+        "per-model browser run (qualify-robot-lab-models --mode=full, chromium and webkit)",
+        "saved-project replay",
+        "export",
+        "manual controls"
+      ]
+    },
+    {
+      "id": "paired-door-sync",
+      "judge": "opposed-rack-pinion-v1",
+      "parts": 88,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 60000,
+      "afterMs": 500,
+      "frameMs": 20,
+      "frozenOutput": "rack_front",
+      "disconnect": [
+        "pinion"
+      ],
+      "disconnectInputDeg": 140,
+      "disconnectLoss": "p6"
+    },
+    {
+      "id": "helixgate",
+      "judge": "worm-reduction-v1",
+      "parts": 20,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 90000,
+      "afterMs": 2000,
+      "frameMs": 25,
+      "frozenOutput": "gate_arm",
+      "disconnect": [
+        "worm_1start"
+      ],
+      "disconnectInputDeg": 717,
+      "disconnectLoss": "nine-intake"
+    },
+    {
+      "id": "looprelay",
+      "judge": "chain-reversal-v1",
+      "parts": 54,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 90000,
+      "afterMs": 2000,
+      "frameMs": 25,
+      "frozenOutput": "indicator_hand",
+      "disconnect": [
+        "chain_input16"
+      ],
+      "disconnectInputDeg": 178,
+      "disconnectLoss": "nine-intake",
+      "notRun": [
+        "per-model browser run (qualify-robot-lab-models --mode=full, chromium and webkit)",
+        "saved-project replay",
+        "export",
+        "manual controls"
+      ]
+    },
+    {
+      "id": "paritydial",
+      "judge": "parity-dials-v1",
+      "parts": 31,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 90000,
+      "afterMs": 2000,
+      "frameMs": 25,
+      "frozenOutput": "dial_left",
+      "disconnect": [
+        "gear_drive"
+      ],
+      "disconnectInputDeg": 88,
+      "disconnectLoss": "nine-intake",
+      "notRun": [
+        "per-model browser run (qualify-robot-lab-models --mode=full, chromium and webkit)",
+        "saved-project replay",
+        "export",
+        "manual controls"
+      ]
+    },
+    {
+      "id": "counterslide",
+      "judge": "opposed-racks-v1",
+      "parts": 44,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 90000,
+      "afterMs": 2000,
+      "frameMs": 25,
+      "frozenOutput": "rack_low",
+      "disconnect": [
+        "drive_pinion_8t"
+      ],
+      "disconnectInputDeg": 98,
+      "disconnectLoss": "nine-intake",
+      "notRun": [
+        "per-model browser run (qualify-robot-lab-models --mode=full, chromium and webkit)",
+        "saved-project replay",
+        "export",
+        "manual controls"
+      ]
+    },
+    {
+      "id": "rimrun",
+      "judge": "rolling-inertia-v1",
+      "observeContacts": true,
+      "parts": 510,
+      "ports": [
+        "A"
+      ],
+      "withSpike": true,
+      "coldMs": 500,
+      "timeLimitMs": 16000,
+      "afterMs": 3000,
+      "frameMs": 20,
+      "frozenOutput": "left_shaft_-1",
+      "disconnect": [
+        "left_ballast_-1_shaft",
+        "left_ballast_-1_collar_-1",
+        "left_ballast_-1_key_-1",
+        "left_ballast_-1_pin_-1",
+        "left_ballast_-1_brick_-1",
+        "left_ballast_-1_collar_1",
+        "left_ballast_-1_key_1",
+        "left_ballast_-1_pin_1",
+        "left_ballast_-1_brick_1",
+        "left_ballast_-1_plate_0",
+        "left_ballast_-1_plate_1",
+        "left_ballast_1_shaft",
+        "left_ballast_1_collar_-1",
+        "left_ballast_1_key_-1",
+        "left_ballast_1_pin_-1",
+        "left_ballast_1_brick_-1",
+        "left_ballast_1_collar_1",
+        "left_ballast_1_key_1",
+        "left_ballast_1_pin_1",
+        "left_ballast_1_brick_1",
+        "left_ballast_1_plate_0",
+        "left_ballast_1_plate_1",
+        "right_ballast_-1_shaft",
+        "right_ballast_-1_collar_-1",
+        "right_ballast_-1_key_-1",
+        "right_ballast_-1_pin_-1",
+        "right_ballast_-1_brick_-1",
+        "right_ballast_-1_collar_1",
+        "right_ballast_-1_key_1",
+        "right_ballast_-1_pin_1",
+        "right_ballast_-1_brick_1",
+        "right_ballast_-1_plate_0",
+        "right_ballast_-1_plate_1",
+        "right_ballast_1_shaft",
+        "right_ballast_1_collar_-1",
+        "right_ballast_1_key_-1",
+        "right_ballast_1_pin_-1",
+        "right_ballast_1_brick_-1",
+        "right_ballast_1_collar_1",
+        "right_ballast_1_key_1",
+        "right_ballast_1_pin_1",
+        "right_ballast_1_brick_1",
+        "right_ballast_1_plate_0",
+        "right_ballast_1_plate_1"
+      ],
+      "disconnectInputDeg": 95,
+      "disconnectLoss": "rimrun",
+      "notRun": [
+        "webkit browser run (the browser gate, shard robotaddon14, runs chromium)"
+      ]
+    },
+    {
+      "id": "pointweaver",
+      "judge": "five-bar-v1",
+      "parts": 116,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 90000,
+      "afterMs": 2000,
+      "frameMs": 25,
+      "frozenOutput": "endpoint_marker",
+      "disconnect": [
+        "left_forearm"
+      ],
+      "disconnectInputDeg": 30,
+      "disconnectLoss": "nine-intake",
+      "notRun": [
+        "per-model browser run (qualify-robot-lab-models --mode=full, chromium and webkit)",
+        "saved-project replay",
+        "export",
+        "manual controls"
+      ]
+    },
+    {
+      "id": "evenhand",
+      "judge": "counterbalance-holding-torque-v1",
+      "parts": 97,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 60000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "withSpike": true,
+      "observeDynamics": true,
+      "frozenOutput": "forearm",
+      "disconnect": [
+        "forearm_weight_pin_-1_-20"
+      ],
+      "disconnectInputDeg": 19,
+      "disconnectLoss": "p6",
+      "notRun": [
+        "webkit browser run (the browser gate, shard robotaddon13, runs chromium)"
+      ]
+    },
+    {
+      "id": "obliquity-orrery",
+      "judge": "obliquity-tilt-v1",
+      "parts": 59,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 90000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "earth",
+      "disconnect": [
+        "crank_pin_A"
+      ],
+      "disconnectInputDeg": 85,
+      "disconnectLoss": "obliquity",
+      "expectedIssues": [
+        {
+          "code": "locked-hinges",
+          "parts": [
+            "beam_middle",
+            "post_mid_low_e",
+            "post_mid_low_w"
+          ]
+        },
+        {
+          "code": "locked-hinges",
+          "parts": [
+            "beam_top",
+            "bearing_upper",
+            "post_top_e",
+            "post_top_w"
+          ]
+        },
+        {
+          "code": "locked-hinges",
+          "parts": [
+            "hub",
+            "hub_pin_front",
+            "hub_pin_rear"
+          ]
+        },
+        {
+          "code": "locked-hinges",
+          "parts": [
+            "motor_top_beam",
+            "post_top_e",
+            "post_top_w"
+          ]
+        }
+      ],
+      "notRun": [
+        "webkit browser run (the browser gate, shard robotaddon15, runs chromium)"
+      ]
+    },
+    {
+      "id": "cadence-geneva",
+      "judge": "geneva-index-v1",
+      "parts": 200,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 180000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "star_center",
+      "disconnect": [
+        "driver_pin_axle"
+      ],
+      "disconnectInputDeg": 4000,
+      "disconnectLoss": "r2",
+      "notRun": [
+        "webkit browser run (the browser gate, shard robotaddon16, runs chromium)"
+      ]
+    },
+    {
+      "id": "helios-transmission",
+      "judge": "willis-epicyclic-v1",
+      "parts": 156,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 90000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "sun_output",
+      "disconnect": [
+        "control_gear"
+      ],
+      "disconnectInputDeg": 800,
+      "disconnectLoss": "r2",
+      "notRun": [
+        "webkit browser run (the browser gate, shard robotaddon18, runs chromium)"
+      ]
+    },
+    {
+      "id": "orion-cardan",
+      "judge": "double-cardan-offset-v1",
+      "parts": 118,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 150000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "shaft_output",
+      "disconnect": [
+        "fork_middle_far"
+      ],
+      "disconnectInputDeg": 3600,
+      "disconnectLoss": "r2",
+      "notRun": [
+        "webkit browser run (the browser gate, shard robotaddon19, runs chromium)"
+      ]
     }
   ]
 }

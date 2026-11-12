@@ -89,6 +89,23 @@ BUNDLED in the mobile app, because the mobile build runs `vercel-build.sh`.
   release `labwired-wasm-41119903-r2` with both artefacts' sha256 pinned in the
   sync script and gated by `test/fetch-pinning.test.mjs`.
 
+### esp32s3-rom -- Apache-2.0
+
+The explicit ESP32-S3 merged-flash target loads the chip's IROM and DROM
+windows, extracted from Espressif's published `esp32s3_rev0_rom.elf`.
+Copyright Espressif Systems (Shanghai) Co., Ltd. These ROM objects are
+licensed separately from the LabWired emulator.
+
+- Upstream distribution and terms: https://github.com/espressif/esp-rom-elfs
+- The pinned bw-board firmware-boot manifest records the exact LabWired
+  extraction commit, byte counts and SHA-256 digests. `scripts/sync-esp32s3-roms.mjs`
+  verifies these identities before writing `static/esp32s3/esp32s3_rom.bin`
+  and `static/esp32s3/esp32s3_drom.bin`. The browser verifies the same digests.
+- The flat files change the object container from ELF to its two addressed
+  ROM windows; their payload is the upstream ROM. No ROM source is claimed.
+- Full Apache License 2.0 and attribution accompany the app at
+  `static/licenses/esp32s3-rom.Apache-2.0.txt`.
+
 ### 8086 example programs (Amey Thakur / Mega Satish) -- MIT
 
 The six 8086 starter programs the ASM tab offers are FILES FROM ANOTHER
@@ -1798,8 +1815,8 @@ with the app and reachable from the About dialog offline.
 
 ### MakeCode extensions (vendored source) — MIT
 
-Three third-party MakeCode extensions ("packages") that MakeCode's own micro:bit
-documentation projects depend on, vendored as SOURCE so a project naming one
+Fourteen third-party MakeCode extensions ("packages") that MakeCode's own micro:bit
+documentation projects, the surveyed Arcade programs and the approved-extension list depend on, vendored as SOURCE so a project naming one
 compiles and simulates offline: `scripts/sync-makecode-extensions.mjs` fetches each
 at an exact commit, checks every file against the git blob sha in that commit's
 tree and the LICENSE against the pin (anything not redistributable is refused by
@@ -1823,6 +1840,28 @@ compiler when a project's pxt.json names them. Unmodified:
   Microsoft Corporation. Its `main.ts` is also transpiled unchanged into
   `overlay/scratch-vm/src/extensions/crispstrobe/arcade/character-animations-pxt.js`
   (`scripts/generate-arcade-character-animations.mjs`) for converted Arcade projects.
+- **pxt-ws2812b** v0.1.1 — `microsoft/pxt-ws2812b` at
+  `725d33a65345c50c54240eb09b91f5ecc2805af8`. MIT, Copyright (c) Microsoft Corporation. Vendored for: dependency of pxt-neopixel.
+- **pxt-neopixel** v0.7.6 — `microsoft/pxt-neopixel` at
+  `9ef28dd8ec9e72548391746025a2c252fc8f9998`. MIT, Copyright (c) Microsoft Corporation. Vendored for: MakeCode approved list, preferred (Lights and Display); namespace neopixel.
+- **pxt-sonar** v0.0.6 — `microsoft/pxt-sonar` at
+  `d72f6d0733c1903b7097e055d6a12d32105365bb`. MIT, Copyright (c) Microsoft Corporation. Vendored for: MakeCode approved list, preferred (Science); namespace sonar.
+- **pxt-status-bar** v0.4.1 — `jwunderl/pxt-status-bar` at
+  `efcd376357ae7215e65616a11283e03bceaa7fa2`, for Arcade projects. MIT, Copyright (c) 2020 Joey Wunderlich. Vendored for: dependency of arcade-carnival.
+- **arcade-text** v1.3.0 — `microsoft/arcade-text` at
+  `fa2439314c6633943666a763fdae32a5c67a9ae8`, for Arcade projects. MIT, Copyright (c)
+  Microsoft Corporation. Vendored for: dependency of arcade-carnival (its sources are also
+  carried natively, see the text-sprite notice below).
+- **arcade-sprite-util** v0.3.1 — `jwunderl/arcade-sprite-util` at
+  `df4991a9793a0fff092225a67d0a81936b75d7e1`, for Arcade projects. MIT, Copyright (c) 2020 Joey Wunderlich. Vendored for: dependency of arcade-carnival.
+- **arcade-carnival** v0.0.7 — `microsoft/arcade-carnival` at
+  `915caca4a2d83a7071df59407a9987992c083750`, for Arcade projects. MIT, Copyright (c) Microsoft Corporation. Vendored for: 4 Arcade programs of the surveyed corpus (namespace carnival).
+- **pxt-settings-blocks** v1.0.0 — `microsoft/pxt-settings-blocks` at
+  `068d05d80a063b04d373bf9b411af45201d7ce7a`, for Arcade projects. MIT, Copyright (c) Microsoft Corporation.
+. Vendored for: 1 Arcade program of the surveyed corpus (namespace blockSettings); approved list, preferred.
+- **arcade-sprite-data** v0.2.1 — `microsoft/arcade-sprite-data` at
+  `61a8caa503dcd83a192d935f6251f61013d60848`, for Arcade projects. MIT, Copyright (c) Microsoft Corporation.
+. Vendored for: MakeCode approved list, preferred (Sprites, Gameplay).
 
 Full texts: `overlay/scratch-gui/static/licenses/makecode-extensions.MIT.txt`,
 shipped with the app and reachable from the About dialog offline.
@@ -2397,10 +2436,24 @@ header, is retained in `overlay/scratch-vm/src/extensions/crispstrobe/arrays/ind
 as a JSON source string; the host adapter is separate.
 
 The exact selected source is
-https://github.com/CrispStrobe/extensions/blob/4db2813d366af8a110fc79599afb55d1cd42d8df/extensions/CrispStrobe/arrays.js.
+https://github.com/CrispStrobe/extensions/blob/035ab22a4d946fe5b8e367013caf898cd763e5f4/extensions/CrispStrobe/arrays.js.
 `vendor-pins.json` and the generated per-file bundle receipt record the commit
 and content hash. This scopes the adoption to Arrays; it does not advance other
 extension sources. MPL-2.0 text: https://www.mozilla.org/en-US/MPL/2.0/.
+
+## microbitplus — MPL-2.0
+
+The scoped `microbitplus` pin selects the micro:bit+ extension authored by
+CrispStrobe from https://github.com/CrispStrobe/extensions. Its declared
+license is MPL-2.0. The complete source, including its original author/license
+header, is retained in `overlay/scratch-vm/src/extensions/crispstrobe/microbitplus/index.js`
+as a JSON source string; the host adapter is separate.
+
+The exact selected source is
+https://github.com/CrispStrobe/extensions/blob/3dc133320c2b9c3725bfc69b0f2d2406c4e8900f/extensions/CrispStrobe/microbitplus.js.
+`vendor-pins.json` and the generated per-file bundle receipt record the commit
+and content hash. This scopes the adoption to micro:bit+; it does not advance
+other extension sources. MPL-2.0 text: https://www.mozilla.org/en-US/MPL/2.0/.
 
 ## circuitplayground — MPL-2.0 (incorporating MIT-licensed pxt-adafruit code)
 

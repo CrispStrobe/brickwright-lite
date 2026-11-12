@@ -1,5 +1,16 @@
 # Arcade partial closure plan
 
+## Recursive results: no application credit before the full journey
+
+The [new recursive Number scope](../lanes/2026-10-22-arcade-recursive-number-normal-results.md)
+is merged. Its [qualification matrix](ARCADE-NUMERIC-RECURSIVE-RESULTS.md) separates
+complete source controls from actual native/SDK execution, portable project
+roundtrips and connected editor/graphics acceptance. Keep the original ordered
+application denominator and the historical 36 partials until a complete new
+assessment supplies genuine outcomes. A Number normal-result theorem is not a
+termination claim or a reason to suppress a Sprite/Array failure elsewhere.
+
+
 ## Fresh-agent entry point
 
 Read this plan, [the handoff](ARCADE-AGENT-HANDOFF.md),

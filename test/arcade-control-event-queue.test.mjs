@@ -65,3 +65,25 @@ test('raising snapshots existing queues without creating an event for a listener
  const h=harness(),trace=[];h.bus.raise(790,1);h.bus.register(790,1,()=>trace.push('L'));await h.flush();assert.equal(trace.join(''),'');
  h.bus.register(0,0,()=>trace.push('G'));h.bus.raise(791,1);h.bus.register(791,1,()=>trace.push('E'));await h.flush();assert.equal(trace.join(''),'G');
 });
+
+test('a handler whose fiber died keeps its queue locked; other queues and the registration survive',async()=>{
+ const tasks=[],errors=[],trace=[],died=Object.freeze({});
+ const bus=createEvents({dispatch:(fn,payload)=>fn(payload),enqueue:work=>tasks.push(work),onError:e=>errors.push(e),died:value=>value===died});
+ const flush=async()=>{while(tasks.length)await tasks.shift()();};
+ let first=true;
+ bus.register(5,1,()=>{trace.push('A');if(first){first=false;return died;}});
+ bus.register(5,2,()=>trace.push('B'));
+ for(let i=0;i<3;i++){bus.raise(5,1);bus.raise(5,2);await flush();}
+ // PXT EventQueue.poke never reaches `lock = false`: A ran once, B every time.
+ assert.equal(trace.join(''),'ABBB');
+ // Replacing the handler while locked is logged, never applied.
+ bus.register(5,1,()=>trace.push('R'));bus.raise(5,1);await flush();
+ assert.equal(trace.join(''),'ABBB');assert.deepEqual(errors,[]);
+});
+test('a handler that returns normally leaves its queue unlocked',async()=>{
+ const tasks=[],trace=[],died=Object.freeze({});
+ const bus=createEvents({dispatch:(fn,payload)=>fn(payload),enqueue:work=>tasks.push(work),died:value=>value===died});
+ bus.register(5,1,()=>{trace.push('A');return undefined;});
+ for(let i=0;i<3;i++){bus.raise(5,1);while(tasks.length)await tasks.shift()();}
+ assert.equal(trace.join(''),'AAA');
+});

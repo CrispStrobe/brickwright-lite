@@ -281,7 +281,7 @@
 0 !BW ID anchor_axle
 1 0 280 100 -20 0 1 0 1 0 0 0 0 -1 3706.dat
 0 !BW ID anchor_spacer
-1 71 280 80 -20 1 0 0 0 0 1 0 -1 0 3713.dat
+1 71 280 80 -20 1 0 0 0 0 1 0 -1 0 4265c.dat
 0 !BW ID anchor_retainer_45
 1 71 280 45 -20 1 0 0 0 0 1 0 -1 0 4265c.dat
 0 !BW ID anchor_retainer_155
@@ -347,7 +347,7 @@
 0 !BW ID platen_key_pin_20
 1 0 122.567110899036 -50 20 0 1 0 1 0 0 0 0 -1 2780.dat
 0 !BW ID platen_axle
-1 0 122.567110899036 0 0 0 1 0 1 0 0 0 0 -1 3707.dat
+1 0 122.567110899036 10 0 0 1 0 1 0 0 0 0 -1 60485.dat
 0 !BW ID platen_spacer_0
 1 71 122.567110899036 0 0 1 0 0 0 0 1 0 -1 0 3713.dat
 0 !BW ID platen_spacer_20
@@ -356,12 +356,12 @@
 1 71 122.567110899036 40 0 1 0 0 0 0 1 0 -1 0 3713.dat
 0 !BW ID platen_retainer_-75
 1 71 122.567110899036 -75 0 1 0 0 0 0 1 0 -1 0 4265c.dat
-0 !BW ID platen_retainer_75
-1 71 122.567110899036 75 0 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID platen_retainer_80
+1 71 122.567110899036 80 0 1 0 0 0 0 1 0 -1 0 4265c.dat
 0 STEP
 0 // Assembly group 9
 0 !BW ID shock_cylinder
-1 14 240 60 0 0 -1 0 0 0 -1 1 0 0 2909.dat
+1 14 240 62.5 0 0 -1 0 0 0 -1 1 0 0 2909.dat
 0 !BW ID shock_rod
-1 71 122.567110899036 60 0 0 -1 0 0 0 -1 1 0 0 2910.dat
+1 71 122.567110899036 62.5 0 0 -1 0 0 0 -1 1 0 0 2910.dat
 0 NOFILE

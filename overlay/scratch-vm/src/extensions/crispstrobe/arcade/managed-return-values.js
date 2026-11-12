@@ -1,5 +1,6 @@
 const primitiveOwner=require('../../../util/bw-primitive-owner');
 const currentNumberInput=require('./current-number-input');
+const graphVersion=require('../../../util/bw-graph-version');
 const semantic=block=>JSON.stringify([block.opcode,block.fields,block.inputs,block.mutation,block.next,block.parent,block.topLevel,block.shadow]);
 
 // A physical numeric shadow has a String carrier in stock Scratch. Preserve
@@ -8,11 +9,18 @@ const semantic=block=>JSON.stringify([block.opcode,block.fields,block.inputs,blo
 module.exports=function createManagedReturnValues(runtime) {
     const bound=!!runtime&&typeof runtime.on==='function'&&Array.isArray(runtime.targets);
     let records=new WeakMap(),active=false,disposed=false;
+    // A procedure body snapshot is reused while the graph version is unchanged.
+    const bodies=new WeakMap();
     const body=(target,definition)=>{
+        const container=target.blocks;graphVersion.track(container);
+        const version=graphVersion.versionOf(container);
+        if(version>=0){const cached=bodies.get(container)?.get(definition);if(cached&&cached.version===version)return cached.nodes;}
         const nodes=new Map();
         const visit=id=>{if(!id||nodes.has(id))return;const block=target.blocks.getBlock(id);if(!block)return;
             nodes.set(id,{block,semantic:semantic(block)});for(const input of Object.values(block.inputs||{}))visit(input.block);visit(block.next);};
-        visit(definition);return nodes;
+        visit(definition);
+        if(version>=0){let per=bodies.get(container);if(!per)bodies.set(container,per=new Map());per.set(definition,{version,nodes});}
+        return nodes;
     };
     const bind=(thread,target,name,definition,caller)=>{
         if(!bound||!active||disposed||!runtime.targets.includes(target)||thread.target!==target||thread.blockContainer!==target.blocks||
@@ -33,7 +41,7 @@ module.exports=function createManagedReturnValues(runtime) {
             const block=primitiveOwner.current(util,args);
             if(block?.opcode!=='arcade_returnValue'||nodes.get(block.id)?.block!==block)return original;
             const current=body(target,definition);
-            if(current.size!==nodes.size||[...nodes].some(([id,saved])=>current.get(id)?.block!==saved.block||current.get(id)?.semantic!==saved.semantic))return original;
+            if(current!==nodes&&(current.size!==nodes.size||[...nodes].some(([id,saved])=>current.get(id)?.block!==saved.block||current.get(id)?.semantic!==saved.semantic)))return original;
             return currentNumberInput(runtime,args,util,'arcade_returnValue');
         } catch (_) {return original;} // An unproved input keeps its original value and downstream refusal.
     };

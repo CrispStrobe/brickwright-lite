@@ -1,6 +1,6 @@
 # Current 386 GUI installed-file inventory v5 and actual admission v6 — 2026-10-24
 
-**Status: claim only; no implementation or event.** Owner: Codex x86 GUI, in the isolated `lane/x86-gui-finite-v5-claim-20261024` worktree. Base: `4ae8237706f469553df9e3c946816e0538471d7b`. This is a narrow continuation of [the existing GUI admission claim](2026-10-23-x86-gui-current-actual-admission.md). Merge this claim before changing executable source. The finite v4 event has been consumed and failed during inventory; its original does not identify the failing installed file or establish why the predicate refused it.
+**Status: merged claim; V5 metadata source armed pending qualification and event admission.** Owner: Codex x86 GUI. The claim merged at `70064128b15b8811f4174ef069246af9ff0bd909` before implementation. The consumed finite v4 producer and workflow execution guards are false; their readers and original wire are retained. The distinct finite v5 producer and job guard are true, but no V5 request or event has been selected and no V5 runtime result exists. Actual GUI v6 remains guarded false. This is a narrow continuation of [the existing GUI admission claim](2026-10-23-x86-gui-current-actual-admission.md). The finite v4 event was consumed and failed during inventory; its original does not identify the failing installed file or establish why the predicate refused it.
 
 ## Owned paths
 

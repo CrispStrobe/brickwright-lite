@@ -60,13 +60,18 @@ try {
         assert.equal(download.suggestedFilename(), 'circuit.json');
         return JSON.parse((await readDownload(download)).toString('utf8'));
     };
-    await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    // Circuit file actions live in the Circuit tab's File menu (#1536 scopes editor
+    // files to their editor; the Code tab's File menu deliberately omits them).
+    const circuitTab = () => page.getByRole('tab', {name: /Circuit/}).click();
+    await circuitTab();
     const coldCircuit = await saveCircuit();
-    assert.ok(coldCircuit.parts.length > 0, 'cold Code-menu Save must reach an actual designer');
+    assert.ok(coldCircuit.parts.length > 0, 'first Circuit-tab File Save must reach an actual designer');
     const resistor = coldCircuit.parts.find(part => part.kind === 'resistor');
     assert.ok(resistor, 'the original starter supplies the authored resistor control');
     resistor.params = {...resistor.params, ohms: 1234};
+    // Leave and re-enter the tab: the designer is cached but remounts.
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    await circuitTab();
     await page.getByText('File', {exact: true}).first().click();
     const [chooser] = await Promise.all([
         page.waitForEvent('filechooser', {timeout: 10000}),
@@ -78,8 +83,9 @@ try {
         part.kind === 'resistor' && part.params?.ohms === 1234));
     const canonical = await saveCircuit();
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    await circuitTab();
     const warmCircuit = await saveCircuit();
-    assert.deepEqual(warmCircuit, canonical, 'warm Code-menu Save must preserve the authored circuit');
+    assert.deepEqual(warmCircuit, canonical, 'warm Circuit-tab Save after leaving the tab must preserve the authored circuit');
     assert.ok(warmCircuit.parts.some(part => part.kind === 'resistor' && part.params?.ohms === 1234));
     assert.deepEqual(downloadNames, ['circuit.json', 'circuit.json', 'circuit.json'],
         'each File-menu Save must download exactly once');

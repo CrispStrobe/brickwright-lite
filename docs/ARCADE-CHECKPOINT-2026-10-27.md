@@ -10,57 +10,118 @@ ignored local Markdown; none are required to understand the public tasks below.
 
 The complete source checkpoint is on
 [`lane/arcade-source-entry-image-banks-20261026`](https://github.com/CrispStrobe/brickwright-lite/tree/lane/arcade-source-entry-image-banks-20261026).
-The implementation checkpoints are
-[`71d6e5e`](https://github.com/CrispStrobe/brickwright-lite/commit/71d6e5edacf78265a0172a5cef95596f0b234421)
-(readonly Number operands) and
-[`35acab7`](https://github.com/CrispStrobe/brickwright-lite/commit/35acab7c9d6b134305a293df13be7443a94a1e7f)
-(finite conditional Array readiness and literal local-reset prefixes).
-Use the complete branch, including its earlier integration history; taking only
-these two commits loses earlier Array, Image, callable, frame-delta, accessor,
-controller, loader and pin-policy repairs documented in the handoff.
+The current test/diagnostic continuation is
+[`lane/arcade-source-continuation-20261027`](https://github.com/CrispStrobe/brickwright-lite/tree/lane/arcade-source-continuation-20261027),
+based on that complete source branch. Its checkpoints `0aa5d9add99` and
+`f6ad4b17a33` are pushed, but have not replaced #1128 or passed hosted tests.
+
+Later source checkpoints add ordinary value calls, repeated publication
+frontiers, frame-delta operands and `game.askForNumber` operands. Use the complete
+branch history; isolated cherry-picks lose earlier Array, Image, callable,
+accessor, controller, loader and pin-policy repairs documented in the handoff.
 
 This is a **source checkpoint, not a merged or runtime-qualified release**.
-At the checkpoint, [PR #1128](https://github.com/CrispStrobe/brickwright-lite/pull/1128)
-still has its older `aa04bfff` head and seven failed checks. The source branch
-has not yet replaced that head. The separate owner of
-[PR #1437](https://github.com/CrispStrobe/brickwright-lite/pull/1437) retains its
-CI originals, repair and merge; its broader checks were still pending. Refresh
-both PRs and remote main before acting. Do not push to the other owner's branch
-or acquire originals it already retained.
+[PR #1437](https://github.com/CrispStrobe/brickwright-lite/pull/1437) and the
+previous documentation checkpoint #1470 have merged. Their owner retains the
+#1437 originals; do not download them again.
+[PR #1128](https://github.com/CrispStrobe/brickwright-lite/pull/1128) now has
+integration head `7ef0dacc`, containing the qualified main composition and
+source work through the publication-frontier checkpoint. Its hosted gates are
+still running. Unit shard 4 failed with 11 blocking tests and three declared
+TODO failures. Preserve that original; do not rerun unchanged or supersede the
+candidate before its numeric authoring job has a retained terminal result.
+The later askForNumber checkpoint `90fa84b` is on the source branch and is not
+yet part of #1128. Refresh all remote heads before acting.
 
 ## Implemented and measured
 
-- Readonly startup Number operands: real cell/writer/dependency identities,
-  entry order and all callers supply only an arithmetic-occurrence fact. Direct
-  and JSON export agree. Emitted local/formal/SDK/helper collisions refuse;
-  annotations, arbitrary variables and Array initialization receive no loan.
-- Finite conditional Array entry: actual literal updates, selected branches and
-  zero-argument ordinary calls establish an inventoried publication frontier.
-  Existing producer and all-writer checks remain. Paint registration is the
-  terminal direct startup statement. Unknown effects and broader entries refuse.
-- Reexported local captures: a separate effect proof crosses only exact numeric-
-  literal additions before the real overwrite. Null assignments and all other
-  statements remain emitted. Opaque coercion, bad frame keys, malformed graphs
-  and observed mutation/restoration cannot borrow the proof.
+- Readonly startup Number operands retain real cell/writer/dependency identities,
+  initialization order and actual caller checks. Annotations grant no authority.
+- Finite conditional Array entry and repeated publication frontiers retain the
+  existing producer, all-writer and initialization checks. Closed SDK effects
+  and ordinary calls can cross only their individually admitted boundaries.
+- Reexported captures retain their actual overwrite and currentness proof;
+  source statements, evaluation order and null assignments remain emitted.
+- Frame-delta native addition uses the existing closed scene-clock proof.
+  `game.askForNumber` supplies a Number only on its actual normal-return path.
+  Neither rule supplies Array elements, exact input values or game completion.
 
-Validation: 44 combined source tests pass without skips (13 new Array groups,
-24 Number groups and seven math groups); 41 existing reset/private-prefix tests
-pass separately. Five Array guard cuts and three Number guard cuts trigger
-meaningful assertions, with exact source restored. Counts overlap earlier runs;
-they are not app-completion counts.
+The unchanged snake now has **zero source export refusals**, down from four;
+its math queries still pass. This has not qualified its original SDK execution,
+Lite runtime, connected editors or full game behavior.
 
-The raw 184-input census remains **147 translated / 36 partial / one parse
-failure**. These are importer/Creator source results. The unchanged snake now
-has four export refusal families instead of six: Array item, indexOf, mutation
-and native addition. Its two math queries pass; the new finite Array profile
-has not removed the remaining four. No new app is reported complete.
+The raw 184-input import census remains **147 translated / 36 partial / one
+parse failure**. The separate export census, using the actual imported artwork,
+is **124 clean / 22 refused / 36 import-partial / one exception / one timeout**.
+Earlier export reports with missing artwork are superseded and retained.
+These source classifications are not app-completion counts. All 22 refused
+exports include a native-addition refusal; 11 also involve a Sprite property
+whose complete receiver/use invariant is not proved. Do not assume one fix
+will close every row.
+
+## Current repair queue
+
+1. Classify the terminal originals for the current #1128 head once. Shard 4
+   exposes native-addition refusals in Array callbacks, class inheritance,
+   discarded projectiles, field staging, generated Images and sprite extensions,
+   plus a bitwise producer refusal. Keep the original assertions and repair
+   producer evidence rather than adding opcode/name allowlists.
+2. Reconcile the old frame-delta negative with the actual new supported contract:
+   test canonical frame reads positively and retain shadowed/replaced/escaped
+   context negatives and source-mutation revocation. The isolated continuation
+   includes this test repair; it has not been run on the shared server.
+3. Merge the claim in [#1482](https://github.com/CrispStrobe/brickwright-lite/pull/1482)
+   before implementing known `controller.moveSprite` reference retention.
+   Preserve actual receiver allocation, speed Number/readiness, all writers,
+   namespace ownership and construction-before-use. Qualify an independently
+   authored controller/property program through direct and JSON export, Code,
+   repeated import/export and actual hosted SDK/Lite controller input. Unknown
+   escapes, opaque speeds and unsafe lifecycle paths must remain refused.
+
+### Newly retained integration failures
+
+The admitted failed jobs all belong to #1128 head `7ef0dacc` and run
+`40469189304`. Their logs are retained once by the integration owner. Reuse the
+retained originals; the public links identify the jobs without requiring
+private operational details.
+
+| Shard | Original job | Blocking tests | Declared TODO failures |
+| --- | --- | ---: | ---: |
+| 2 | [122078179870](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40469189304/job/122078179870) | 20 | 2 |
+| 3 | [122078179967](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40469189304/job/122078179967) | 13 | 10 |
+| 4 | [122078179880](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40469189304/job/122078179880) | 11 | 3 |
+
+Counts include nested tests and are failure diagnostics, not corpus rows or new
+app regressions. Other jobs are still pending and must be classified separately.
+
+Unit shard 2 additionally exposes five browser-shard inventory/mapping failures
+and producer refusals. The browser matrix and `test/ci-browser-scope.test.mjs`
+belong to the Robot Lab shard lane; coordinate that owner before changing them.
+Main has not independently repaired them at this checkpoint.
+
+Unit shard 3 includes an actual failure in
+`test/makecode-startup-number-roundtrip.test.mjs`: the original SDK phase passes,
+but the native generation check observes `result = 0` instead of `14`. The
+original failure remains open. The continuation reports runtime/Creator errors
+before value assertions and labels initial/generation/same-VM/fresh-VM routes;
+it retains every expected value and existing execution bound. Qualify this
+with the existing hosted gate, identify whether the cause is current connected
+producer admission, execution or callback entry, and repair that actual boundary.
+Do not replace the expected value, add a delay, waive the test or promote the
+representative on source-only evidence. Its sibling conditional-Array test must
+also retain its independent original/native and reopen checks.
+
+No builds or suites run on the shared server for this continuation. Use hosted
+CI or an approved build machine. Do not add full-CI labels, duplicate dispatches,
+Ready cycles or unchanged retries. The ordered qualification below remains
+required before reporting app or GUI completion.
 
 ## Ordered tasks
 
-1. **Publish and qualify the complete integration.** Once #1437's owner lands
-   its qualified result, normally merge latest main into the checkpoint branch,
-   preserving both histories. Refresh #1128's exact head and advance its branch
-   with one normal fast-forward push of the complete candidate. Keep the
+1. **Qualify the complete integration.** The first normal main composition is
+   already published at #1128 head `7ef0dacc`. Let its admitted runs finish,
+   retain terminal originals once and repair their actual failures. Normally
+   compose later source checkpoints and fresh main only after that intake. Keep the
    existing CI scope; do not add a full-CI label, duplicate dispatch, Ready cycle
    or unchanged retry. Inspect every enabled exact-head result. Preserve original
    failures and terminal numeric intake before any successor. Merge only after

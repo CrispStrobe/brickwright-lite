@@ -1,3 +1,4 @@
+import {arrayMenuLiteral,isArrayMenuSelector,isKnownArrayMenuOperation} from './array-menu-literal.js';
 /** Scalar/JSON item export must not serialize an actual native reference.
  * Follow historical variable writers across actual project owners. */
 export function namedArrayItemExportAuthority(project,name,isBoolean,sourceReferences=new Map()) {
@@ -9,6 +10,7 @@ export function namedArrayItemExportAuthority(project,name,isBoolean,sourceRefer
         return owner?{key:`${targets.indexOf(owner)}:${id}`,value:owner.variables[id][1]}:null;
     };
     const literal=(target,block,input)=>{
+        if(isArrayMenuSelector(block,input)){const value=arrayMenuLiteral(target,block,input);return value===null?{known:false}:{known:true,value};}
         const slot=block?.inputs?.[input]?.[1],node=child(target,block,input);
         if(Array.isArray(slot) && [4,5,6,7,8,10].includes(slot[0]))return {known:true,value:slot[0]===10?String(slot[1]):Number(slot[1])};
         if(node?.shadow && ['text','math_number'].includes(node.opcode))return {known:true,value:Object.values(node.fields || {})[0]?.[0]};
@@ -147,8 +149,12 @@ export function namedArrayItemExportAuthority(project,name,isBoolean,sourceRefer
                 return {ok:false,reason:'Named Array item export requires proven scalar inputs; opaque or native reference writers are not admitted'};
         }
         if(block.opcode==='arrays_mutateReference'){
-            const op=literal(target,block,'OP');if(!['set','push','unshift','insert'].includes(String(op.value)))continue;
-            const receiver=origins(input(target,block,'ARRAY'));
+            const op=literal(target,block,'OP'),receiver=origins(input(target,block,'ARRAY'));
+            if(!op.known||!isKnownArrayMenuOperation(block,op.value)){
+                if(receiver.names.has(name)||receiver.unknown)return {ok:false,reason:'Named Array item export requires a fixed supported operation for every possible alias writer'};
+                continue;
+            }
+            if(!['set','push','unshift','insertAt'].includes(op.value))continue;
             if((receiver.names.has(name) || receiver.unknown) && !primitive(input(target,block,'VALUE')))
                 return {ok:false,reason:'Named Array item export cannot exclude an opaque or native reference write through a historical alias'};
         }

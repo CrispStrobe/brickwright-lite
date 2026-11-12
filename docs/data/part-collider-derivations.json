@@ -1,0 +1,387 @@
+{
+  "version": 2,
+  "$comment": "Feature ranges in local LDraw units. Bounds use polygon clipping, including crossing-face limits. Open regions exclude only coplanar boundary faces, owned by adjacent features; the complete collider union must cover declared mesh regions. First-axis span overrides the clipping interval. Conservative 0.0001 LDU quantization preserves represented bounds; existing 0.01 LDU overhang guards remain. previousColliders freezes the complete published v1 list for guarded migration; replaced freezes the original proxy. No mesh or model geometry is changed.",
+  "parts": {
+    "2910.dat": {
+      "why": "One 25 LDU box covered the whole piston rod, but only the 2.5 LDU collar at y -30..-27.5 is 25 LDU wide; the eye and body are 20 LDU, so retaining half bushes seated against the real eye overlapped the box by 2.5 LDU.",
+      "replaced": {
+        "shape": "box",
+        "halfExtents": [
+          12.5,
+          58.5,
+          12.5
+        ],
+        "position": [
+          0,
+          -48.5,
+          0
+        ]
+      },
+      "boxes": [
+        {
+          "what": "rod",
+          "ranges": {
+            "y": [
+              -107,
+              -37
+            ]
+          }
+        },
+        {
+          "what": "body below the collar",
+          "ranges": {
+            "y": [
+              -37,
+              -30
+            ]
+          },
+          "open": true
+        },
+        {
+          "what": "collar",
+          "ranges": {
+            "y": [
+              -30,
+              -27.5
+            ]
+          }
+        },
+        {
+          "what": "tapered shoulder above collar",
+          "ranges": {
+            "y": [
+              -27.5,
+              -25
+            ]
+          },
+          "open": true
+        },
+        {
+          "what": "upper body and eye",
+          "ranges": {
+            "y": [
+              -25,
+              10
+            ]
+          },
+          "open": true
+        }
+      ],
+      "previousColliders": [
+        {
+          "shape": "box",
+          "halfExtents": [
+            7,
+            35,
+            10
+          ],
+          "position": [
+            0,
+            -72,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "halfExtents": [
+            10,
+            3.5,
+            10
+          ],
+          "position": [
+            0,
+            -33.5,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "halfExtents": [
+            12.5,
+            1.25,
+            12.5
+          ],
+          "position": [
+            0,
+            -28.75,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "halfExtents": [
+            10,
+            18.75,
+            10
+          ],
+          "position": [
+            0,
+            -8.75,
+            0
+          ]
+        }
+      ]
+    },
+    "2909.dat": {
+      "why": "One box 24.2 LDU deep covered the whole cylinder, but only the collar at y -15..-10 is that deep; the eye and the body are 20 LDU, so retaining half bushes seated against the real eye overlapped the box by 2.1 LDU.",
+      "replaced": {
+        "shape": "box",
+        "halfExtents": [
+          21.25,
+          45,
+          12.1
+        ],
+        "position": [
+          -8.75,
+          -5,
+          0
+        ]
+      },
+      "boxes": [
+        {
+          "what": "eye with its cross-axle lug",
+          "ranges": {
+            "y": [
+              -50,
+              -26
+            ]
+          }
+        },
+        {
+          "what": "body above the collar",
+          "ranges": {
+            "y": [
+              -25.9,
+              -15
+            ]
+          },
+          "span": [
+            -26,
+            -15
+          ]
+        },
+        {
+          "what": "collar",
+          "ranges": {
+            "y": [
+              -15,
+              -10
+            ]
+          }
+        },
+        {
+          "what": "body below the collar",
+          "ranges": {
+            "y": [
+              -10,
+              40
+            ]
+          },
+          "open": true
+        }
+      ],
+      "previousColliders": [
+        {
+          "shape": "box",
+          "halfExtents": [
+            20,
+            12,
+            10
+          ],
+          "position": [
+            -10,
+            -38,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "halfExtents": [
+            10,
+            5.5,
+            9.6
+          ],
+          "position": [
+            0,
+            -20.5,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "halfExtents": [
+            12.5,
+            2.5,
+            12.1
+          ],
+          "position": [
+            0,
+            -12.5,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "halfExtents": [
+            10,
+            25,
+            10
+          ],
+          "position": [
+            0,
+            15,
+            0
+          ]
+        }
+      ]
+    },
+    "92693c01.dat": {
+      "why": "The third box, over the end frame at z 25.54..34, was solid across the middle, but the mesh is open for |x| < 20 up to z 30, where the drive end's axle joiner sits; a joiner seated in the real opening overlapped it. Only that box is replaced; the other four are kept as they were.",
+      "replaces": 2,
+      "replaced": {
+        "shape": "box",
+        "halfExtents": [
+          30,
+          10,
+          4.23
+        ],
+        "position": [
+          0,
+          0,
+          29.77
+        ]
+      },
+      "boxes": [
+        {
+          "what": "end frame +x",
+          "ranges": {
+            "z": [
+              25.54,
+              30
+            ],
+            "x": [
+              20,
+              30
+            ]
+          }
+        },
+        {
+          "what": "end frame -x",
+          "ranges": {
+            "z": [
+              25.54,
+              30
+            ],
+            "x": [
+              -30,
+              -20
+            ]
+          }
+        },
+        {
+          "what": "end plate",
+          "ranges": {
+            "z": [
+              30,
+              34
+            ]
+          }
+        }
+      ],
+      "previousColliders": [
+        {
+          "shape": "box",
+          "halfExtents": [
+            5,
+            9,
+            16.62
+          ],
+          "position": [
+            25,
+            0,
+            7.62
+          ]
+        },
+        {
+          "shape": "box",
+          "halfExtents": [
+            5,
+            9,
+            16.62
+          ],
+          "position": [
+            -25,
+            0,
+            7.62
+          ]
+        },
+        {
+          "shape": "box",
+          "halfExtents": [
+            5,
+            9,
+            2.23
+          ],
+          "position": [
+            25,
+            0,
+            27.77
+          ]
+        },
+        {
+          "shape": "box",
+          "halfExtents": [
+            5,
+            9,
+            2.23
+          ],
+          "position": [
+            -25,
+            0,
+            27.77
+          ]
+        },
+        {
+          "shape": "box",
+          "halfExtents": [
+            30,
+            10,
+            2
+          ],
+          "position": [
+            0,
+            0,
+            32
+          ]
+        },
+        {
+          "shape": "box",
+          "halfExtents": [
+            20,
+            9,
+            4.47
+          ],
+          "position": [
+            0,
+            0,
+            39.47
+          ]
+        },
+        {
+          "shape": "box",
+          "halfExtents": [
+            10,
+            10,
+            37.5
+          ],
+          "position": [
+            0,
+            0,
+            72.5
+          ]
+        }
+      ],
+      "previousDerivedCount": 3
+    }
+  }
+}

@@ -7,7 +7,7 @@ import {mkdir, copyFile, readFile, writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {firmwareMotorPorts} from './lib/spike-nuttx-topology.mjs';
-import {programAddressedSensorCapability} from './lib/spike-addressed-sensor-marker.mjs';
+import {programAddressedSensorCapability, programInstructionAbi} from './lib/spike-addressed-sensor-marker.mjs';
 import {programStorageAbiAddress} from './lib/spike-program-storage-marker.mjs';
 import {firmwareExtraNotices} from './lib/spike-firmware-notices.mjs';
 import {prepareInitialFlash, initialFlashScenario, INITIAL_FLASH_FILE} from './lib/spike-initial-flash.mjs';
@@ -52,6 +52,8 @@ const outputMailbox = outputSymbol && parseInt(outputSymbol[1], 16);
 if (!outputMailbox || outputMailbox % 4 || outputMailbox < 0x20020000 || outputMailbox > 0x20040000 - 1036) throw new Error('Python output buffer exceeds userspace RAM');
 const storageAddress = programStorageAbiAddress(user, nm.stdout);
 const addressedSensorCapability = programAddressedSensorCapability(user, nm.stdout);
+// Ops 7/8 (firmware #56); the state service advertises nuttx-program-instructions/v2 from it.
+const instructionAbi = programInstructionAbi(user, nm.stdout);
 // This host adapter ABI is declared by our authored state service, independent
 // of the embedded firmware's storage ABI. Older service packages stay usable.
 const stateService = await readFile(join(models, 'scripts/spike-state-server.py'), 'utf8');
@@ -81,6 +83,7 @@ await writeFile(join(output, 'state-config.json'), JSON.stringify({identity: {bo
     imageSha256: await hash(join(output, 'nuttx-user.elf'))}, programMailbox: mailbox, pythonOutputMailbox: outputMailbox, boot,
     ...(storageAddress === null ? {} : {programStorageAbiAddress: storageAddress}),
     ...(addressedSensorCapability === null ? {} : {addressedSensorCapability}),
+    ...(instructionAbi === 2 ? {programInstructionAbi: 2} : {}),
     ...(motorPorts === null ? {} : {motorPorts}),
     ...(hostFlashCheckpointAbi === null ? {} : {hostFlashCheckpointAbi}),
 paths: {...Object.fromEntries('ABCDEF'.split('').map(p => [`port${p}`, `external:port${p}`])), display: 'sysbus.display', power: 'sysbus.power'}}, null, 2)+'\n');

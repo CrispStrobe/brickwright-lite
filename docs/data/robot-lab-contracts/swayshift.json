@@ -1,0 +1,666 @@
+{
+  "schema": "brickwright-addon-native-qualification-contract/v1",
+  "modelId": "swayshift",
+  "revision": "v4",
+  "status": "FROZEN before revision4 comparison execution. V1, v2 and v3 failed native transfer criteria and remain preserved. A real3:1 transmission and one-hole longer pendulum replace the5:1 mechanism; true22/44mm waypoints, fresh independently calibrated timing and source identities are bound below. All62 acceptance gate parameters and observation-window formulas are unchanged.",
+  "createdUtcDate": "2026-10-27",
+  "baseline": "e4ad97aaa7c84f387ee7fe314d782844abcc9722",
+  "question": "Does changing only the start spacing of two equal finite trolley moves from one pendulum period to half a period reduce the passive pendulum's residual swing after the same transfer?",
+  "scope": {
+    "nativePhysics": true,
+    "normalParserCompilerVmHubController": true,
+    "oneHub": true,
+    "motorCount": 1,
+    "motorPort": "A",
+    "allImportedBodiesDynamic": true,
+    "builtInGroundAllowed": true,
+    "runtimeSourceEditsAllowed": false,
+    "massInertiaFrictionDampingOverridesAllowed": false,
+    "poseVelocityOrForceInjectionAllowed": false,
+    "privateCoreFeedbackIntoProgramAllowed": false,
+    "browserTested": false,
+    "hardwareTested": false,
+    "probeScope": "The explicitly clamped feature bench and its relocated floor are feasibility evidence only. Final qualification uses the structurally complete exported model in the ordinary native session.",
+    "defaultNativeNumericalRepairs": "Ordinary runtime-derived mass floors and inertia repair are retained and recorded, not overridden. The passive pendulum and carriage remain unadjusted; configured and admitted properties of every dynamic body are disclosed below."
+  },
+  "comparison": {
+    "modelFiles": 1,
+    "freshScenePerRun": true,
+    "identicalPartsAndMechanism": true,
+    "programDifferenceAllowed": "Exactly one numeric assignment: GLOBAL start_gap. Executable text otherwise matches after that literal is normalized; comments and filenames may identify the two programs.",
+    "variants": {
+      "shaped": {
+        "startGapPeriods": 0.5
+      },
+      "inPhase": {
+        "startGapPeriods": 1.0
+      }
+    },
+    "equalReturnAndFinalHold": true,
+    "dampingConfoundDisclosure": "The common absolute window equalizes elapsed trial time, but the shaped run arrives about half a period earlier and therefore has extra passive decay after arrival. A second equal-duration arrival-relative comparison and an independent free-ringdown bound are also required.",
+    "equalAbsoluteWaypointsAndCommandAlgorithm": true,
+    "absoluteWaypointExplanation": "Both programs command the same first and second motor-angle targets, using the same target-minus-fresh-normal-Robot-Lab-encoder algorithm and speed. Actual relative API degree arguments may differ by the observed tracking/rounding error. This is disclosed and constrained by the unchanged actual half-travel, endpoint and pulse-profile gates.",
+    "decisionProvenance": "Root selected absolute waypoints before full qualification, relayed by native_runtime on 2026-10-27. Draft v1 remains preserved."
+  },
+  "calibration": {
+    "chosenMethod": "separate serialized free-period calibration before comparison qualification",
+    "allowedMethods": [
+      "actual admitted native mass, COM, local inertia tensor, gravity and pivot",
+      "separate serialized free-period calibration before comparison qualification"
+    ],
+    "periodSeconds": 0.7570673940694227,
+    "physicsStepSeconds": 0.005,
+    "shapedStartGapSeconds": 0.38,
+    "inPhaseStartGapSeconds": 0.76,
+    "roundingRule": "Round T/2 once to the nearest 0.005 s, then use exactly twice that gap for the in-phase program. Preserve the unrounded period and rounding error.",
+    "formula": "T = 2*pi*sqrt((axis^T I_COM axis + m*d^2)/(m*|g|*gravityFactor*d)); d is perpendicular COM-to-hinge distance.",
+    "freePeriodMinimumFullCycles": 6,
+    "freeCalibrationInitialAngleDeg": 5,
+    "freeCalibrationExplanation": "A separate saved initial pose may incline the complete pendulum by 5 degrees around its real hinge. It must preserve all constraints and use normal motor hold; no velocity or force injection. A final-scene calibration is distinct from the earlier clamped feature bench.",
+    "calibrationArtifactHashes": {
+      "evidence/calibration/analysis-identities.json": "f08de0f2fb9492c7c350915dff03c2dc4f2c0be911a02d7b7fa5af828f1d8648",
+      "evidence/calibration/execution-summary.json": "8117965e22cddce585550e3bdbee933c723634aa6eedda799397243e3b172cd6",
+      "evidence/calibration/metadata.json": "84d697d85fe47dfa397cea4828c61765cb7b9e94e41b1c5768cc94fa76876e61",
+      "evidence/calibration/model.ldr": "8eb268412cbe2ef1c7f161d9894b86605de4e2e3f2d36e48fe4510986655902e",
+      "evidence/calibration/native-run.json.gz": "8ad37a379b885f812fa7c504750f8b288dcc3287e7acb232f56082f4521c048e",
+      "evidence/calibration/observer-before-analysis.mjs": "d8bb1037208eab7c767ed4046e913f2dd0635d49af60b8bcee931d3dd249d6d0",
+      "evidence/calibration/program.bw": "394734836d96b69220a75a20a870c4b258efefb504f3ce00dc56c701f3d90aaa",
+      "evidence/calibration/qualification.json": "3cb014fb0320e0f8d8369010ba45e3c18d7bd445c4876c2383f9e9a8950b2bc1"
+    },
+    "timingFrozenBeforeQualification": true,
+    "comparisonResultsMayTuneTiming": false,
+    "packagedRecordPath": "evidence/calibration/native-run.json.gz",
+    "predictedPeriodSeconds": 0.7566533759239407,
+    "halfPeriodAmplitudeMultiplier": 0.9906826350713495,
+    "periodIntervalsSeconds": [
+      0.757105715161468,
+      0.7570713053629747,
+      0.757082992817673,
+      0.7570660477923568,
+      0.757056723405201,
+      0.757051787583368,
+      0.7570371863629175
+    ],
+    "selectionRule": "Arithmetic mean of every observed positive-going crossing interval in the prescribed 8T window; no interval rejection or timing optimization.",
+    "halfGapRoundingErrorSeconds": 0.0014663029652886572
+  },
+  "geometry": {
+    "status": "Revised204-part exported model passed all independent static construction gates. Fresh full-scene free calibration passed. The first comparison of this source revision has not run.",
+    "halfTravelMm": 22,
+    "totalTravelMm": 44,
+    "pinionPitchRadiusMm": 12,
+    "motorToPinionSpeedup": 3,
+    "nominalHalfMotorAngleDegMagnitude": 35.01408748021698,
+    "motorDirectionSign": -1,
+    "requiredPartIds": {
+      "chassis": "hub",
+      "carriage": "rack",
+      "pendulumUpper": "pendulum_upper",
+      "pendulumLower": "pendulum_lower"
+    },
+    "markerPoints": {
+      "pendulumTop": {
+        "part": "pendulum_upper",
+        "local": [
+          0,
+          0,
+          -140
+        ]
+      },
+      "pendulumBottom": {
+        "part": "pendulum_upper",
+        "local": [
+          0,
+          0,
+          140
+        ]
+      },
+      "carriage": {
+        "part": "rack",
+        "local": [
+          0,
+          0,
+          0
+        ]
+      },
+      "guideStart": {
+        "part": "guide_left",
+        "local": [
+          120,
+          0,
+          0
+        ]
+      },
+      "guideEnd": {
+        "part": "guide_left",
+        "local": [
+          -120,
+          0,
+          0
+        ]
+      }
+    },
+    "revisionReason": "After three preserved5:1 qualification failures, root selected a physical3:1 transmission to reduce linear rack travel per degree of native motor arrival tolerance, and moved the lower pendulum beam down20LDU while retaining its two engaged splice pins. The actual22mm half move and44mm total remain unchanged. A separate fresh free calibration establishes the changed period before this comparison.",
+    "partCount": 204,
+    "guideBindings": [
+      {
+        "guide": "guide_left",
+        "slide": "slide_left"
+      },
+      {
+        "guide": "guide_right",
+        "slide": "slide_right"
+      }
+    ],
+    "pinionPartId": "pinion",
+    "intentionalPendulumClearancePairs": [
+      [
+        "pendulum_upper",
+        "pendulum_free_pin"
+      ],
+      [
+        "pendulum_upper",
+        "pendulum_hanger"
+      ],
+      [
+        "pendulum_upper",
+        "pendulum_support"
+      ]
+    ],
+    "intentionalPendulumClearanceExplanation": "Only the named local shaft/bore, adjoining axial bearing faces (nominal zero gap), and near-hinge support faces (nominal0.4mm axial gap) are exempt from the general3mm pendulum separation gate. Their signed native primitive gaps are still reported. All other carriage/frame parts remain in the check.",
+    "localHingeInterfaces": [
+      {
+        "parts": [
+          "pendulum_upper",
+          "pendulum_free_pin"
+        ],
+        "kind": "intended shaft-through-bore",
+        "nominalInterfaceXLdu": -330,
+        "upperHoleIntervalXLdu": [
+          -350,
+          -330
+        ],
+        "hangerHoleIntervalXLdu": [
+          -330,
+          -310
+        ],
+        "freePinIntervalXLdu": [
+          -350,
+          -310
+        ]
+      },
+      {
+        "parts": [
+          "pendulum_upper",
+          "pendulum_hanger"
+        ],
+        "kind": "adjacent axial bearing faces",
+        "nominalGapLdu": 0,
+        "nominalGapMm": 0,
+        "meshBounds": {
+          "upper": [
+            [
+              -350,
+              -330
+            ],
+            [
+              -629,
+              -331
+            ],
+            [
+              -23,
+              -5
+            ]
+          ],
+          "hanger": [
+            [
+              -330,
+              -310
+            ],
+            [
+              -629,
+              -590
+            ],
+            [
+              -23,
+              -5
+            ]
+          ]
+        }
+      },
+      {
+        "parts": [
+          "pendulum_upper",
+          "pendulum_support"
+        ],
+        "kind": "separated near-hinge axial faces",
+        "nominalGapLdu": 1,
+        "nominalGapMm": 0.4,
+        "meshBounds": {
+          "upper": [
+            [
+              -350,
+              -330
+            ],
+            [
+              -629,
+              -331
+            ],
+            [
+              -23,
+              -5
+            ]
+          ],
+          "support": [
+            [
+              -329,
+              -31
+            ],
+            [
+              -610,
+              -590
+            ],
+            [
+              -23,
+              -5
+            ]
+          ]
+        },
+        "note": "Both the canonical native primitive and resolved LDraw mesh end at upper X=-330 and support X=-329. Ideal rotation about X preserves this axial separation. Actual native drift remains a trajectory check."
+      }
+    ],
+    "nativeSliderLimitsMm": [
+      -46.4,
+      1.6
+    ],
+    "continuousTrolleyEnvelopeMm": [
+      -0.5,
+      45.4
+    ],
+    "fullTravelGateExplanation": "The existing1mm guide-end margin also applies to the actually observed carriage position relative to the finite native collar/end-stop interval. The separate all-solid checker requires the entire actual trace inside its predeclared continuous translation envelope.",
+    "resolvedBindingEvidence": "evidence/construction.json (exact canonical connectors, LDraw mesh dependencies, finite male-shaft separation, collars, blind holes, keyed stacks, retained guide intervals and the three local hinge interfaces).",
+    "transmissionParts": {
+      "motorGear": "32498.dat",
+      "motorTeeth": 36,
+      "outputGear": "32270.dat",
+      "outputTeeth": 12,
+      "centreDistanceLdu": 60
+    },
+    "pendulumLowerSourceCentreLdu": [
+      -360,
+      -220,
+      -14
+    ]
+  },
+  "program": {
+    "timeOrigin": "Actual first outward runMotorDegrees command invocation, on the native session clock.",
+    "outwardMoves": 2,
+    "moveAngleAndSpeedIdentical": false,
+    "commandCompletionRequiredBeforeNextMove": true,
+    "primaryWindowPeriodsFromFirstStart": [
+      2,
+      6
+    ],
+    "secondaryWindowPeriodsFromActualSecondCompletion": [
+      1,
+      5
+    ],
+    "returnNotBeforePeriodsFromFirstStart": 7,
+    "returnScheduleIdenticalAcrossVariants": true,
+    "returnTravelMm": -44,
+    "finalHoldPeriodsMin": 2,
+    "qualificationObservedBudgetSeconds": 30,
+    "coldObservationSecondsMin": 2,
+    "afterObservationSecondsMin": 2,
+    "normalCompletion": {
+      "completed": 1,
+      "failed": 0,
+      "motorMode": "hold"
+    },
+    "watchdogDiagnostic": "A fresh run of a clearly labeled source copy with only the watchdog deadline shortened must time out during an actual outward motor move, stop/hold A, set failed=1 and completed=0, and terminate. This proves the timeout branch, not a physical-stall detector. The production exports remain unchanged.",
+    "absoluteMotorTargetsDegMagnitude": [
+      35.01408748021698,
+      70.02817496043396
+    ],
+    "targetAlgorithmAndSpeedIdentical": true,
+    "relativeApiArgumentsMayVaryByTrackingError": true,
+    "watchdogBudgetSecondsMax": 20,
+    "actualWatchdogBudgetSeconds": 20,
+    "watchdogDiagnosticDeadlineSeconds": 1.15,
+    "outwardSpeedDps": 900,
+    "returnSpeedDps": 20,
+    "watchdogDiagnosticExpectedInterruptedResult": "interrupted",
+    "watchdogDiagnosticEvidenceScope": "Fresh ordinary native source copy changes only the20s deadline to1.15s; the failure must occur during an actual outward position move, return the pinned API result interrupted, set failed1/completed0, terminate and hold. It does not simulate a physical jam.",
+    "encoderWatchdogBoundsDeg": [
+      -78,
+      2
+    ],
+    "encoderWatchdogRescaling": "The true3:1 target is−70.02817496043396degrees, so the old−49degree lower guard would falsely abort the intended transfer. The new−78degree bound corresponds to less physical travel than the old−49degree5:1 bound. Independent actual-travel, guide-end and continuous-envelope limits are unchanged."
+  },
+  "gates": {
+    "topologyIssuesCountMax": 0,
+    "unsupportedCountMax": 0,
+    "compilerErrorsCountMax": 0,
+    "vmErrorsCountMax": 0,
+    "sessionFailuresCountMax": 0,
+    "importedStaticBodiesCountMax": 0,
+    "pendulumMassAdjustedAllowed": false,
+    "pendulumInertiaAdjustedAllowed": false,
+    "pendulumMotorOrCouplingDriveCountMax": 0,
+    "freeHingeMotorTorqueNmMaxAbs": 1e-09,
+    "pulseStartGapErrorSecondsMax": 0.025,
+    "pulseDurationPeriodsMax": 0.45,
+    "firstCompletionBeforeSecondStartSecondsMin": 0.02,
+    "moveResultRequired": "completed",
+    "halfTravelErrorMmMaxAbs": 0.75,
+    "totalTravelErrorMmMaxAbs": 1,
+    "pairFinalTravelDifferenceMmMaxAbs": 0.75,
+    "pairedPulsePositionProfileRmsDifferenceMmMax": 1,
+    "pairedPulsePositionProfileMaxDifferenceMmMax": 2,
+    "preMoveRestAngleDegMaxAbs": 0.5,
+    "preMoveRestAngularSpeedDegSMax": 2,
+    "transientSwingBeforeSecondMoveDegMin": 3,
+    "outwardAndResidualAngleDegMaxAbs": 25,
+    "wholeRunAngleDegMaxAbs": 35,
+    "controlResidualRmsDegMin": 2,
+    "controlResidualPeakDegMin": 3,
+    "shapedResidualRmsRatioMax": 0.35,
+    "shapedResidualPeakRatioMax": 0.5,
+    "shapedResidualRmsDegMax": 2,
+    "shapedResidualPeakDegMax": 3,
+    "reductionMustPassBothWindows": true,
+    "residualWindowPeriods": 4,
+    "residualWindowSamplesPerPeriodMin": 40,
+    "residualHoldCarriageRangeMmMax": 0.5,
+    "residualHoldCarriageSpeedMmSMax": 5,
+    "controlObservedPeriodRelativeErrorMax": 0.05,
+    "controlObservedPeriodIntervalsMin": 3,
+    "ringdownSameSignPeakIntervalsMin": 3,
+    "ringdownHalfPeriodAmplitudeMultiplierMin": 0.9,
+    "ringdownHalfPeriodAmplitudeMultiplierMax": 1.05,
+    "linearVelocityConsistencyRmsMpsMax": 0.005,
+    "linearVelocityConsistencyMaxMpsMax": 0.02,
+    "angularVelocityConsistencyRmsDegSMax": 3,
+    "angularVelocityConsistencyMaxDegSMax": 10,
+    "velocityConsistencySamplesMin": 100,
+    "hingeGapMmMax": 0.5,
+    "hingeAxisMismatchDegMax": 1,
+    "guideLateralDriftMmMax": 0.5,
+    "guideRotationDegMax": 1,
+    "chassisTranslationFromSettledDatumMmMax": 2,
+    "chassisTiltDegMax": 1,
+    "pendulumUnintendedContactFramesMax": 0,
+    "pendulumClearanceToNonjointPartsMmMin": 3,
+    "pendulumFloorClearanceMmMin": 10,
+    "guideBoreCoverageFractionMin": 1,
+    "guideEndMarginMmMin": 1,
+    "rackUsableToothMarginMmMin": 2,
+    "finalCarriageReturnErrorMmMax": 1,
+    "finalMotorEncoderErrorDegMax": 1,
+    "finalHoldCarriageRangeMmMax": 0.5,
+    "negativeFrozenPendulumMustFail": true,
+    "negativeFrozenCarriageMustFail": true
+  },
+  "observerRules": {
+    "angleSource": "Observed physical pendulum part-local points carried by native body poses. The actual admitted COM supplies a fixed equilibrium offset; the native joint angle and motor encoder are supplementary cross-checks only.",
+    "travelSource": "Observed carriage part-local point in the observed chassis frame, projected on the physical guide direction.",
+    "periodAndDampingSource": "Independent observed pendulum angles in settled, stationary-carriage free ringdown; never the commanded period or joint encoder as an observed result.",
+    "rms": "Time-weighted root-mean-square of signed gravity-relative angle, without fitting away a constant offset; interpolate window endpoints and report extrema separately.",
+    "timestamps": "Use session milliseconds for command scheduling and the completed native-step seconds for velocity/period analysis. Record both; do not mistake render-frame time for the last physics step.",
+    "velocity": "Compare world COM pose differences with actual native COM velocities, and part-marker angular differences with actual relative body angular velocities. All records used by a difference must be within the same admitted contact-free measurement interval.",
+    "windowSelection": "All window boundaries are prescribed formulas using the frozen T and observed command timestamps. No window search, fitted phase selection, demeaning, amplitude-dependent trimming or best-run selection.",
+    "retentionAndClearance": "Observe actual part-local guide/rack endpoints over the whole run; physical retention and suppressed connected-part clearance also require the independent construction audit. Native absence of contact alone is insufficient.",
+    "missingData": "Missing, nonfinite, duplicate-clock or truncated required data fail qualification; they are not silently dropped."
+  },
+  "provenanceToBind": {
+    "modelSha256": "f5198199c280fc362ed09dd29bb82d68c2c5a6ef1e5baee4ce4d27be87037bf7",
+    "programShapedSha256": "6a540c8116e07e613e7ee051d31394de81f0dc8183d1ac2472deb3bbb66c78d2",
+    "programInPhaseSha256": "44086418ddc02bda88c9b9707f836151f7ef5e300ad7ed50c47de64689a784c4",
+    "observerSha256": "d8bb1037208eab7c767ed4046e913f2dd0635d49af60b8bcee931d3dd249d6d0",
+    "nativeRunnerSha256": "26738fcc9b1ff21e2e47b5688803117cb9490655bbb671178bdeecae7de2b29d",
+    "qualifierSha256": "7d77d83c90dcfb5d38ba10bbf354c0d3f9ed7fb148734d5d1fb64dfeb6e458b4",
+    "clearanceCheckerSha256": "c41d09b6f0763a1c33e89fb536530b0ed5c317119fcd4ee8880aabb06a92f9de",
+    "constructionCheckerSha256": "c04c1c921f102288e2113ac2ea2c88d8c057c5acfb869f791daf02fd8253bc32",
+    "constructionReportPath": "evidence/construction.json",
+    "staticConstructionReportSha256": "12aa458cc49d0ddd5d7f8d67de75aeb96d2001bb32d643dd2ebf6f20f9586595",
+    "calibrationRunnerSha256": "a885b3d3fa9d76ae4cef9a4f945875f19a1c5f7fe25dc19557c009527a059624",
+    "finalCalibrationSha256": "8ad37a379b885f812fa7c504750f8b288dcc3287e7acb232f56082f4521c048e",
+    "partCount": 204,
+    "bodyJointCouplingTopology": {
+      "dynamicBodies": 5,
+      "hinges": 3,
+      "sliders": 1,
+      "motorPorts": [
+        "A"
+      ],
+      "couplings": [
+        {
+          "id": "g0",
+          "kind": "gear",
+          "joint1": "j2",
+          "joint2": "j1",
+          "ratio": -0.3333333333333333,
+          "parts": [
+            "transmission_output",
+            "transmission_motor"
+          ]
+        },
+        {
+          "hingeJoint": "j2",
+          "sliderJoint": "j0",
+          "ratio": -0.01200000000000001,
+          "parts": [
+            "pinion",
+            "rack"
+          ],
+          "kind": "rackAndPinion",
+          "id": "c0"
+        }
+      ]
+    },
+    "nativeDynamics": {
+      "passivePendulumCalibration": {
+        "configuredMassKg": 0.0101,
+        "solverMassKg": 0.010099999799652103,
+        "centerOfMassWorld": [
+          0.1038128212094307,
+          0.14041097462177277,
+          -0.18799999356269836
+        ],
+        "inertiaKgM2": [
+          [
+            3.7267129175667566e-05,
+            3.237823150303868e-06,
+            1.7403056436606963e-07
+          ],
+          [
+            3.237823150303868e-06,
+            5.419173665104745e-07,
+            -1.9892097535696217e-06
+          ],
+          [
+            1.7403056436606963e-07,
+            -1.9892097535696217e-06,
+            3.737810313019745e-05
+          ]
+        ],
+        "motion": "dynamic",
+        "gravityFactor": 1,
+        "smallInertiaRepaired": false,
+        "massFloorKg": 0,
+        "massAdjusted": false,
+        "inertiaAdjusted": false
+      },
+      "comLeverMetres": 0.10799999807852305,
+      "hingeInertiaKgM2": 0.0001551844966014456,
+      "allDynamicBodyAdmission": {
+        "b0": {
+          "configuredMassKg": 0.39990000000000014,
+          "solverMassKg": 0.3999000036421252,
+          "massFloorKg": 0,
+          "massAdjusted": false,
+          "inertiaAdjusted": true,
+          "smallInertiaRepaired": false,
+          "gravityFactor": 1
+        },
+        "b1": {
+          "configuredMassKg": 0.0322,
+          "solverMassKg": 0.03220000202674878,
+          "massFloorKg": 0,
+          "massAdjusted": false,
+          "inertiaAdjusted": false,
+          "smallInertiaRepaired": false,
+          "gravityFactor": 1
+        },
+        "b2": {
+          "configuredMassKg": 0.0087,
+          "solverMassKg": 0.02,
+          "massFloorKg": 0.02,
+          "massAdjusted": true,
+          "inertiaAdjusted": true,
+          "smallInertiaRepaired": false,
+          "gravityFactor": 0.4350000023841858
+        },
+        "b3": {
+          "configuredMassKg": 0.00634,
+          "solverMassKg": 0.02,
+          "massFloorKg": 0.02,
+          "massAdjusted": true,
+          "inertiaAdjusted": true,
+          "smallInertiaRepaired": false,
+          "gravityFactor": 0.31699997186660767
+        },
+        "b4": {
+          "configuredMassKg": 0.0101,
+          "solverMassKg": 0.010099999799652103,
+          "massFloorKg": 0,
+          "massAdjusted": false,
+          "inertiaAdjusted": false,
+          "smallInertiaRepaired": false,
+          "gravityFactor": 1
+        }
+      }
+    },
+    "runtimeSourceSha256": {
+      "overlay/scratch-gui/src/lib/bw-sim/sim-session.js": "9075552fac1efde79992345b88a673eaf8a126e91b526abae64019fef68e55b9",
+      "overlay/scratch-gui/src/lib/bw-sim/mech/compile.js": "18fcd49a0e346aefd1bc14100d5ffaab1730d4b7c051195ed9c4f49929f86e11",
+      "overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js": "d793b51541af6a1a6ecccc61548670999bc378d2fb427456cf1fc6e19107cf58",
+      "overlay/scratch-gui/src/lib/bw-sim/physics/actuators.js": "f8b052d2555087e7cdde0baa70a0a0068f64570fae7a9da250b901a7de8af661",
+      "overlay/scratch-gui/src/lib/bw-sim/hub-bridge.js": "50e4cf67faab7538de44b69253d7878e720ad1891900e63d74f612998fc24cde",
+      "overlay/scratch-gui/src/lib/bw-sim/hubs/spike/spike-virtual-hub.js": "93d9823f67df892ab11a6eefb9d2d209fd8a68332ca5a6a0d321f21b0357ef25",
+      "overlay/scratch-gui/src/lib/bw-sim/hubs/spike/spike-motor-controller.js": "7441828f5623117bba631a7b821a74e9e7d8ba8ee84ee058b4f7955c701e4bb8",
+      "overlay/scratch-gui/src/lib/spike-sim/independent-backend.js": "279c79ab69ae5876bd9b70c3342346d0b2e7f7e5bd11e5664c9af9663cee756e"
+    },
+    "previousDraft": "swayshift-contract-draft-v3.json",
+    "sourceAndRuntimeVerification": "Pinned Git baseline plus exact source hashes recorded by the normal native runner and copied above.",
+    "physicalInterfaceEvidence": {
+      "path": "evidence/transmission3-interface-check.json",
+      "sha256": "a3c39890f53a76239c04d04180570cc510e4323b9423eb1817f905d05d83198a"
+    },
+    "mainDeliverableIdentity": {
+      "nativeRuntimeCommit": "e4ad97aaa7c84f387ee7fe314d782844abcc9722",
+      "modelSha256": "f5198199c280fc362ed09dd29bb82d68c2c5a6ef1e5baee4ce4d27be87037bf7",
+      "mpdSha256": "fb75e06ca1a18e1b6d49e1affa8ceb58ba9211f29dde420e65abf6c0db042d3d",
+      "builderSha256": "0b9946928d66b6922ae74c4d3389c47ea3763daaca12225e2ef6284232efd8e2",
+      "placementsSha256": "cf2700ccbdeb102d13d6868e27941038599b1581e88258adca7e3e0409e55f48",
+      "bomSha256": "7fc4903660a6c71b4f864171b728952e55137c02a29718a1d6cd1cce40183347",
+      "partCatalogSha256": "7e6d25950dd815729e25aafa031370c415e5382676e7dcb9bf9f235fd2cd0320"
+    }
+  },
+  "failurePolicy": "Preserve every attempted qualification and its exact contract/observer/source hashes. A geometry correction requires a new predeclared revision and fresh runs. No numerical gate changes after reading a final qualification result.",
+  "requiredConstructionAndClearance": {
+    "staticReportPath": "evidence/construction.json",
+    "staticPassedRequired": true,
+    "sourceModelIdentityRequired": true,
+    "solidCheckerPath": "checks/check-clearance.mjs",
+    "unintendedSolidPenetrationMmMax": 0.4,
+    "continuousTranslationEnvelopeMm": [
+      -0.5,
+      45.4
+    ],
+    "unresolvedEnvelopeCandidatesAllowed": 0,
+    "fullNativeGuideCaptureReport": "evidence/construction-with-native-travel.json",
+    "hardwareStrengthTested": false
+  },
+  "declarationHistory": {
+    "draftGateCount": 62,
+    "allDraftV3NumericalGatesUnchanged": true,
+    "beforeAnyComparison": false,
+    "priorGeometryCalibration": "The208-part a2b49f predecessor failed fixed-frame male-shaft construction. The204-part6ff6815:1 geometry passed static construction and separate free calibration but failed all three full native comparison attempts on transfer accuracy. Both calibrations and all attempts are preserved under development. Current calibration is a fresh run on the204-partf5198199 source with3:1 transmission and a lower beam moved20LDU.",
+    "preRunSchemaCorrections": [
+      "Canonical guide axle connector selected by unique connector type instead of assuming every part uses id a0.",
+      "Watchdog interruption result follows the pinned backend: interrupted, not cancelled.",
+      "Construction capture direction reversed to match the actual positive transfer."
+    ],
+    "calibrationMethodUnchanged": true,
+    "beforeThisRevisionComparison": true,
+    "previousQualification": {
+      "status": "FAIL",
+      "contractSha256": "44250734b010eb87014bf76ef36614ffbbd91d8c8b301ba43aea7e083fb88f3c",
+      "artifact": "evidence/development/qualification-v3-rejected",
+      "reason": "Both actual half-move completion-travel errors remained above0.75mm; return, complete-travel envelope, sway-reduction and watchdog checks passed individually."
+    },
+    "revision2Changes": {
+      "outwardSpeedDps": [
+        900,
+        100
+      ],
+      "returnSpeedDps": [
+        45,
+        20
+      ],
+      "sameGeometry": true,
+      "samePeriod": true,
+      "sameWindowFormulas": true,
+      "sameNumericalGates": true,
+      "observerSourceUnchanged": true,
+      "qualifierOnlyChange": "Default --review directory changed from evidence to evidence/qualification to match the agreed packaging layout; verdict logic unchanged.",
+      "nativeComparisonsNotRunBeforeThisFreeze": true
+    },
+    "revision3Changes": {
+      "outwardSpeedDps": [
+        100,
+        85
+      ],
+      "returnSpeedDpsUnchanged": 20,
+      "sameTargetsGeometryPeriodWindowsAndNumericalGates": true,
+      "allRuntimeObserverAndCheckerSourcesUnchanged": true,
+      "nativeComparisonsNotRunBeforeThisFreeze": true,
+      "rationaleArtifact": "next-model-work/swayshift-program-revision-v3.json"
+    },
+    "revision4Changes": {
+      "transmissionSpeedup": [
+        5,
+        3
+      ],
+      "transmissionParts": [
+        "32498.dat",
+        "32270.dat"
+      ],
+      "pendulumLowerYLdu": [
+        -240,
+        -220
+      ],
+      "halfTravelMmUnchanged": 22,
+      "totalTravelMmUnchanged": 44,
+      "outwardSpeedDps": [
+        85,
+        900
+      ],
+      "returnSpeedDpsUnchanged": 20,
+      "encoderLowerGuardDeg": [
+        -49,
+        -78
+      ],
+      "newPeriodFromSeparateCalibrationSeconds": 0.7570673940694227,
+      "sameWindowFormulas": true,
+      "sameAll62GateParameters": true,
+      "observerQualifierRunnerCalibratorAndClearanceSourcesUnchanged": true,
+      "constructionCheckerChange": "Only descriptive gear names changed from8T/40T to12T/36T; gate expressions unchanged. Exact diff is preserved in transmission3-interface-check.json.",
+      "nativeComparisonsNotRunBeforeThisFreeze": true,
+      "rationaleArtifact": "next-model-work/swayshift-program-revision-v4.json",
+      "rationaleArtifactSha256": "8e1552a3d76e0e47e427cab3c351a8e419d7b6f0a04063bf18fd30d51881cd9c",
+      "measurementDerivationReview": "Observer derives carriage travel from observed part points in the chassis frame and passive angle from actual pendulum markers plus admitted COM. It contains no hardcoded5:1 conversion. No observer edit was needed."
+    }
+  }
+}

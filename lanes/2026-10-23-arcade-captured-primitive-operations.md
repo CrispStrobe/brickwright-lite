@@ -1,6 +1,6 @@
 # Arcade captured primitive operation results — claim
 
-CLAIMED. Owner: Arcade integration. Branch:
+DONE for source implementation; complete qualification pending. Owner: Arcade integration. Branch:
 `lane/arcade-captured-primitive-operations-claim-20261023`.
 Base: `0e11f66d5ae1a9c5788756986c715bf86049ff16`. Merge this scope before implementation.
 Continue the same owner's source-result and refusal-observation work. Preserve
@@ -91,3 +91,22 @@ are not qualified by source tests. No application completion follows from a
 refusal disappearing. Remeasure actual applications before changing the corpus
 count. Mark source implementation DONE in its final candidate, retain failures,
 and merge only through the normal exact-head qualification protocol.
+
+## Implementation checkpoint
+
+Claim #1262 merged after four successful checks and twelve declared skips before
+implementation. Current main was normally composed, preserving the landed NXT
+and Robot Lab work and their supplier identities; no independent pin was chosen.
+The inline proof binds canonical helpers to their exact final-model callees and
+arguments, closes all calls/dependencies, and is consulted only after ordinary
+admission refuses. Existing graph and captured-identifier predicates are unchanged.
+Used-only sticky currentness and semantic-slot absence fences preserve source
+ownership. The complete new pure module contains eleven groups. Source review,
+bounded local qualification and hosted/native/GUI results remain separate; do
+not claim a repaired original export or corpus count from source implementation.
+
+The complete new source module now passes locally: eleven tests, no failures,
+skips, TODOs or cancellations, with every admitted module observed and unchanged
+source/tool guards. This includes the exact retained public synthetic Math.idiv
+draft. No original SDK/native fixture was replayed locally. Complete affected
+hosted qualification and actual original export/reimport remain required.

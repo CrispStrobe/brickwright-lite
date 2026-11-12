@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {pixelControl} from './lib-pixel-controls.mjs';
 /** Full production IDE journey. All edits use actual user controls; VM/Blockly
  * access observes only. The original compiler/simulator is a separate oracle.
  * No substitute VM, component proxy, private corpus input or local GUI build.
@@ -214,7 +215,7 @@ try {
         const data = context.getImageData(Math.floor(canvas.width * .375), Math.floor(canvas.height * .375), 1, 1).data;
         return data[0] === 0x78 && data[1] === 0xdc && data[2] === 0x52;
     });
-    await page.getByTestId('bw-pixel-colour-3').click(); await page.getByTestId('bw-pixel-tool-pencil').click();
+    await (await pixelControl(page, 'bw-pixel-colour-3')).click(); await page.getByTestId('bw-pixel-tool-pencil').click();
     const box = await canvas.boundingBox();
     await canvas.click({position: {x: box.width * 1.5 / 4, y: box.height * 1.5 / 4}});
     const previousAsset = await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.editingTarget.getCostumes()[0].assetId);

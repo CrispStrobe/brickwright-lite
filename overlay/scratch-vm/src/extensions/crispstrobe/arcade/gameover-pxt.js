@@ -1,10 +1,11 @@
 // Generated from PXT Arcade 4.2.1, pxt-common-packages (MIT).
 // Copyright (c) Microsoft Corporation. See static/licenses/pxt-common-packages.MIT.txt.
 // textDialogs.ts: d52d1c046debe4f889f2a82792882de2358f68233037cf4ca42cbfdf3d408caf
-// game.ts GameOverConfig and ScoringType: 469b4878af4d18d6048e64fd76dbc632a62c4a69b06dda4d54e228c4256042bd
+// game.ts GameOverConfig, ScoringType and showDialog: 21644daea6096413cfb2eed0050bcfe8177f2bc69417f1a46f226c04457f8972
 // Regenerate: node scripts/generate-arcade-gameover.mjs
 module.exports = function initializePxtGameOver(host) {
 const {image, img, screen, info, effects, music, control, controller, scene} = host;
+const init = () => {};
 const Math = Object.create(globalThis.Math);
 Math.idiv = (a, b) => (a / b) | 0;
 var DialogLayout;
@@ -928,6 +929,42 @@ var game;
         }
     }
     game.GameOverConfig = GameOverConfig;
+    function showDialogBackground(h, c) {
+        const top = (screen.height - h) >> 1;
+        screen.fillRect(0, top, screen.width, h, 0);
+        screen.drawLine(0, top, screen.width, top, 1);
+        screen.drawLine(0, top + h - 1, screen.width, top + h - 1, 1);
+        return top;
+    }
+    function showDialog(title, subtitle, footer) {
+        init();
+        const titleFont = image.getFontForText(title || "");
+        const subFont = image.getFontForText(subtitle || "");
+        const footerFont = image.getFontForText(footer || "");
+        let h = 8;
+        if (title)
+            h += titleFont.charHeight;
+        if (subtitle)
+            h += 2 + subFont.charHeight;
+        h += 8;
+        const top = showDialogBackground(h, 9);
+        let y = top + 8;
+        if (title) {
+            screen.print(title, 8, y, screen.isMono ? 1 : 7, titleFont);
+            y += titleFont.charHeight + 2;
+        }
+        if (subtitle) {
+            screen.print(subtitle, 8, y, screen.isMono ? 1 : 6, subFont);
+            y += subFont.charHeight + 2;
+        }
+        if (footer) {
+            const footerTop = screen.height - footerFont.charHeight - 4;
+            screen.fillRect(0, footerTop, screen.width, footerFont.charHeight + 4, 0);
+            screen.drawLine(0, footerTop, screen.width, footerTop, 1);
+            screen.print(footer, screen.width - footer.length * footerFont.charWidth - 8, screen.height - footerFont.charHeight - 2, 1, footerFont);
+        }
+    }
+    game.showDialog = showDialog;
 })(game || (game = {}));
 
 return {game};

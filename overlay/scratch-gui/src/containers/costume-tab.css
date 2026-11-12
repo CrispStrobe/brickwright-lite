@@ -57,3 +57,10 @@
         display: none;
     }
 }
+
+/* Touch tabs leave normal flow. Reserve the pane toggle's upper-right footprint
+   in the command band without adding a second row above the editor. */
+html[data-bw-touch] .editor-tools {
+    box-sizing: border-box;
+    padding-right: 36px;
+}

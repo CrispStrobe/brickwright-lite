@@ -151,8 +151,9 @@ export const ToolButton = ({item, T, coarse, inMenu = false}) => {
  * Closes on Escape and on a press outside it (the pane's outside-press handler,
  * which looks for [data-sim-lab-popup]).
  */
-export const Popup = ({id, open, onToggle, onClose, button, children, align = 'left', width = 260, label, closeOnPick = true, testId}) => {
+export const Popup = ({id, open, onToggle, onClose, button, children, align = 'left', width = 260, label, closeOnPick = true, testId, role = 'group', anchorTestId, keepMounted = false}) => {
     const anchor = React.useRef(null);
+    const panel = React.useRef(null);
     const toggle = React.useRef(onToggle);
     toggle.current = onToggle;
     const trigger = React.useRef(null);
@@ -163,23 +164,81 @@ export const Popup = ({id, open, onToggle, onClose, button, children, align = 'l
         const place = () => {
             const rect = anchor.current?.getBoundingClientRect();
             if (!rect) return;
+            if (!rect.width && !rect.height) { onClose('hidden'); return; }
             const w = Math.min(width, window.innerWidth - 16);
-            setPosition({left: Math.max(8, Math.min(window.innerWidth - w - 8, align === 'right' ? rect.right - w : rect.left)),
-                top: Math.min(rect.bottom + 4, Math.max(8, window.innerHeight - 220))});
+            const left = Math.max(8, Math.min(window.innerWidth - w - 8, align === 'right' ? rect.right - w : rect.left));
+            const top = Math.min(rect.bottom + 4, Math.max(8, window.innerHeight - 220));
+            // Same spot: no state change, so no re-render and no layout for the observer to see again.
+            setPosition(prev => (prev.left === left && prev.top === top ? prev : {left, top}));
         };
         place();
+        // The observer callback only SCHEDULES the placement for the next frame. Doing it inside
+        // the callback (a state update, and `onClose` when the anchor is hidden) re-rendered, and so
+        // re-laid-out, the very toolbar being observed within the same delivery: the shape that can end
+        // in "ResizeObserver loop completed with undelivered notifications".
+        let frame = 0;
+        const schedule = () => { if (!frame) frame = requestAnimationFrame(() => { frame = 0; place(); }); };
+        const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(schedule);
+        if (anchor.current) observer?.observe(anchor.current);
         window.addEventListener('resize', place);
         window.addEventListener('scroll', place, true);
-        return () => { window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true); };
+        return () => { cancelAnimationFrame(frame); observer?.disconnect(); window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true); };
     }, [open, width, align]);
-    return <div ref={anchor} data-sim-lab-popup={id} style={{position: 'relative', flex: '0 0 auto'}}
-        onKeyDown={e => { if (open && e.key === 'Escape') { e.stopPropagation(); onClose(); } }}>
-        {React.cloneElement(button, {'aria-haspopup': 'true', 'aria-expanded': open, ...trigger.current})}
-        {open ? createPortal(
-            <div role="group" data-sim-lab-popup={id} aria-label={label} data-testid={testId || `bw-sim-lab-${id}-menu`}
-                onClick={e => { if (closeOnPick && e.target.closest && e.target.closest('button')) onClose(); }}
+    React.useEffect(() => {
+        if (!open) return undefined;
+        const outside = event => {
+            if (!anchor.current?.contains(event.target) && !panel.current?.contains(event.target)) onClose('outside');
+        };
+        document.addEventListener('pointerdown', outside, true);
+        return () => document.removeEventListener('pointerdown', outside, true);
+    }, [open, onClose]);
+    return <div ref={anchor} data-testid={anchorTestId} data-sim-lab-popup={id} style={{position: 'relative', flex: '0 0 auto'}}
+        onBlur={e => {
+            // Focus moved to something outside both the button and the (portalled) panel: close, as a
+            // menu does. Events from the portal bubble here through the React tree. A dialog keeps its
+            // own focus handling, and a null target (the window lost focus, a click on a non-focusable
+            // surface) is left to the outside-press handler.
+            const next = e.relatedTarget;
+            if (!open || role === 'dialog' || !next) return;
+            if (!anchor.current?.contains(next) && !panel.current?.contains(next)) onClose('blur');
+        }}
+        onKeyDown={e => {
+            const trigger = anchor.current?.querySelector('button');
+            if (open && e.key === 'Escape') { e.stopPropagation(); onClose('escape'); trigger?.focus(); return; }
+            // The panel is portalled to <body>, so Tab would leave it for the end of the page: arrows move
+            // between its controls, ArrowDown on the button opens it onto the first, and Tab off either
+            // end returns to the button.
+            const items = Array.from(panel.current?.querySelectorAll('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), [role="menuitem"]:not([aria-disabled="true"]), [tabindex="0"]') || []);
+            if (e.target === trigger && e.key === 'ArrowDown' && role !== 'dialog') {
+                e.preventDefault();
+                if (!open) onToggle();
+                requestAnimationFrame(() => (Array.from(panel.current?.querySelectorAll('button:not([disabled]), [role="menuitem"]:not([aria-disabled="true"])') || [])[0])?.focus());
+                return;
+            }
+            if (!open || !panel.current || !panel.current.contains(e.target) || !items.length) return;
+            const at = items.indexOf(e.target.closest('button, a[href], input, select, [role="menuitem"], [tabindex="0"]'));
+            const field = e.target.matches && e.target.matches('input, select, textarea');
+            if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !field && role !== 'dialog') {
+                e.preventDefault();
+                items[(Math.max(at, 0) + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length].focus();
+            } else if (e.key === 'Tab' && ((!e.shiftKey && at === items.length - 1) || (e.shiftKey && at === 0))) {
+                e.preventDefault();
+                onClose('tab');
+                trigger?.focus();
+            }
+        }}>
+        {React.cloneElement(button, {'aria-haspopup': role === 'dialog' ? 'dialog' : 'true', 'aria-expanded': open, ...trigger.current})}
+        {open || keepMounted ? createPortal(
+            <div ref={panel} role={role} data-sim-lab-popup={id} aria-label={label} data-testid={testId || `bw-sim-lab-${id}-menu`}
+                onClick={e => {
+                    if (!closeOnPick || !e.target.closest) return;
+                    const pick = e.target.closest('button');
+                    // A disclosure button (aria-expanded) or one marked data-keep-open opens something INSIDE
+                    // the menu; closing would hide what it just showed.
+                    if (pick && !pick.closest('[aria-expanded], [data-keep-open]')) onClose();
+                }}
                 style={{position: 'fixed', ...position, zIndex: 3000, width, maxWidth: 'calc(100vw - 16px)', maxHeight: '65vh',
-                    overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 2, padding: 6, fontSize: 12,
+                    overflowY: 'auto', display: open ? 'flex' : 'none', flexDirection: 'column', alignItems: 'stretch', gap: 2, padding: 6, fontSize: 12,
                     background: '#fff', border: '1px solid #94a3b8', borderRadius: 8, boxShadow: '0 6px 18px rgba(15, 23, 42, 0.25)', boxSizing: 'border-box'}}>
                 {children}
             </div>

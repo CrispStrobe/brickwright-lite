@@ -571,6 +571,779 @@
         "physikalisches Pendel",
         "konjugierte Aufhängepunkte"
       ]
+    },
+    {
+      "models": [
+        "phasor-twin"
+      ],
+      "name": {
+        "en": "Two crank-sliders clocked 90° apart (Stirling phase loop)",
+        "de": "Zwei Schubkurbeln mit 90° Versatz (Stirling-Phasenschleife)"
+      },
+      "aliases": [
+        "Stirling cycle",
+        "Stirling engine",
+        "alpha Stirling",
+        "Schmidt analysis",
+        "phase angle",
+        "90 degree volume phase",
+        "quadrature piston phasing",
+        "kinematic Stirling analogy",
+        "crank-slider",
+        "Stirling-Zyklus",
+        "Stirling-Motor",
+        "Alpha-Stirling",
+        "Schmidt-Analyse",
+        "Phasenwinkel",
+        "90-Grad-Volumenphase",
+        "Phasenquadratur"
+      ]
+    },
+    {
+      "models": [
+        "final-squeeze"
+      ],
+      "name": {
+        "en": "Equal-link knee press with passive spring-loaded platen",
+        "de": "Kniehebelpresse mit gleichen Gliedern und passiver federbelasteter Druckplatte"
+      },
+      "aliases": [
+        "knee press",
+        "toggle press",
+        "equal-link slider-crank",
+        "mechanical advantage",
+        "virtual work",
+        "shock absorber",
+        "platen",
+        "Kniehebelpresse",
+        "Kniehebel",
+        "Totpunkt",
+        "virtuelle Arbeit",
+        "Kraftübersetzung",
+        "Feder",
+        "Druckplatte"
+      ]
+    },
+    {
+      "models": [
+        "high-select"
+      ],
+      "name": {
+        "en": "Gravity-loaded unilateral maximum selector",
+        "de": "Schwerkraftbelasteter Maximumwähler mit einseitigen Kontakten"
+      },
+      "aliases": [
+        "mechanical maximum",
+        "maximum selector",
+        "MAX",
+        "rack",
+        "gravity",
+        "contact",
+        "handover",
+        "commutativity",
+        "mechanisches Maximum",
+        "Maximumwähler",
+        "Zahnstange",
+        "Schwerkraft",
+        "Kontaktwechsel",
+        "Kommutativität"
+      ]
+    },
+    {
+      "models": [
+        "tipline"
+      ],
+      "name": {
+        "en": "matched-load incline: center of mass, friction and first instability",
+        "de": "Neigungsversuch mit gleichen Lasten: Schwerpunkt, Reibung und erste Instabilität"
+      },
+      "aliases": [
+        "Tipline",
+        "inclined plane",
+        "tilting deck",
+        "sliding",
+        "tipping",
+        "center of mass",
+        "ballast height",
+        "same mass",
+        "friction",
+        "static stability",
+        "lane swap",
+        "schiefe Ebene",
+        "Rutschen",
+        "Kippen",
+        "Schwerpunkt",
+        "Ballasthöhe",
+        "Reibung",
+        "Standfestigkeit",
+        "passive catch wall",
+        "Auffangwand"
+      ]
+    },
+    {
+      "models": [
+        "twistspan"
+      ],
+      "name": {
+        "en": "bifilar torsional pendulum",
+        "de": "bifilares Torsionspendel"
+      },
+      "aliases": [
+        "bifilar",
+        "two cords",
+        "fixed-length suspension",
+        "torsional pendulum",
+        "gravity",
+        "moment of inertia",
+        "attachment spacing",
+        "passive oscillation",
+        "Zweifadenpendel",
+        "Torsionspendel",
+        "Schwerkraft",
+        "Trägheitsmoment",
+        "Fadenabstand"
+      ]
+    },
+    {
+      "models": [
+        "swayshift"
+      ],
+      "name": {
+        "en": "3:1 gear-driven rack trolley and passive rigid pendulum: finite command shaping",
+        "de": "Zahnstangenschlitten mit 3:1-Zahnradantrieb und passivem starrem Pendel: Formung endlicher Fahrbefehle"
+      },
+      "aliases": [
+        "SwayShift",
+        "input shaping",
+        "command shaping",
+        "anti-sway",
+        "residual vibration",
+        "passive pendulum",
+        "rack trolley",
+        "half period",
+        "phase cancellation",
+        "Eingangsformung",
+        "Nachschwingen",
+        "Pendel",
+        "Zahnstangenschlitten",
+        "halbe Periode"
+      ]
+    },
+    {
+      "models": [
+        "poise"
+      ],
+      "name": {
+        "en": "Roberval balance",
+        "de": "Roberval-Waage"
+      },
+      "aliases": [
+        "Roberval balance",
+        "Roberval-Waage",
+        "equal-arm balance",
+        "parallelogram",
+        "load position",
+        "weighing",
+        "Waage",
+        "Lastposition",
+        "Parallelogramm"
+      ]
+    },
+    {
+      "models": [
+        "bend-ripple"
+      ],
+      "name": {
+        "en": "Variable-bend Cardan joint",
+        "de": "Kardan mit veränderlichem Winkel"
+      },
+      "aliases": [
+        "Cardan joint",
+        "universal joint",
+        "Hooke joint",
+        "speed ripple",
+        "bend angle",
+        "Kardangelenk",
+        "Kreuzgelenk",
+        "Knickwinkel",
+        "Drehzahlschwankung",
+        "Cardan",
+        "angular velocity ripple"
+      ]
+    },
+    {
+      "models": [
+        "offset-relay"
+      ],
+      "name": {
+        "en": "Variable-offset coupling",
+        "de": "Kupplung mit variablem Versatz"
+      },
+      "aliases": [
+        "Schmidt coupling",
+        "offset coupling",
+        "parallel offset coupling",
+        "parallelogram linkage",
+        "constant velocity",
+        "shaft misalignment",
+        "Schmidt-Kupplung",
+        "Parallelversatz",
+        "Wellenversatz",
+        "Parallelogramm",
+        "Gleichlauf",
+        "parallel shafts",
+        "phase transmission"
+      ]
+    },
+    {
+      "models": [
+        "rack-decoder"
+      ],
+      "name": {
+        "en": "Mechanical selection",
+        "de": "Mechanische Auswahl"
+      },
+      "aliases": [
+        "rack differential",
+        "linear differential",
+        "rack and pinion",
+        "sum and difference",
+        "average",
+        "Zahnstangen-Differenzial",
+        "Zahnstange",
+        "Ritzel",
+        "Mittelwert",
+        "Differenz",
+        "mechanical decoder",
+        "position logic"
+      ]
+    },
+    {
+      "models": [
+        "remote-pivot"
+      ],
+      "name": {
+        "en": "Empty-centre rotation",
+        "de": "Drehung um ein freies Zentrum"
+      },
+      "aliases": [
+        "remote centre of motion",
+        "remote center of motion",
+        "RCM",
+        "double parallelogram",
+        "virtual pivot",
+        "surgical robot",
+        "parallelogram linkage",
+        "entferntes Drehzentrum",
+        "Doppelparallelogramm",
+        "virtueller Drehpunkt",
+        "Chirurgieroboter",
+        "remote center",
+        "parallelogram"
+      ]
+    },
+    {
+      "models": [
+        "schmidt-shift"
+      ],
+      "name": {
+        "en": "Schmidt coupling",
+        "de": "Schmidt-Kupplung"
+      },
+      "aliases": [
+        "Schmidt coupling",
+        "Schmidt-Kupplung",
+        "parallel offset shafts",
+        "parallel versetzte Wellen",
+        "constant velocity coupling",
+        "Gleichlaufkupplung",
+        "connecting rods",
+        "Koppelstangen"
+      ]
+    },
+    {
+      "models": [
+        "equal-share"
+      ],
+      "name": {
+        "en": "Whippletree force equalizer",
+        "de": "Kraftausgleich mit Ausgleichsbalken"
+      },
+      "aliases": [
+        "whippletree",
+        "whiffletree",
+        "force equalizer",
+        "parallel springs",
+        "stiffness",
+        "Ausgleichsbalken",
+        "Waagscheit",
+        "parallele Federn",
+        "Kraftverteilung"
+      ]
+    },
+    {
+      "models": [
+        "stroke-shift"
+      ],
+      "name": {
+        "en": "Adjustable crank throw",
+        "de": "Verstellbarer Kurbelradius"
+      },
+      "aliases": [
+        "adjustable crank throw",
+        "variable stroke",
+        "slider-crank",
+        "connecting rod",
+        "linear actuator",
+        "passive piston",
+        "crank radius",
+        "verstellbarer Kurbelradius",
+        "verstellbarer Hub",
+        "Schubkurbel",
+        "Pleuel",
+        "Linearaktuator"
+      ]
+    },
+    {
+      "models": [
+        "triad-table"
+      ],
+      "name": {
+        "en": "Three lengths, one pose",
+        "de": "Drei Längen, eine Pose"
+      },
+      "aliases": [
+        "parallel robot",
+        "3-RPR",
+        "planar parallel platform",
+        "XY-theta stage",
+        "positioning table",
+        "inverse kinematics",
+        "pose",
+        "yaw",
+        "linear actuator",
+        "singularity",
+        "Parallelroboter",
+        "Positioniertisch",
+        "ebene Parallelplattform",
+        "inverse Kinematik",
+        "Gierwinkel",
+        "Linearaktuator"
+      ]
+    },
+    {
+      "models": [
+        "kestrel-flapper"
+      ],
+      "name": {
+        "en": "Flapping linkage",
+        "de": "Schlagflügel-Gestänge"
+      },
+      "aliases": [
+        "crank-rocker",
+        "four-bar linkage",
+        "Grashof",
+        "flapping wing",
+        "ornithopter",
+        "quick return",
+        "dead centre",
+        "Kurbelschwinge",
+        "Viergelenk",
+        "Schlagflügel",
+        "Totlage",
+        "Schnellrücklauf",
+        "crank rocker"
+      ]
+    },
+    {
+      "models": [
+        "meridian-linkage"
+      ],
+      "name": {
+        "en": "Straight-line linkage",
+        "de": "Geradführungs-Gestänge"
+      },
+      "aliases": [
+        "Peaucellier–Lipkin",
+        "Peaucellier linkage",
+        "inversor",
+        "exact straight-line linkage",
+        "circle inversion",
+        "straight-line mechanism",
+        "Peaucellier-Lipkin",
+        "Inversor",
+        "Geradführung",
+        "Kreisinversion",
+        "geometric closure"
+      ]
+    },
+    {
+      "models": [
+        "lumen-iris"
+      ],
+      "name": {
+        "en": "Six-leaf iris",
+        "de": "Sechsblättrige Iris"
+      },
+      "aliases": [
+        "iris diaphragm",
+        "aperture",
+        "iris",
+        "turntable",
+        "gear ring",
+        "synchronised leaves",
+        "Irisblende",
+        "Blende",
+        "Lamellen",
+        "Drehkranz",
+        "Zahnkranz",
+        "radial linkage"
+      ]
+    },
+    {
+      "models": [
+        "tangent-table"
+      ],
+      "name": {
+        "en": "Mechanical angle mapping",
+        "de": "Mechanische Winkelabbildung"
+      },
+      "aliases": [
+        "tangent mechanism",
+        "mechanical multiplier",
+        "variable gain",
+        "slotted guide",
+        "analog computer",
+        "y = x tan θ",
+        "Tangens",
+        "Kulisse",
+        "mechanischer Multiplizierer",
+        "Analogrechner",
+        "veränderliche Verstärkung",
+        "tangent",
+        "analog computation",
+        "line intersection"
+      ]
+    },
+    {
+      "models": [
+        "afterturn"
+      ],
+      "name": {
+        "en": "Geometric-phase reorientation through a closed internal shape cycle",
+        "de": "Umorientierung durch einen geschlossenen inneren Formzyklus"
+      },
+      "aliases": [
+        "geometric phase",
+        "shape cycle",
+        "reaction wheel",
+        "variable inertia",
+        "angular momentum",
+        "free yaw",
+        "geometrische Phase",
+        "Formzyklus",
+        "Reaktionsrad",
+        "veränderliches Trägheitsmoment",
+        "Drehimpuls"
+      ]
+    },
+    {
+      "models": [
+        "toggle-press"
+      ],
+      "name": {
+        "en": "toggle linkage",
+        "de": "Kniehebelgetriebe"
+      },
+      "aliases": [
+        "dead centre",
+        "toggle press",
+        "Kniehebel",
+        "Totpunkt"
+      ]
+    },
+    {
+      "models": [
+        "footfall"
+      ],
+      "name": {
+        "en": "Jansen linkage",
+        "de": "Jansen-Beinmechanismus"
+      },
+      "aliases": [
+        "walking linkage",
+        "foot trajectory",
+        "Strandbeest",
+        "Jansen-Mechanismus"
+      ]
+    },
+    {
+      "models": [
+        "phasekeeper"
+      ],
+      "name": {
+        "en": "double Cardan joint",
+        "de": "Doppelkardangelenk"
+      },
+      "aliases": [
+        "double Cardan",
+        "universal joint",
+        "Hooke joint",
+        "constant velocity",
+        "Kardangelenk",
+        "Gleichlauf"
+      ]
+    },
+    {
+      "models": [
+        "vectorsum"
+      ],
+      "name": {
+        "en": "differential angle averaging",
+        "de": "Winkelmittelwert im Differential"
+      },
+      "aliases": [
+        "open differential",
+        "angle averaging",
+        "mechanical adder",
+        "Differenzial",
+        "Differential"
+      ]
+    },
+    {
+      "models": [
+        "helixgate"
+      ],
+      "name": {
+        "en": "worm gearing",
+        "de": "Schneckengetriebe"
+      },
+      "aliases": [
+        "worm gear",
+        "worm drive",
+        "24:1",
+        "right-angle transmission",
+        "Schneckengetriebe"
+      ]
+    },
+    {
+      "models": [
+        "looprelay"
+      ],
+      "name": {
+        "en": "compound chain and gear drive",
+        "de": "Ketten- und Zahnradtrieb"
+      },
+      "aliases": [
+        "chain drive",
+        "sprocket",
+        "compound ratio",
+        "direction reversal",
+        "Kettenantrieb"
+      ]
+    },
+    {
+      "models": [
+        "paritydial"
+      ],
+      "name": {
+        "en": "gear-train parity",
+        "de": "Drehsinn und Zwischenrad"
+      },
+      "aliases": [
+        "idler gear",
+        "gear parity",
+        "direction reversal",
+        "Zwischenrad"
+      ]
+    },
+    {
+      "models": [
+        "counterslide"
+      ],
+      "name": {
+        "en": "opposed rack and pinion",
+        "de": "gegenläufige Zahnstangen"
+      },
+      "aliases": [
+        "rack and pinion",
+        "self-centering jaws",
+        "symmetric gripper",
+        "Zahnstange",
+        "selbstzentrierend"
+      ]
+    },
+    {
+      "models": [
+        "paired-door-sync"
+      ],
+      "name": {
+        "en": "Opposed rack and pinion",
+        "de": "Gegenläufige Zahnstangen mit Ritzel"
+      },
+      "aliases": [
+        "paired doors",
+        "sliding doors",
+        "rack and pinion",
+        "opposed racks",
+        "synchronised doors",
+        "Schiebetür",
+        "Doppeltür",
+        "Zahnstange",
+        "Ritzel"
+      ]
+    },
+    {
+      "models": [
+        "rimrun"
+      ],
+      "name": {
+        "en": "Rolling inertia race",
+        "de": "Trägheits-Rollrennen"
+      },
+      "aliases": [
+        "rolling inertia",
+        "moment of inertia",
+        "rolling race",
+        "inclined plane",
+        "radial ballast",
+        "Trägheitsmoment",
+        "Rollversuch",
+        "schiefe Ebene"
+      ]
+    },
+    {
+      "models": [
+        "pointweaver"
+      ],
+      "name": {
+        "en": "five-bar parallel linkage",
+        "de": "Fünfgelenk-Parallelmechanismus"
+      },
+      "aliases": [
+        "five-bar linkage",
+        "parallel robot",
+        "Cartesian interpolation",
+        "Fünfgelenk",
+        "Bahnplanung"
+      ]
+    },
+    {
+      "models": [
+        "evenhand"
+      ],
+      "name": {
+        "en": "Counterbalanced two-joint arm: gravity torque about each joint",
+        "de": "Ausgewogener Zweigelenkarm: Schweremoment um jedes Gelenk"
+      },
+      "aliases": [
+        "counterweight",
+        "counterbalance",
+        "gravity torque",
+        "two-joint arm",
+        "serial arm",
+        "holding torque",
+        "lever arm",
+        "Gegengewicht",
+        "Gewichtsausgleich",
+        "Schweremoment",
+        "Zweigelenkarm",
+        "Haltemoment",
+        "Hebelarm"
+      ]
+    },
+    {
+      "models": [
+        "obliquity-orrery"
+      ],
+      "name": {
+        "en": "Parallel-crank orrery with a fixed tilted axis",
+        "de": "Parallelkurbel-Orrery mit fest geneigter Achse"
+      },
+      "aliases": [
+        "orrery",
+        "obliquity",
+        "axial tilt",
+        "solar declination",
+        "seasons",
+        "solstice",
+        "equinox",
+        "parallelogram linkage",
+        "Schiefe der Ekliptik",
+        "Achsneigung",
+        "Sonnendeklination",
+        "Jahreszeiten",
+        "Sonnenwende",
+        "Parallelogramm"
+      ]
+    },
+    {
+      "models": [
+        "cadence-geneva"
+      ],
+      "name": {
+        "en": "Geneva indexing drive",
+        "de": "Malteserkreuz-Schaltung"
+      },
+      "aliases": [
+        "Geneva drive",
+        "Maltese cross",
+        "intermittent motion",
+        "indexing",
+        "dwell",
+        "Malteserkreuz",
+        "Schrittgetriebe",
+        "Rastgetriebe",
+        "Taktgetriebe",
+        "Geneva"
+      ]
+    },
+    {
+      "models": [
+        "helios-transmission"
+      ],
+      "name": {
+        "en": "Stepped-planet epicyclic transmission",
+        "de": "Umlaufgetriebe mit Stufenplaneten"
+      },
+      "aliases": [
+        "epicyclic gear",
+        "planetary gear",
+        "compound planet",
+        "stepped planet",
+        "power split",
+        "Willis equation",
+        "eCVT",
+        "Umlaufgetriebe",
+        "Planetengetriebe",
+        "Stufenplanet",
+        "Leistungsverzweigung",
+        "Willis-Gleichung",
+        "epicyclic"
+      ]
+    },
+    {
+      "models": [
+        "orion-cardan"
+      ],
+      "name": {
+        "en": "Offset double Cardan drive",
+        "de": "Versetzter Doppel-Kardanantrieb"
+      },
+      "aliases": [
+        "Cardan joint",
+        "universal joint",
+        "Hooke joint",
+        "double Cardan",
+        "drive shaft",
+        "constant velocity",
+        "phasing",
+        "Kardangelenk",
+        "Kreuzgelenk",
+        "Gelenkwelle",
+        "Doppelkardan",
+        "Gleichlauf"
+      ]
     }
   ]
 }

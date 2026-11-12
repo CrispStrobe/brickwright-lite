@@ -57,3 +57,54 @@ counts, saved/current graph and actual error attribution. Editing each physical
 getter and reopening in the GUI remain separate gates. No original replay,
 SDK execution, full compatibility or corpus-count reduction follows from adding
 this implementation or its authored controls.
+
+## Missing Sprite and Image operands, and what a fault ends
+
+The same sealed machinery now covers five more physical primitives, each with its
+own declaration, adapter binding, registration and receipt (`kinds` in
+`bw-null-sprite-getter.js`): `setSpriteImage` (missing Sprite receiver) and the
+Image operations `blitImage`, `drawImage` (fillRect/drawLine), `drawImageCircle`,
+`setImagePixel` and `mutateImage` (missing receiver, and for `blitImage` a missing
+source). Only an actual null or Undefined operand issues a receipt; numbers, text,
+other references and a missing argument never do (original: they do not throw).
+`setImage(undefined)` on a real Sprite is a no-op in the original and stays one.
+Each opcode is in the primitive-owner role table so the engine loan reaches it.
+
+An uncaught exception ends exactly one original fiber. Brickwright now matches:
+
+| context | original fiber | after the fault |
+| --- | --- | --- |
+| controller, update intervals, `onUpdate`, `onPaint`/`onShade`, screen update | the scene's single frame fiber | the scene's frame loop never runs again, even when the scene is restored; the display keeps its last frame until the 200 ms fallback refresh shows the partly drawn screen (paint) |
+| button event handler | the event fiber under the queue lock | that (event, button) queue stays locked, later events are never delivered |
+| `forever` handler | the handler fiber holding `lock` | that handler never runs again, siblings do |
+| overlap handler | a fiber started with `runInParallel` | the pair stays marked overlapping and never fires again |
+| other parallel, timer and interval fibers | the fiber itself | only that fiber ends |
+
+`test/arcade-fatal-faults.test.mjs` compares each row against the original
+simulator through the differential harness.
+
+## Further missing-receiver primitives, HUD callbacks and hat overlaps
+
+Measured against the original simulator, every property setter (`x`, `y`, `vx`, `z`, `lifespan`, `left`, `scale`, `data`, ...),
+`destroy` and `setPosition` on a null or undefined Sprite throws, and so do `width`, `height`, `getPixel`, `scroll`, `print`, `clone`
+and `equals` (as receiver) on a null or undefined Image. A null Image or Sprite passed as an *argument* (`image.equals(null)`,
+`setImage(undefined)` on a real Sprite) does not throw. Five more sealed kinds cover `setSpriteProperty`, `setSpritePosition`, `imageProperty`, `imagePixel` and `scrollImage`, each with its own declaration, registration and receipt.
+
+* A life-zero or countdown-end callback runs inside the HUD renderable, so a fault ends the scene's frame fiber exactly like a
+  faulting `onPaint`.
+* A hat-based (legacy) overlap handler reports a dead fiber: its pair stays marked overlapping.
+* An extension frame callback (host) that throws is left alone: such errors are Brickwright refusals, not PXT exceptions, and ending the
+  frame loop for them changed refusal behaviour.
+* The 200 ms fallback screen refresh clears its flag at each tick before a frame at the same instant updates it, so a frame fault at
+  a tick instant is refreshed two ticks later.
+
+Still open: `destroy` (its synchronous destroyed-callbacks step nested threads inside the primitive loan, which the loan forbids), reads of other Sprite properties (`vx`, `left`, `kind`, ...), `say`, `setKind`, `overlapsWith`, `drawRect`, `print`,
+`clone` and `equals` on a missing receiver do not yet fault.
+
+## The cooperative yield
+
+pxtsim counts compiled steps and, every 100, asks whether 20 ms have passed since the last yield or since any fiber resumed from a wait
+over 3 ms. If so the running fiber sleeps 5 ms. Brickwright stamps every program-clock timer wake (over 3 ms) and, on the 34th source step
+of a fiber (about 100 compiled steps), puts the fiber to sleep for 5 ms when 20 ms have passed. With a live frame loop that never
+happens; a button handler started after the frame loop died reaches its first `pause` 5 ms late. `game.ask` pushes an event context:
+the scene's frame worker is unregistered while the prompt is open and a new worker waits on the condition-poll queue when it pops.

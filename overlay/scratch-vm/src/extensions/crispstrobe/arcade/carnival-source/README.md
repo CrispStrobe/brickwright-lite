@@ -10,8 +10,9 @@ Original package: Microsoft arcade-carnival v0.0.7, commit
 `6530f15cbddbc41419a59a41e8c13276eb6ac65645c04d02e899826c08e3f765`.
 The generated scoring/dialog module selects WinTypes, ScoreTypes, countdown
 initialization, startCountdownGame, saveLowScore, newGameOver, init,
-GameOverDialog, onGameOverExpanded and customGameOverExpanded. This does not
-implement the package's throwable sprites, tracers, labels or timer HUD.
+GameOverDialog, onGameOverExpanded, customGameOverExpanded, and the label
+function addLabelTo with its Areas enum and textSprite variable. This does not
+implement the package's throwable sprites, tracers or timer HUD.
 
 Regenerate with `node scripts/generate-arcade-carnival.mjs`; use `--check` to
 verify exact output. The generator retains selected domain expressions and

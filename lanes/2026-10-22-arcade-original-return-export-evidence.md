@@ -1,6 +1,6 @@
 # Arcade original function-return export evidence
 
-CLAIMED — owner: Arcade integration, branch
+IMPLEMENTED — diagnostic capture awaiting hosted qualification. Owner: Arcade integration, branch
 `lane/arcade-original-return-evidence-claim-20261022`, base `2dff9a05c`.
 
 The original twelve-case `test/makecode-arcade-function-returns.test.mjs`
@@ -34,3 +34,13 @@ hosted unit route with its genuine VM and MakeCode dependencies. No local
 filtered native/SDK replay or raised resource limit. Inspect the retained
 original failure and diagnostic output before selecting a semantic fix. This
 claim and capture confer no test, application, GUI or corpus completion credit.
+
+## Candidate status
+
+Claim #1227 merged before implementation. The original decompile result and
+project argument are retained without repeating either the decompile or exporter.
+Only a nonempty actual export refusal adds diagnostic text to the existing
+assertion. Capture is capped at 1 MiB UTF-8 and reports unavailable status on
+size or serialization failure while retaining the original assertion failure.
+All twelve original fixtures, frames, assertions and later compile/SB3 steps
+remain unchanged. No local runtime replay; inspect the original hosted cases.

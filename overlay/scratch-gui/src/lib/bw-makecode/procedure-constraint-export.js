@@ -1,13 +1,15 @@
 import model from 'scratch-vm/src/util/bw-procedure-constraint-model.js';
 import {analyseConsoleCaptures} from './console-capture-provenance.js';
+import {createClosedOrdinaryProjectEntry} from './closed-ordinary-project-entry.js';
 const fail=message=>{throw Error('Procedure parameter constraint: '+message);};
 const field=(block,name)=>block.fields?.[name]?.[0];
 const child=(target,block,name)=>target.blocks[block.inputs?.[name]?.[1]];
 const literal=(block,name,target)=>{if(block.fields?.[name])return field(block,name);const value=block.inputs?.[name]?.[1];return Array.isArray(value)&&value[0]===10?value[1]:target.blocks[value]?.opcode==='text'?field(target.blocks[value],'TEXT'):null;};
 export function prepareProcedureConstraintExport(project) {
+ const entryProof=createClosedOrdinaryProjectEntry(project);
  const models=new Map(project.targets.map(target=>[target,model.prepare(target)]));
  const obligations=new WeakMap(),allObligations=[],declarations=new Set(),annotations=new Map();
- const add=(block,record,input,type)=>{const entries=obligations.get(block)||[];const obligation=Object.freeze({record,input,type});entries.push(obligation);allObligations.push({block,obligation});obligations.set(block,entries);};
+ const add=(target,block,record,input,type)=>{if(entryProof.isUnreachable(target,block))return;const entries=obligations.get(block)||[];const obligation=Object.freeze({record,input,type});entries.push(obligation);allObligations.push({block,obligation});obligations.set(block,entries);};
  const captures=analyseConsoleCaptures({targets:project.targets,blocks:target=>target.blocks,input:(block,name,target)=>child(target,block,name),literal});
  for(const [target,prepared] of models) {
   const byCode=new Map();annotations.set(target,byCode);
@@ -21,7 +23,7 @@ export function prepareProcedureConstraintExport(project) {
    for(const constraint of entry.constraints.values()) {
     model.stockFormal(target,block,constraint.id);
     if(!block.inputs?.[constraint.id])fail('required stock call input is missing');
-    add(block,entry,constraint.id,constraint.type);
+    add(target,block,entry,constraint.id,constraint.type);
    }
   }
   if(block.opcode==='arcade_callFunction') {
@@ -34,7 +36,7 @@ export function prepareProcedureConstraintExport(project) {
    }
    const empty=Array.isArray(tail)&&tail[0]===10&&tail[1]==='[]'||current?.opcode==='text'&&field(current,'TEXT')==='[]';
    if(!empty||args.length!==entry.names.length)fail('managed argument list differs');
-   for(const constraint of entry.constraints.values())add(args[constraint.index],entry,'VALUE',constraint.type);
+   for(const constraint of entry.constraints.values())add(target,args[constraint.index],entry,'VALUE',constraint.type);
   }
   if(['arcade_setLocal','arcade_setCaptured'].includes(block.opcode)) {
    const scope=captures.scopeOf(block),name=literal(block,'NAME',target);
@@ -44,7 +46,7 @@ export function prepareProcedureConstraintExport(project) {
    }
    const cell=block.opcode==='arcade_setCaptured'?captures.captured(scope,name):captures.local(scope,name);
    const record=cell&&annotations.get(cell.scope.target)?.get(cell.scope.procedure),constraint=record?.constraints.get(cell.name);
-   if(constraint)add(block,record,'VALUE',constraint.type);
+   if(constraint)add(target,block,record,'VALUE',constraint.type);
   }
  }
  return Object.freeze({
@@ -53,6 +55,6 @@ export function prepareProcedureConstraintExport(project) {
   obligations:block=>obligations.get(block)||[],
   allObligations:Object.freeze(allObligations),
   procedures:()=>[...models].flatMap(([target,prepared])=>[...prepared.procedures].map(([code])=>({target,code}))),
-  current:()=>[...models.values()].every(prepared=>prepared.current())
+  current:()=>entryProof.current()&&[...models.values()].every(prepared=>prepared.current())
  });
 }

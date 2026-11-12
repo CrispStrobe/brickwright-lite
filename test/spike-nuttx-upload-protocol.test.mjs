@@ -189,3 +189,29 @@ test('storage uses exact nonzero-ID frames and never starts or cleans up on erro
     }
     assert.throws(() => encodeCommand(10, 1));
 });
+test('v2 motor-group ops encode only in v2 programs, inside closed per-topology bounds', async () => {
+    const pair = {version: 2, instructions: [[7, 0, -360, 300], [7, 1, 360, 300], [8, 3, 0, 0], [0, 0, 0, 0]]};
+    const data = encodeInstructions(pair), v = new DataView(data.buffer);
+    assert.deepEqual([0, 4, 8, 12, 32, 36].map(at => v.getInt32(at, true)), [7, 0, -360, 300, 8, 3]);
+    assert.equal(validArenaProgram(pair), true);
+    const v1 = {version: 1, instructions: pair.instructions};
+    assert.throws(() => encodeInstructions(v1), /ABI bounds/);assert.equal(validArenaProgram(v1), false);
+    // The default A/B mask is 1–3; six motors widen ports and mask to A–F (1–63) for the encoder only.
+    const six = {version: 2, instructions: [[7, 5, -36000, 1], [7, 2, 36000, 1110], [8, 63, 0, 0], [0, 0, 0, 0]]};
+    assert.throws(() => encodeInstructions(six), /ABI bounds/);assert.equal(validArenaProgram(six), false);
+    assert.equal(encodeInstructions(six, {topology: 'six-motors'}).length, 64);
+    for (const [row, topology] of [[[7, 2, 90, 300]], [[7, 0, 36001, 300]], [[7, 0, 90, 0]], [[7, 0, 90, 1111]],
+        [[8, 0, 0, 0]], [[8, 4, 0, 0]], [[8, -1, 0, 0]], [[8, 3, 1, 0]], [[8, 3, 0, 1]], [[9, 0, 0, 0]],
+        [[7, 6, 90, 300], 'six-motors'], [[8, 64, 0, 0], 'six-motors'], [[8, 0, 0, 0], 'six-motors']]) {
+        const bad = {version: 2, instructions: [row, [0, 0, 0, 0]]};
+        assert.throws(() => encodeInstructions(bad, {topology}), /ABI bounds/, JSON.stringify(row));
+        if (!topology) assert.equal(validArenaProgram(bad), false, JSON.stringify(row));
+    }
+    for (const version of [0, 3, '2']) {
+        assert.throws(() => encodeInstructions({version, instructions: [[0, 0, 0, 0]]}), /v1 or v2/);
+    }
+    // A v1 program carrying v2 ops is refused before the transport sees a byte.
+    let calls = 0;const client = new NuttXProgramClient(async request => {calls++;return reply(request);}, 1);
+    assert.throws(() => client.upload(v1), /ABI bounds/);assert.equal(calls, 0);
+    await client.upload(pair, {start: false});assert.ok(calls > 0);
+});

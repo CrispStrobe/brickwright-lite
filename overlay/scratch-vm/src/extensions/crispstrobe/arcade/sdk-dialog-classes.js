@@ -338,12 +338,16 @@ function create(ext, values) {
         else if (op === 'setText' || op === 'setSubtext') dialog[op](values.decode(args[1]));
         else if (op === 'update' && definitions.has(state.className)) dialog.update();
         else if (op === 'update') {
-            const epoch = generation;
+            // BlockUtility is shared and re-pointed at whichever thread steps
+            // next. Later method steps run in Promise continuations, so they keep
+            // this activation's own thread and target, not the utility's.
+            const epoch = generation, thread = util?.thread;
+            const own = util && Object.create(util, {thread: {value: thread}, target: {value: util.target || thread?.target}});
             const active = () => !closed && !suspended && generation === epoch &&
-                (!util?.thread || !util.thread.isKilled && runtime.threads.includes(util.thread));
+                (!thread || !thread.isKilled && runtime.threads.includes(thread));
             return runDialogMethodSequence(['clearInterior', 'drawTextCore', 'drawCursorRow'].map(methodName => () => {
                 const method = ext._objectHeap.method(args[0], methodName);
-                return ext._objectProcedure(method.procedure, [args[0]], util, token);
+                return ext._objectProcedure(method.procedure, [args[0]], own, token);
             }), active, () => refresh(dialog));
         }
         else if (['clearInterior', 'drawTextCore', 'drawCursorRow'].includes(op)) dialog[op]();

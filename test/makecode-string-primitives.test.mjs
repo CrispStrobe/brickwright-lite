@@ -8,6 +8,7 @@ import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 import {INTEGRATED} from './helpers/bw-integrated.mjs';
 import {runProgram,clearStrayTimers} from './helpers/bw-vm.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
+import {registeredArraysSource} from '../scripts/lib/arrays-carrier.mjs';
 const require=createRequire(import.meta.url);
 const BW=require(path.join(INTEGRATED,'node_modules/scratch-vm/src/util/bw-values.js'));
 const read=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
@@ -60,7 +61,8 @@ test('primitive conversions retain null/undefined/NaN while opaque values and in
 
 test('standalone Arrays uses the same primitive rules without the shared host value module',()=>{
  const bundle=readFileSync(new URL('../overlay/scratch-vm/src/extensions/crispstrobe/arrays/index.js',import.meta.url),'utf8');
- const source=JSON.parse(bundle.slice(bundle.indexOf('makeExt(')+8,bundle.lastIndexOf(');')));
+ const source=registeredArraysSource(bundle);
+ assert.equal(typeof source,'string','Arrays carrier must have the exact registered source contract');
  const runtime=new EventEmitter(),errors=[];runtime.on('BLOCKS_ERROR',e=>errors.push(e));
  let ext;
  const Scratch={vm:{runtime},extensions:{register(instance){ext=instance;}}};

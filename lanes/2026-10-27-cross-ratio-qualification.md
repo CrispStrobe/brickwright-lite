@@ -87,3 +87,19 @@ skips before normal matched-head merge and predicted/landed parent/tree equality
 Keep raw records, credentials, machine locations and operator details out of
 public Markdown, commits, PR bodies and logs; private operational pointers stay
 in ignored local handoffs.
+
+## Checkout metadata correction (2026-10-29)
+
+The prior hosted candidate reported twelve owned tests passing, including four
+actual VM/Jolt cases, but the whole run failed shared reference-instrument
+controls and two ambient-Git findings. Those reports are partial observations,
+not independent original or final-head acceptance. The correction binds an
+absolute executable and repository root, discards inherited Git overrides and
+checks the actual CI commit. Seven supplier rejection controls preserve the
+unchanged gate baseline. Mechanical contract, model, program, numerical bounds
+and timing remain unchanged; fresh affected current-head qualification remains
+mandatory before merge.
+The full gate audit also exposed a retained last-token selector in the
+acknowledgment fixture. Its replacement validates the whole wire envelope,
+byte extent, digest and canonical encoding, with six damaged-envelope
+controls. No gate baseline changes or exception markers are added.

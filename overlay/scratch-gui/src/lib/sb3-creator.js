@@ -535,7 +535,8 @@ function microbitShowNumberPy (pyUses) {
  */
 function microbitRadioSerialPy (pyUses, sends) {
     const out = [];
-    if (pyUses.serialno) {
+    const send = sends || pyUses.radiosend;
+    if (pyUses.serialno || send) {
         out.push('',
             'try:',
             '    import machine',
@@ -544,10 +545,33 @@ function microbitRadioSerialPy (pyUses, sends) {
             'except Exception:',
             '    _bw_serial_no = 1');
     }
-    if (sends) {
+    if (send) {
+        // MakeCode's radio packet (pxt-microbit libs/radio/radio.ts, "Packet Spec"): 32 bytes,
+        // | type | time (uint32 LE) | serial (int32 LE) | payload |, behind the 3-byte header
+        // (01 00 01) every MicroPython frame carries. Number 0 (int32 at 9) or double 4 (float64 at 9);
+        // value 1 (int32 at 9, name length at 13, name at 14) or double value 5 (float64 at 9, name
+        // length at 17, name at 18); string 2 and buffer 3 (length at 9, bytes at 10, at most 19).
         out.push('_bw_tx_serial = [False]',
-            'def _bw_tx(p):',
-            "    return ('\\x00S%d\\x00' % _bw_serial_no) + p if _bw_tx_serial[0] else p");
+            'def _bw_pkt(t, n=0, s=b\'\'):',
+            '    if isinstance(s, str):',
+            '        s = s.encode()',
+            '    if t < 2 and (n != int(n) or n > 2147483647 or n < -2147483648):',
+            '        t += 4',
+            "    h = struct.pack('<BBBBIi', 1, 0, 1, t, running_time() & 0xffffffff, _bw_serial_no if _bw_tx_serial[0] else 0)",
+            '    if t == 0 or t == 1:',
+            "        b = struct.pack('<i', int(n))",
+            '    elif t == 4 or t == 5:',
+            "        b = struct.pack('<d', n)",
+            '    else:',
+            '        b = b\'\'',
+            '    if t == 1 or t == 5:',
+            '        s = s[:8]',
+            '        b += bytes([len(s)]) + s',
+            '    elif t > 1:',
+            '        s = s[:19]',
+            '        b += bytes([len(s)]) + s',
+            '    h += b',
+            "    return h + bytes(35 - len(h))");
     }
     return out;
 }
@@ -573,7 +597,21 @@ function microbitImageHelpersPy (uses, pyUses) {
             '    y = int(y)',
             '    return 0 <= x < img.width() and 0 <= y < img.height() and img.get_pixel(x, y) > 0',
             'def _bw_img_show(img, off):',
-            '    display.show(img.shift_left(int(off)))');
+            '    display.show(img.shift_left(int(off)))',
+            // An Image pixel is 0..9 here and 0..255 in MakeCode: the value
+            // is quantised on the way in, so 0 and 255 survive exactly.
+            'def _bw_img_set_b(img, x, y, b):',
+            '    x = int(x)',
+            '    y = int(y)',
+            '    if 0 <= x < img.width() and 0 <= y < img.height():',
+            '        img.set_pixel(x, y, (min(255, max(0, int(b))) * 9 + 254) // 255)',
+            'def _bw_img_get_b(img, x, y):',
+            '    x = int(x)',
+            '    y = int(y)',
+            '    if not (0 <= x < img.width() and 0 <= y < img.height()):',
+            '        return 0',
+            '    p = img.get_pixel(x, y)',
+            '    return 0 if p == 0 else 255 if p >= 9 else (p * 255 + 4) // 9');
     }
     if (pyUses.point) {
         out.push('',
@@ -582,11 +620,46 @@ function microbitImageHelpersPy (uses, pyUses) {
             '    y = int(y)',
             '    return 0 <= x < 5 and 0 <= y < 5 and display.get_pixel(x, y) > 0');
     }
+    // led.pointBrightness reads back the exact 0..255 a plotBrightness stored
+    // (the 5x5 display itself holds levels 0..9); a pixel drawn any other way
+    // reads as its level scaled up. MakeCode clamps a plotted value to the
+    // display brightness, so the stored value is clamped the same way.
+    if (pyUses.pointb) {
+        out.push('', '_bw_shadow = {}');
+    }
     if (pyUses.plotb) {
+        const level = uses.dim ? '_bw_lvl((b * 9 + 254) // 255)' : '(b * 9 + 254) // 255';
         out.push('',
             'def _bw_plot_b(x, y, b):',
-            '    b = min(255, max(0, int(b)))',
-            `    _bw_plot(x, y, ${uses.dim ? '_bw_lvl((b * 9 + 254) // 255)' : '(b * 9 + 254) // 255'})`);
+            `    b = min(${uses.dim ? '_bw_bright' : '255'}, max(0, int(b)))`,
+            ...(pyUses.pointb ? [
+                '    if 0 <= int(x) < 5 and 0 <= int(y) < 5:',
+                '        _bw_shadow[int(y) * 5 + int(x)] = b'] : []),
+            `    _bw_plot(x, y, ${level})`);
+    }
+    if (pyUses.pointb) {
+        out.push('',
+            'def _bw_point_b(x, y):',
+            '    x = int(x)',
+            '    y = int(y)',
+            '    if not (0 <= x < 5 and 0 <= y < 5):',
+            '        return 0',
+            '    p = display.get_pixel(x, y)',
+            '    s = _bw_shadow.get(y * 5 + x)',
+            `    if s is not None and ${uses.dim ? '_bw_lvl((s * 9 + 254) // 255)' : '(s * 9 + 254) // 255'} == p:`,
+            '        return s',
+            '    return 0 if p == 0 else 255 if p >= 9 else (p * 255 + 4) // 9');
+    }
+    // led.setDisplayMode(BlackAndWhite): a lit pixel is fully on, whatever
+    // grey it was drawn at (the simulator renders bw mode as value > 0).
+    if (pyUses.dmode) {
+        out.push('',
+            'def _bw_set_mode(bw):',
+            ...(pyUses.dmodeget ? ['    global _bw_dmode', '    _bw_dmode = 0 if bw else 1'] : []),
+            '    if bw:',
+            '        for i in range(25):',
+            '            if display.get_pixel(i % 5, i // 5):',
+            '                display.set_pixel(i % 5, i // 5, 9)');
     }
     if (pyUses.parsenum) {
         out.push('',
@@ -934,6 +1007,590 @@ const OPENS_A_BODY = new Set([
     'control_if', 'control_if_else', 'control_repeat',
     'control_repeat_until', 'control_forever', 'arcade_sourceWhile'
 ]);
+
+// ── micro:bit+ "API words" (buffers, radio packets, events, data logging, …) ──
+//
+// One table drives the pseudocode reader, the decompiler and the MicroPython
+// generator for the micro:bit blocks that are plain "word + slots" shapes.
+// A template is the words of the pseudocode line, with `<NAME>` for a value
+// slot (an input of the block) and `{NAME:a|b|c}` for a menu (a field).
+// kind: 'r' reporter, 'c' command, 'h' hat. `py` renders the MicroPython:
+// (a, f, uses) => the expression (r) or the statement lines (c); `a` holds the
+// Python of each value slot, `f` the menu words, `uses` the flags that bring
+// in a helper (see microbitApiHelpersPy).
+const MB_NUMBER_FORMATS = ['int8le', 'uint8le', 'int16le', 'uint16le', 'int32le', 'uint32le', 'float32le', 'float64le',
+    'int8be', 'uint8be', 'int16be', 'uint16be', 'int32be', 'uint32be', 'float32be', 'float64be'];
+const MB_FMT = `{FMT:${MB_NUMBER_FORMATS.join('|')}}`;
+const MB_FMT_SIZE = { int8le: 1, uint8le: 1, int16le: 2, uint16le: 2, int32le: 4, uint32le: 4, float32le: 4, float64le: 8,
+    int8be: 1, uint8be: 1, int16be: 2, uint16be: 2, int32be: 4, uint32be: 4, float32be: 4, float64be: 8 };
+const MB_DELIM_CHARS = { newline: '\n', comma: ',', dollar: '$', colon: ':', fullstop: '.', hash: '#', 'carriage return': '\r',
+    space: ' ', tab: '\t', pipe: '|', semicolon: ';' };
+const MB_DELIM = `{DELIM:${Object.keys(MB_DELIM_CHARS).join('|')}}`;
+const MB_PIN = (name) => `{${name}:${Array.from({ length: 21 }, (_, i) => `P${i}`).join('|')}}`;
+const MB_API = [
+    // ── Buffer: a byte array (MakeCode's Buffer), a bytearray here ──
+    { k: 'r', op: 'createbuffer', t: 'create buffer <SIZE>', py: (a, f, u) => { u.buffers = true; return `bytearray(max(0, int(${a.SIZE})))`; } },
+    { k: 'r', op: 'bufferlength', t: 'length of buffer <BUF>', py: (a) => `len(${a.BUF})` },
+    { k: 'r', op: 'buffernum', t: `buffer <BUF> get ${MB_FMT} at <OFFSET>`,
+        py: (a, f, u) => { u.buffers = true; return `_bw_buf_get(${a.BUF}, '${f.FMT}', ${a.OFFSET})`; } },
+    { k: 'c', op: 'buffersetnum', t: `set buffer <BUF> ${MB_FMT} at <OFFSET> to <VALUE>`,
+        py: (a, f, u) => { u.buffers = true; return [`_bw_buf_set(${a.BUF}, '${f.FMT}', ${a.OFFSET}, ${a.VALUE})`]; } },
+    { k: 'c', op: 'bufferfill', t: 'fill buffer <BUF> with <VALUE>',
+        py: (a, f, u) => { u.buffers = true; return [`_bw_buf_fill(${a.BUF}, ${a.VALUE})`]; } },
+    { k: 'r', op: 'bufferslice', t: 'slice of buffer <BUF> from <OFFSET> length <LENGTH>',
+        py: (a, f, u) => { u.buffers = true; return `_bw_buf_slice(${a.BUF}, ${a.OFFSET}, ${a.LENGTH})`; } },
+    { k: 'r', op: 'bufferhex', t: 'hex of buffer <BUF>', py: (a, f, u) => { u.buffers = true; return `_bw_buf_hex(${a.BUF})`; } },
+    // ── Radio: buffers and the legacy packet ──
+    // The packet rides as NUL 'B' <bytes> (like radio.sendValue's NUL 'V'), after the serial number's NUL 'S' prefix when that is on,
+    // behind the 3-byte header radio.send(str) puts on every packet (so the receiver strips every packet alike).
+    { k: 'c', op: 'radiosendbuf', t: 'radio send buffer <BUF>',
+        py: (a, f, u, ctx) => { u.radio = true; ctx.radio = true; u.radiosend = true; return [`radio.send_bytes(_bw_pkt(3, 0, bytes(${a.BUF})))`]; } },
+    { k: 'h', op: 'whenradiobuf', t: 'when radio receives buffer' },
+    { k: 'r', op: 'radiolastbuf', t: 'read last radio buffer', py: (a, f, u) => { u.radio = true; u.radiobuf = true; return '_radio_last_buf'; } },
+    { k: 'h', op: 'whenradiopacket', t: 'when radio receives packet' },
+    { k: 'r', op: 'radiolasttime', t: 'read last radio time', py: (a, f, u) => { u.radio = true; u.radiopkt = true; return '_radio_last_time'; } },
+    { k: 'c', op: 'radiowritepkt', t: 'radio write received packet to serial',
+        py: (a, f, u) => { u.radio = true; u.radiopkt = true; u.writepkt = true; return ['_bw_write_packet()']; } },
+    // ── Display, text and the game ──
+    { k: 'r', op: 'displaymode', t: 'display mode', py: (a, f, u) => { u.dmode = true; u.dmodeget = true; return '_bw_dmode'; } },
+    { k: 'r', op: 'charcode', t: 'char code of <TEXT> at <INDEX>', py: (a, f, u) => { u.charcode = true; return `_bw_char_code(${a.TEXT}, ${a.INDEX})`; } },
+    { k: 'r', op: 'fromcharcode', t: 'char from code <CODE>', py: (a) => `chr(int(${a.CODE}) & 0xffff)` },
+    { k: 'c', op: 'showscore', t: 'show game score',
+        py: (a, f, u) => { u.game = true; return ["display.scroll(' SCORE ', delay=100)", 'display.scroll(str(_bw_score), delay=150)', "display.scroll(' ', delay=150)"]; } },
+    // ── The event bus ──
+    { k: 'h', op: 'whenevent', t: 'when event <SOURCE> <VALUE>' },
+    { k: 'c', op: 'raiseevent', t: 'raise event <SOURCE> <VALUE>',
+        py: (a, f, u) => { u.events = true; return [`_bw_raise(${a.SOURCE}, ${a.VALUE})`]; } },
+    { k: 'r', op: 'eventvalue', t: 'event value', py: (a, f, u) => { u.events = true; return '_bw_ev_val'; } },
+    // ── The USB serial console beyond print (MakeCode's serial.writeString / writeNumber / writeBuffer / read*) ──
+    // print() is the console; uart is the same port for raw bytes and for reading. Reads wait for what they ask for
+    // (the whole program waits with them: MicroPython's console is one stream), as MakeCode's fiber does.
+    { k: 'c', op: 'serialwritetext', t: 'serial write text <TEXT>', py: (a) => [`print(${a.TEXT}, end='')`] },
+    { k: 'c', op: 'serialwritenum', t: 'serial write number <NUM>', py: (a) => [`print(${a.NUM}, end='')`] },
+    { k: 'c', op: 'serialwritebuf', t: 'serial write buffer <BUF>', py: (a) => [`uart.write(bytes(${a.BUF}))`] },
+    { k: 'r', op: 'serialreadbuf', t: 'serial read buffer <SIZE>', py: (a, f, u) => { u.serread = true; return `_bw_ser_buf(${a.SIZE})`; } },
+    { k: 'r', op: 'serialreadstr', t: 'serial read string', py: (a, f, u) => { u.serread = true; return '_bw_ser_all()'; } },
+    { k: 'r', op: 'serialreaduntil', t: `serial read until ${MB_DELIM}`,
+        py: (a, f, u) => { u.serread = true; return `_bw_ser_until(${JSON.stringify(MB_DELIM_CHARS[f.DELIM] || '\n')})`; } },
+    // ── I2C and SPI (pins.i2c*, pins.spi*) ──
+    { k: 'r', op: 'i2creadbuf', t: 'i2c read buffer at <ADDR> size <SIZE>', py: (a) => `bytearray(i2c.read(int(${a.ADDR}), int(${a.SIZE})))` },
+    { k: 'c', op: 'i2cwritebuf', t: 'i2c write buffer <BUF> to <ADDR>', py: (a) => [`i2c.write(int(${a.ADDR}), bytes(${a.BUF}))`] },
+    { k: 'r', op: 'i2creadnum', t: `i2c read ${MB_FMT} at <ADDR>`,
+        py: (a, f, u) => { u.buffers = true; return `_bw_buf_get(bytearray(i2c.read(int(${a.ADDR}), ${MB_FMT_SIZE[f.FMT] || 4})), '${f.FMT}', 0)`; } },
+    { k: 'c', op: 'i2cwritenum', t: `i2c write ${MB_FMT} <VALUE> to <ADDR>`,
+        py: (a, f, u) => { u.buffers = true; u.i2cnum = true; return [`_bw_i2c_wn(int(${a.ADDR}), '${f.FMT}', ${a.VALUE}, ${MB_FMT_SIZE[f.FMT] || 4})`]; } },
+    { k: 'r', op: 'spixfer', t: 'spi transfer <VALUE>',
+        py: (a, f, u) => { u.spi = true; return `_bw_spi_byte(${a.VALUE})`; } },
+    { k: 'c', op: 'spixferbuf', t: 'spi transfer buffer <BUF> into <INTO>', py: (a) => [`spi.write_readinto(bytes(${a.BUF}), ${a.INTO})`] },
+    { k: 'c', op: 'spifreq', t: 'spi frequency <HZ>', py: (a, f, u) => { u.spi = true; return [`_bw_spi_set(baudrate=int(${a.HZ}))`]; } },
+    { k: 'c', op: 'spiformat', t: 'spi format <BITS> mode <MODE>', py: (a, f, u) => { u.spi = true; return [`_bw_spi_set(bits=int(${a.BITS}), mode=int(${a.MODE}))`]; } },
+    { k: 'c', op: 'spipins', t: `spi pins mosi ${MB_PIN('MOSI')} miso ${MB_PIN('MISO')} sck ${MB_PIN('SCK')}`,
+        py: (a, f, u) => { u.spi = true; return [`_bw_spi_set(mosi=pin${String(f.MOSI).slice(1)}, miso=pin${String(f.MISO).slice(1)}, sclk=pin${String(f.SCK).slice(1)})`]; } },
+    { k: 'r', op: 'sizeofformat', t: `size of ${MB_FMT}`, py: (a, f) => String(MB_FMT_SIZE[f.FMT] || 4) },
+    { k: 'r', op: 'bufferfromtext', t: 'buffer from text <TEXT>', py: (a) => `bytearray(str(${a.TEXT}).encode())` },
+    // ── Sound that the music words do not reach ──
+    { k: 'c', op: 'setvolume', t: 'set speaker volume to <VOL>', py: (a, f, u) => { u.volume = true; return [`_bw_vol[0] = max(0, min(255, int(${a.VOL})))`, 'set_volume(_bw_vol[0])']; } },
+    { k: 'r', op: 'getvolume', t: 'speaker volume', py: (a, f, u) => { u.volume = true; return '_bw_vol[0]'; } },
+    { k: 'r', op: 'soundplaying', t: 'sound is playing', py: () => 'audio.is_playing()' },
+    { k: 'c', op: 'speaker', t: 'speaker {MODE:on|off}', py: (a, f) => [`speaker.${f.MODE === 'off' ? 'off' : 'on'}()`] },
+    // ── Pins: PWM period, servo pulse, pulse timing, touch mode ──
+    { k: 'c', op: 'analogperiod', t: `set analog period of pin ${MB_PIN('PIN')} to <US> us`,
+        py: (a, f) => [`pin${String(f.PIN).slice(1)}.set_analog_period_microseconds(int(${a.US}))`] },
+    { k: 'c', op: 'servopulse', t: `servo pulse of pin ${MB_PIN('PIN')} <US> us`,
+        py: (a, f) => [`pin${String(f.PIN).slice(1)}.set_analog_period(20)`, `pin${String(f.PIN).slice(1)}.write_analog(int(${a.US}) * 1023 // 20000)`] },
+    { k: 'r', op: 'pulsein', t: `pulse in pin ${MB_PIN('PIN')} {LEVEL:high|low} timeout <US>`,
+        py: (a, f, u) => { u.pulsein = true; return `_bw_pulse_in(pin${String(f.PIN).slice(1)}, ${f.LEVEL === 'low' ? 0 : 1}, int(${a.US}))`; } },
+    { k: 'c', op: 'touchmode', t: `touch mode of pin ${MB_PIN('PIN')} {MODE:capacitive|resistive}`,
+        py: (a, f) => [`pin${String(f.PIN).slice(1)}.set_touch_mode(pin${String(f.PIN).slice(1)}.${f.MODE === 'resistive' ? 'RESISTIVE' : 'CAPACITIVE'})`] },
+    // ── The game's level and stopwatch (MakeCode's game.level / levelUp / startStopwatch / currentTime) ──
+    { k: 'r', op: 'gamelevel', t: 'game level', py: (a, f, u) => { u.gamelevel = true; return '_bw_game[0]'; } },
+    { k: 'c', op: 'gamelevelup', t: 'game level up', py: (a, f, u) => { u.gamelevel = true; return ['_bw_game[0] += 1', "display.scroll('LEVEL:', delay=150)", 'display.scroll(str(_bw_game[0]), delay=150)']; } },
+    { k: 'c', op: 'gamestopwatch', t: 'game start stopwatch', py: (a, f, u) => { u.gamelevel = true; return ['_bw_game[1] = running_time()']; } },
+    { k: 'r', op: 'gametime', t: 'game time', py: (a, f, u) => { u.gamelevel = true; return '(running_time() - _bw_game[1])'; } },
+    // ── Radio on/off and band, the serial port's pins and rate, the board's reset, panic, compass and accelerometer ──
+    { k: 'c', op: 'radiooff', t: 'radio off', py: (a, f, u) => { u.radio = true; return ['radio.off()']; } },
+    { k: 'c', op: 'radioband', t: 'radio frequency band <BAND>', py: (a, f, u) => { u.radio = true; return [`radio.config(channel=int(${a.BAND}))`]; } },
+    { k: 'c', op: 'serialredirect', t: `serial redirect tx ${MB_PIN('TX')} rx ${MB_PIN('RX')} baud <BAUD>`,
+        py: (a, f) => [`uart.init(baudrate=int(${a.BAUD}), tx=pin${String(f.TX).slice(1)}, rx=pin${String(f.RX).slice(1)})`] },
+    { k: 'c', op: 'serialbaud', t: 'serial baud rate <BAUD>', py: (a) => [`uart.init(baudrate=int(${a.BAUD}))`] },
+    { k: 'c', op: 'resetboard', t: 'reset micro:bit', py: () => ['reset()'] },
+    { k: 'c', op: 'panicboard', t: 'panic with code <CODE>', py: (a) => [`panic(int(${a.CODE}))`] },
+    { k: 'c', op: 'calibratecompass', t: 'calibrate compass', py: () => ['compass.calibrate()'] },
+    { k: 'c', op: 'accelrange', t: 'set accelerometer range <G>', py: (a) => [`accelerometer.set_range(int(${a.G}))`] },
+    // ── Serial polling, buffer concat, raw radio packets, the bluetooth uart's buffer ──
+    { k: 'r', op: 'serialhas', t: `serial has data until ${MB_DELIM}`,
+        py: (a, f, u) => { u.serread = true; return `_bw_ser_has(${JSON.stringify(MB_DELIM_CHARS[f.DELIM] || '\n')})`; } },
+    { k: 'r', op: 'bufferconcat', t: 'concat buffers <A> and <B>', py: (a) => `(bytearray(${a.A}) + bytearray(${a.B}))` },
+    { k: 'c', op: 'radiosendraw', t: 'radio send raw packet <BUF>',
+        py: (a, f, u) => { u.radio = true; return [`radio.send_bytes(b'\\x01\\x00\\x01' + bytes(${a.BUF})[:32])`]; } },
+    { k: 'r', op: 'radiolastraw', t: 'read raw radio packet', py: (a, f, u) => { u.radio = true; u.radioraw = true; u.radiopkt = true; return '_radio_last_raw'; } },
+    { k: 'r', op: 'btuartreadbuf', t: 'bluetooth uart read buffer', py: () => 'bytearray(0)' },
+    // ── Radio events (radio.raiseEvent, radio.sendMessage, onReceivedMessage) ──
+    { k: 'c', op: 'radioraise', t: 'radio raise event <SOURCE> <VALUE>',
+        py: (a, f, u) => { u.radio = true; u.radiosend = true; u.events = true; u.radioevent = true; u.radiopkt = true;
+            return [`radio.send_bytes(b'\\x01\\x00\\x02' + struct.pack('<HHI', int(${a.SOURCE}), int(${a.VALUE}), (running_time() * 1000) & 0xffffffff))`]; } },
+    { k: 'c', op: 'radiolisten', t: 'radio listen for events',
+        py: (a, f, u) => { u.radio = true; u.events = true; u.radioevent = true; u.radiopkt = true; return ['pass']; } },
+    // ── Note strings (music.playMelody / stringPlayable / startMelody): MakeCode's NOTE[octave][:duration] strings ARE
+    //    MicroPython's music notation ("-" is a rest). A string melody's spaces ride as "_" so it is one token. ──
+    { k: 'c', op: 'playnotes', t: 'play notes <TEXT> tempo <BPM> {MODE:until done|in background|looping in background|forever}',
+        py: (a, f, u, ctx) => { u.notes = true; if (ctx) ctx.music = true; u.music = true;
+            return [`_bw_play_notes(${a.TEXT}, ${a.BPM}, ${f.MODE === 'in background' || f.MODE === 'looping in background' ? 'False' : 'True'}, ${f.MODE === 'looping in background' || f.MODE === 'forever' ? 'True' : 'False'})`]; } },
+    // ── The log's rows and its log-full event ──
+    { k: 'r', op: 'logrows', t: 'log rows from <FROM> count <N>', py: (a, f, u) => { u.datalog = true; return `_bw_lg_rows(${a.FROM}, ${a.N})`; } },
+    { k: 'r', op: 'lograwcount', t: 'log row count from <FROM>', py: (a, f, u) => { u.datalog = true; return `_bw_lg_count(${a.FROM})`; } },
+    { k: 'c', op: 'logwatchfull', t: 'log raise event when full', py: (a, f, u) => { u.datalog = true; u.events = true; u.logwatch = true; return ["_bw_lg['ev'] = True"]; } },
+    // ── The rest of MakeCode's control, led, pins and serial (pxt-microbit 9.1.1 libs/core) ──
+    // control.waitForEvent: the task waits for the next event raised with that source and value (0 is any).
+    { k: 'c', op: 'waitevent', t: 'wait for event <SOURCE> <VALUE>',
+        py: (a, f, u) => { u.events = true; u.evwait = true;
+            return ['_bw_wm = _bw_ev_seq[0]', `while not _bw_ev_since(_bw_wm, ${a.SOURCE}, ${a.VALUE}):`, '    yield 0']; } },
+    // control.deviceName: CODAL's microbit_friendly_name() of the serial number; deviceLongSerialNumber: the 8-byte id.
+    { k: 'r', op: 'devicename', t: 'device name', py: (a, f, u) => { u.serialno = true; u.devname = true; return '_bw_dev_name()'; } },
+    { k: 'r', op: 'devicelongserial', t: 'device long serial number',
+        py: (a, f, u) => { u.buffers = true; u.serialno = true; u.longserial = true; return '_bw_long_serial()'; } },
+    // control.compareVersion (libs/core/control.ts): the first differing part's difference, an x part read as 0.
+    { k: 'r', op: 'compareversion', t: 'compare version <A> with <B>', py: (a, f, u) => { u.cmpver = true; return `_bw_cmp_ver(${a.A}, ${a.B})`; } },
+    // led.screenshot: the display as an image.
+    { k: 'r', op: 'screenshot', t: 'screenshot', py: (a, f, u) => { u.images = true; u.screenshot = true; return '_bw_screenshot()'; } },
+    // images.createBigImage: a 5-row image of any width (MicroPython's Image takes it).
+    { k: 'r', op: 'createbigimage', t: 'create big image <LEDS>', py: (a, f, u) => { u.images = true; return `Image(str(${a.LEDS}))`; } },
+    // The pitch pin (pins.cpp analogSetPitchPin / analogPitch / analogSetPitchVolume / analogPitchVolume): a square wave of
+    // the frequency on the pin, its duty 1 << (volume >> 5) of 1023; until a pin is set, the V2's sound output.
+    { k: 'c', op: 'pitchpin', t: `set analog pitch pin ${MB_PIN('PIN')}`,
+        py: (a, f, u) => { u.apitch = true; return [`_bw_apitch[0] = pin${String(f.PIN).slice(1)}`]; } },
+    { k: 'c', op: 'pitchvolume', t: 'set analog pitch volume to <VOL>',
+        py: (a, f, u) => { u.apitch = true; return [`_bw_apitch_vol(${a.VOL})`]; } },
+    { k: 'r', op: 'getpitchvolume', t: 'analog pitch volume', py: (a, f, u) => { u.apitch = true; return '_bw_apitch[1]'; } },
+    { k: 'c', op: 'analogpitch', t: 'analog pitch <FREQ> hz for <MS> ms',
+        py: (a, f, u, ctx) => { u.apitch = true; if (ctx) ctx.music = true; u.music = true;
+            return [`_bw_pms = int(${a.MS})`, `_bw_apitch_set(${a.FREQ})`, 'if _bw_pms > 0:', '    yield _bw_pms', '    _bw_apitch_set(0)']; } },
+    // pins.i2cWriteBuffer as a value: 0, or CODAL's I2C error (-1010) when nothing answers.
+    { k: 'r', op: 'i2cwritestatus', t: 'i2c write buffer <BUF> to <ADDR> status', py: (a, f, u) => { u.i2cstatus = true; return `_bw_i2c_status(${a.ADDR}, ${a.BUF})`; } },
+    // serial.readUntil / onDataReceived with a delimiter of any characters: any one of them ends the text (CODAL's readUntil).
+    { k: 'r', op: 'serialreadany', t: 'serial read until any of <CHARS>', py: (a, f, u) => { u.serread = true; u.serany = true; return `_bw_ser_until_any(${a.CHARS})`; } },
+    { k: 'r', op: 'serialhasany', t: 'serial has data until any of <CHARS>', py: (a, f, u) => { u.serread = true; u.serany = true; return `_bw_ser_has_any(${a.CHARS})`; } },
+    // The bluetooth uart with such a delimiter: no Bluetooth in the simulator, so nothing arrives (as the menu forms).
+    { k: 'r', op: 'btuartreadany', t: 'bluetooth uart read until any of <CHARS>', py: () => "''" },
+    { k: 'h', op: 'whenuartany', t: 'when bluetooth uart receives any of <CHARS>' },
+    // ── Data logging beyond log data (micro:bit V2 log module) ──
+    // set_labels takes the timestamp unit with the labels, so the two are kept and sent together.
+    { k: 'c', op: 'logcols1', t: 'set log columns <C1>', py: (a, f, u) => { u.datalog = true; u.logcfg = true; return [`_bw_log_cfg([${a.C1}])`]; } },
+    { k: 'c', op: 'logcols2', t: 'set log columns <C1> and <C2>', py: (a, f, u) => { u.datalog = true; u.logcfg = true; return [`_bw_log_cfg([${a.C1}, ${a.C2}])`]; } },
+    { k: 'c', op: 'logcols3', t: 'set log columns <C1> and <C2> and <C3>',
+        py: (a, f, u) => { u.datalog = true; u.logcfg = true; return [`_bw_log_cfg([${a.C1}, ${a.C2}, ${a.C3}])`]; } },
+    { k: 'c', op: 'logdelete', t: 'delete log', py: (a, f, u) => { u.datalog = true; return ['log.delete()', '_bw_lg_clear()']; } },
+    { k: 'c', op: 'logdeletefull', t: 'delete log fully', py: (a, f, u) => { u.datalog = true; return ['log.delete(full=True)', '_bw_lg_clear()']; } },
+    { k: 'c', op: 'logmirror', t: 'log mirror {MODE:on|off}', py: (a, f, u) => { u.datalog = true; return [`log.set_mirroring(${f.MODE === 'off' ? 'False' : 'True'})`]; } },
+    { k: 'c', op: 'logstamp', t: 'log timestamp {UNIT:none|milliseconds|seconds|minutes|hours|days}',
+        py: (a, f, u) => { u.datalog = true; u.logcfg = true; return [`_bw_log_cfg(None, ${f.UNIT === 'none' ? 'None' : `log.${String(f.UNIT).toUpperCase()}`})`]; } },
+    // ── Data logging (micro:bit V2) ──
+    { k: 'c', op: 'datalog1', t: 'log data <K1> = <V1>', py: (a, f, u) => { u.datalog = true; return [`_bw_log({${a.K1}: ${a.V1}})`]; } },
+    { k: 'c', op: 'datalog2', t: 'log data <K1> = <V1> and <K2> = <V2>',
+        py: (a, f, u) => { u.datalog = true; return [`_bw_log({${a.K1}: ${a.V1}, ${a.K2}: ${a.V2}})`]; } },
+    { k: 'c', op: 'datalog3', t: 'log data <K1> = <V1> and <K2> = <V2> and <K3> = <V3>',
+        py: (a, f, u) => { u.datalog = true; return [`_bw_log({${a.K1}: ${a.V1}, ${a.K2}: ${a.V2}, ${a.K3}: ${a.V3}})`]; } }
+];
+const MB_API_SLOT = /(<\w+>|\{\w+:[^}]*\})/;
+for (const e of MB_API) {
+    e.slots = [];
+    const source = e.t.split(MB_API_SLOT).map((part) => {
+        let m;
+        if ((m = part.match(/^<(\w+)>$/))) {
+            e.slots.push({ name: m[1], menu: null });
+            return '(\\S+)';
+        }
+        if ((m = part.match(/^\{(\w+):(.*)\}$/))) {
+            e.slots.push({ name: m[1], menu: m[2].split('|') });
+            return `(${m[2]})`;
+        }
+        return part.replace(/[.*+?^$()|[\]\\]/g, '\\$&').replace(/ +/g, '\\s+');
+    }).join('');
+    e.re = new RegExp(`^${source}\\s*$`, 'i');
+}
+const MB_API_BY_OP = new Map(MB_API.map((e) => [`microbitplus_${e.op}`, e]));
+const mbApiOf = (kind) => MB_API.filter((e) => e.k === kind);
+
+/** The pseudocode of one API block: its template with the slots filled (v: value of an input, f: menu word). */
+function mbApiText(e, v, f) {
+    let i = 0;
+    return e.t.split(MB_API_SLOT).map((part) => {
+        if (/^<\w+>$/.test(part)) return v(e.slots[i++].name);
+        if (/^\{\w+:/.test(part)) return f(e.slots[i++].name);
+        return part;
+    }).join('');
+}
+
+/** The MicroPython helpers the API blocks use (buffers, events, logging, radio packets). */
+function microbitApiHelpersPy(pyUses) {
+    const out = [];
+    if (pyUses.buffers) {
+        out.push('', 'import struct',
+            "_bw_nf = {'int8le': ('<b', 1), 'uint8le': ('<B', 1), 'int16le': ('<h', 2), 'uint16le': ('<H', 2), 'int32le': ('<i', 4), 'uint32le': ('<I', 4), 'float32le': ('<f', 4), 'float64le': ('<d', 8),",
+            "    'int8be': ('>b', 1), 'uint8be': ('>B', 1), 'int16be': ('>h', 2), 'uint16be': ('>H', 2), 'int32be': ('>i', 4), 'uint32be': ('>I', 4), 'float32be': ('>f', 4), 'float64be': ('>d', 8)}",
+            'def _bw_buf_get(b, fmt, o):',
+            '    c, n = _bw_nf[fmt]',
+            '    o = int(o)',
+            '    if o < 0 or o + n > len(b):',
+            '        return 0',
+            '    r = struct.unpack(c, bytes(b[o:o + n]))[0]',
+            "    return r if c[1] in 'fd' else int(r)",
+            'def _bw_buf_set(b, fmt, o, v):',
+            '    c, n = _bw_nf[fmt]',
+            '    o = int(o)',
+            '    if o < 0 or o + n > len(b):',
+            '        return',
+            // (this MicroPython has no slice assignment on a bytearray)
+            "    if c[1] in 'fd':",
+            '        x = struct.pack(c, float(v))',
+            '    else:',
+            '        v = int(v) & ((1 << (8 * n)) - 1)',
+            "        if c[1] in 'bhi' and v >= 1 << (8 * n - 1):",
+            '            v -= 1 << (8 * n)',
+            '        x = struct.pack(c, v)',
+            '    for i in range(n):',
+            '        b[o + i] = x[i]',
+            'def _bw_buf_fill(b, v):',
+            '    v = int(v) & 255',
+            '    for i in range(len(b)):',
+            '        b[i] = v',
+            'def _bw_buf_slice(b, o, n):',
+            '    o = int(o)',
+            '    n = int(n)',
+            '    if o < 0:',
+            '        o = max(0, len(b) + o)',
+            '    if n < 0 or o + n > len(b):',
+            '        n = max(0, len(b) - o)',
+            '    return bytearray(b[o:o + n])',
+            'def _bw_buf_hex(b):',
+            "    return ''.join(['%02x' % x for x in b])");
+    }
+    if (pyUses.charcode) {
+        out.push('', 'def _bw_char_code(s, i):',
+            '    s = str(s)',
+            '    i = int(i)',
+            '    return ord(s[i]) if 0 <= i < len(s) else float("nan")');
+    }
+    if (pyUses.dmode && pyUses.dmodeget) {
+        // led.displayMode(): 0 black and white, 1 greyscale (MakeCode's DisplayMode).
+        out.push('', '_bw_dmode = 0');
+    }
+    if (pyUses.events) {
+        out.push('', '_bw_ev_val = 0',
+            'def _bw_raise(s, v):',
+            '    global _bw_ev_val',
+            '    s = int(s)',
+            '    v = int(v)',
+            // MakeCode runs the handlers newest first.
+            '    for h in reversed(_bw_evh):',
+            '        if (h[0] == 0 or h[0] == s) and (h[1] == 0 or h[1] == v):',
+            '            _pending.append(h[2])',
+            '    _bw_ev_val = v',
+            ...(pyUses.evwait ? ['    _bw_ev_seq[0] += 1', '    _bw_ev_log.append((_bw_ev_seq[0], s, v))', '    if len(_bw_ev_log) > 16:', '        _bw_ev_log.pop(0)'] : []));
+        if (pyUses.evwait) {
+            // control.waitForEvent: the events raised since a mark (the last 16 are kept).
+            out.push('_bw_ev_seq = [0]', '_bw_ev_log = []',
+                'def _bw_ev_since(m, s, v):',
+                '    s = int(s)',
+                '    v = int(v)',
+                '    for e in _bw_ev_log:',
+                '        if e[0] > m and (s == 0 or e[1] == s) and (v == 0 or e[2] == v):',
+                '            return True',
+                '    return False');
+        }
+    }
+    if (pyUses.serread) {
+        // Reads from the console share one input buffer, so a read and a "has data until" poll see the same bytes.
+        // A read waits (a millisecond at a time) for what it asks, as MakeCode's fiber does.
+        out.push('', '_bw_sbuf = [b\'\']',
+            'def _bw_ser_pump():',
+            '    c = uart.read()',
+            '    if c:',
+            '        _bw_sbuf[0] += c',
+            'def _bw_ser_buf(n):',
+            '    n = int(n)',
+            '    _bw_ser_pump()',
+            '    while len(_bw_sbuf[0]) < n:',
+            '        sleep(1)',
+            '        _bw_ser_pump()',
+            '    d = _bw_sbuf[0][:n]',
+            '    _bw_sbuf[0] = _bw_sbuf[0][n:]',
+            '    return bytearray(d)',
+            'def _bw_ser_all():',
+            '    _bw_ser_pump()',
+            '    d = _bw_sbuf[0]',
+            "    _bw_sbuf[0] = b''",
+            "    return str(d, 'utf8')",
+            'def _bw_ser_has(delim):',
+            '    _bw_ser_pump()',
+            '    return _bw_sbuf[0].find(delim.encode()) >= 0',
+            'def _bw_ser_until(delim):',
+            '    t = delim.encode()',
+            '    _bw_ser_pump()',
+            '    while _bw_sbuf[0].find(t) < 0:',
+            '        sleep(1)',
+            '        _bw_ser_pump()',
+            '    i = _bw_sbuf[0].find(t)',
+            '    d = _bw_sbuf[0][:i]',
+            '    _bw_sbuf[0] = _bw_sbuf[0][i + len(t):]',
+            "    return str(d, 'utf8')");
+        if (pyUses.serany) {
+            out.push('def _bw_ser_any(chars):',
+                '    i = -1',
+                '    for c in str(chars).encode():',
+                '        j = _bw_sbuf[0].find(bytes([c]))',
+                '        if j >= 0 and (i < 0 or j < i):',
+                '            i = j',
+                '    return i',
+                'def _bw_ser_has_any(chars):',
+                '    _bw_ser_pump()',
+                '    return _bw_ser_any(chars) >= 0',
+                'def _bw_ser_until_any(chars):',
+                '    _bw_ser_pump()',
+                '    while _bw_ser_any(chars) < 0:',
+                '        sleep(1)',
+                '        _bw_ser_pump()',
+                '    i = _bw_ser_any(chars)',
+                '    d = _bw_sbuf[0][:i]',
+                '    _bw_sbuf[0] = _bw_sbuf[0][i + 1:]',
+                "    return str(d, 'utf8')");
+        }
+    }
+    if (pyUses.i2cstatus) {
+        out.push('', 'def _bw_i2c_status(a, b):',
+            '    try:',
+            '        i2c.write(int(a), bytes(b))',
+            '        return 0',
+            '    except OSError:',
+            '        return -1010');
+    }
+    if (pyUses.devname) {
+        // CODAL microbit_friendly_name(): five letters from the serial number, right to left.
+        out.push('', 'def _bw_dev_name():',
+            "    book = ['zvgpt', 'uoiea', 'zvgpt', 'uoiea', 'zvgpt']",
+            '    n = _bw_serial_no & 0xffffffff',
+            '    ld = 1',
+            '    d = 5',
+            "    name = ''",
+            '    for i in range(5):',
+            '        h = (n % d) // ld',
+            '        n -= h',
+            '        d *= 5',
+            '        ld *= 5',
+            '        name = book[i][h] + name',
+            '    return name');
+    }
+    if (pyUses.longserial) {
+        // The 64-bit id with deviceSerialNumber() in its low four bytes (as pxsim's: the serial, UInt32LE at 0).
+        out.push('', 'def _bw_long_serial():',
+            '    b = bytearray(8)',
+            "    struct.pack_into('<I', b, 0, _bw_serial_no & 0xffffffff)",
+            '    try:',
+            '        import machine',
+            '        b[4:8] = bytes(machine.unique_id()[4:8])',
+            '    except Exception:',
+            '        pass',
+            '    return b');
+    }
+    if (pyUses.cmpver) {
+        out.push('', 'def _bw_parse_int(t):',
+            '    t = str(t).strip()',
+            "    i = 1 if t[:1] in ('-', '+') else 0",
+            '    j = i',
+            "    while j < len(t) and '0' <= t[j] <= '9':",
+            '        j += 1',
+            "    return int(t[:j]) if j > i else float('nan')",
+            'def _bw_cmp_ver(a, b):',
+            "    x = ['0' if ('x' in p or 'X' in p) else p for p in str(a).split('.')]",
+            "    y = ['0' if ('x' in p or 'X' in p) else p for p in str(b).split('.')]",
+            '    n = max(len(x), len(y))',
+            "    x += ['0'] * (n - len(x))",
+            "    y += ['0'] * (n - len(y))",
+            '    for i in range(n):',
+            '        p = _bw_parse_int(x[i])',
+            '        q = _bw_parse_int(y[i])',
+            '        if p != q:',
+            '            return p - q',
+            '    return 0');
+    }
+    if (pyUses.screenshot) {
+        out.push('', 'def _bw_screenshot():',
+            '    img = Image(5, 5)',
+            '    for y in range(5):',
+            '        for x in range(5):',
+            '            img.set_pixel(x, y, display.get_pixel(x, y))',
+            '    return img');
+    }
+    if (pyUses.apitch) {
+        // [pin or None for the sound output, volume 0..255]
+        out.push('', '_bw_apitch = [None, 255, False]',
+            'def _bw_apitch_set(fq):',
+            '    fq = int(fq)',
+            '    p = _bw_apitch[0]',
+            '    on = fq > 0 and _bw_apitch[1] > 0',
+            '    _bw_apitch[2] = fq > 0',
+            '    if p is None:',
+            '        if on:',
+            '            music.pitch(fq, duration=-1, wait=False)',
+            '        else:',
+            '            music.stop()',
+            '    elif on:',
+            '        p.write_analog(1 << (_bw_apitch[1] >> 5))',
+            '        p.set_analog_period_microseconds(1000000 // fq)',
+            '    else:',
+            '        p.write_analog(0)',
+            'def _bw_apitch_vol(v):',
+            '    _bw_apitch[1] = max(0, min(255, int(v)))',
+            '    if _bw_apitch[2] and _bw_apitch[0] is not None:',
+            '        _bw_apitch[0].write_analog(0 if _bw_apitch[1] == 0 else 1 << (_bw_apitch[1] >> 5))');
+    }
+    if (pyUses.i2cnum) {
+        out.push('', 'def _bw_i2c_wn(a, fmt, v, n):',
+            '    b = bytearray(n)',
+            '    _bw_buf_set(b, fmt, 0, v)',
+            '    i2c.write(a, bytes(b))');
+    }
+    if (pyUses.spi) {
+        out.push('', '_bw_spic = {}',
+            'def _bw_spi_set(**kw):',
+            '    _bw_spic.update(kw)',
+            '    spi.init(**_bw_spic)',
+            'def _bw_spi_byte(v):',
+            '    r = bytearray(1)',
+            '    spi.write_readinto(bytes([int(v) & 255]), r)',
+            '    return r[0]');
+    }
+    if (pyUses.volume) out.push('', '_bw_vol = [128]');
+    if (pyUses.pulsein) {
+        // pins.pulseIn: the length of the next pulse in microseconds, 0 on a timeout (MicroPython reports -1 / -2).
+        out.push('', 'import machine',
+            'def _bw_pulse_in(p, level, timeout):',
+            '    r = machine.time_pulse_us(p, level, timeout)',
+            '    return r if r > 0 else 0');
+    }
+    if (pyUses.gamelevel) out.push('', '_bw_game = [1, 0]');
+    if (pyUses.notes) {
+        out.push('', 'import music',
+            'def _bw_play_notes(t, bpm, wait, loop):',
+            '    music.set_tempo(ticks=4, bpm=int(bpm))',
+            "    music.play([('R' if x == '-' else x) for x in t.replace('_', ' ').split(' ') if x], wait=wait, loop=loop)");
+    }
+    if (pyUses.datalog) {
+        // log.add is MicroPython's log; a parallel CSV on the board's filesystem answers getRows / getNumberOfRows in
+        // PXT's format (codal-microbit-v2 MicroBitLog.cpp: the header is row 0, rows end in a newline, the stamp is
+        // "Time (units)" first, two decimals except in milliseconds). When log.add fails (the log is full) logging stops
+        // until deleteLog, and PXT's log-full event (MICROBIT_ID_LOG 44, MICROBIT_LOG_EVT_LOG_FULL 1) is raised once.
+        out.push('', 'import log',
+            "_bw_lg = {'c': [], 'u': 'seconds', 'off': False, 'ev': False}",
+            "_bw_lgf = 'bwlog.csv'",
+            ...(pyUses.logwatch ? ["_bw_lg['ev'] = True"] : []),
+            'def _bw_lg_lines():',
+            '    try:',
+            '        f = open(_bw_lgf)',
+            '        t = f.read()',
+            '        f.close()',
+            "        return t.split('\\n')[:-1] if t else []",
+            '    except OSError:',
+            '        return []',
+            'def _bw_lg_save(l):',
+            "    f = open(_bw_lgf, 'w')",
+            '    for x in l:',
+            "        f.write(x + '\\n')",
+            '    f.close()',
+            'def _bw_lg_head():',
+            "    h = list(_bw_lg['c'])",
+            "    if _bw_lg['u'] != 'none':",
+            "        h.insert(0, 'Time (' + _bw_lg['u'] + ')')",
+            "    return ','.join(h)",
+            'def _bw_lg_stamp():',
+            '    us = running_time() * 1000',
+            "    u = _bw_lg['u']",
+            "    if u == 'milliseconds':",
+            '        return str(us // 1000)',
+            "    t = us // {'seconds': 10000, 'minutes': 600000, 'hours': 36000000, 'days': 864000000}[u]",
+            "    return '%d.%02d' % (t // 100, t % 100)",
+            'def _bw_lg_header():',
+            '    l = _bw_lg_lines()',
+            '    h = _bw_lg_head()',
+            '    if l:',
+            '        l[0] = h',
+            '    else:',
+            '        l = [h]',
+            '    _bw_lg_save(l)',
+            'def _bw_lg_clear():',
+            '    _bw_lg_save([])',
+            "    _bw_lg['off'] = False",
+            'def _bw_lg_rows(a, n):',
+            '    l = _bw_lg_lines()',
+            '    a = int(a)',
+            '    n = int(n)',
+            '    if n <= 0 or a >= len(l):',
+            "        return ''",
+            "    s = '\\n'.join(l[a:a + n])",
+            '    if a + n > len(l):',
+            "        s += '\\n'",
+            '    return s',
+            'def _bw_lg_count(a):',
+            '    return max(0, len(_bw_lg_lines()) - int(a))',
+            'def _bw_log(row):',
+            "    if _bw_lg['off']:",
+            '        return',
+            '    try:',
+            '        log.add(row)',
+            '    except OSError:',
+            "        _bw_lg['off'] = True",
+            "        if _bw_lg['ev']:",
+            '            _bw_raise(44, 1)',
+            '        else:',
+            '            display.show(Image("90009:99099:00000:09990:90009"))',
+            '            sleep(1000)',
+            '            display.clear()',
+            "            display.scroll('928')",
+            '        return',
+            "    c = _bw_lg['c']",
+            '    new = False',
+            '    for k in row:',
+            '        if k not in c:',
+            '            c.append(k)',
+            '            new = True',
+            '    if new:',
+            '        _bw_lg_header()',
+            '    v = [str(row.get(k, "")) for k in c]',
+            "    if _bw_lg['u'] != 'none':",
+            '        v.insert(0, _bw_lg_stamp())',
+            '    l = _bw_lg_lines() or [_bw_lg_head()]',
+            "    l.append(','.join(v))",
+            '    _bw_lg_save(l)');
+        if (pyUses.logcfg) {
+            // MicroPython sets the column names and the timestamp unit in one call.
+            out.push('_bw_log_c = [[], None]',
+                "_bw_lgu = {log.MILLISECONDS: 'milliseconds', log.SECONDS: 'seconds', log.MINUTES: 'minutes', log.HOURS: 'hours', log.DAYS: 'days'}",
+                'def _bw_log_cfg(cols=None, ts=0):',
+                '    if cols is not None:',
+                '        _bw_log_c[0] = cols',
+                "        _bw_lg['c'] = list(cols)",
+                '    if ts != 0:',
+                '        _bw_log_c[1] = ts',
+                "        _bw_lg['u'] = _bw_lgu.get(ts, 'none')",
+                '    log.set_labels(*_bw_log_c[0], timestamp=_bw_log_c[1])',
+                '    _bw_lg_header()');
+        }
+    }
+    if (pyUses.writepkt) {
+        // radio.writeReceivedPacketToSerial(): {"t":time,"s":serial,"n":"name","v":value}.
+        // The time is the receive stamp: a MicroPython packet carries no send time.
+        out.push('', 'def _bw_write_packet():',
+            "    s = '{\"t\":' + str(_radio_last_time) + ',\"s\":' + str(_radio_last_serial)",
+            '    if _radio_last_kind in (1, 2):',
+            "        s += ',\"n\":\"' + _radio_last_str + '\"'",
+            '    if _radio_last_kind == 3:',
+            "        s += ',\"b\":\"' + str(bytes(_radio_last_buf), 'utf8') + '\"'",
+            '    if _radio_last_kind in (0, 1):',
+            "        s += ',\"v\":' + str(_radio_last_num)",
+            "    print(s + '}')");
+    }
+    return out;
+}
 
 class SB3Creator {
     constructor() {
@@ -3096,6 +3753,25 @@ class SB3Creator {
         if ((m = s.match(/^pin\s+(P\d+)\s+is\s+high\??$/i))) {
             return B('microbitplus_ispinhigh', {}, { PIN: [m[1].toUpperCase(), null] });
         }
+        // The buffer, event, char-code, time and display-mode words (MB_API).
+        for (const e of mbApiOf('r')) {
+            const mm = matchTopLevel(s, e.re);
+            if (!mm) continue;
+            const inputs = {};
+            const fields = {};
+            e.slots.forEach((slot, i) => {
+                if (slot.menu) fields[slot.name] = [mm[i + 1].toLowerCase(), null];
+                else inputs[slot.name] = this.parseValue(mm[i + 1], context);
+            });
+            return B(`microbitplus_${e.op}`, inputs, fields);
+        }
+        // The name and value of the packet a radio.onReceivedValue handler runs for.
+        if (/^read\s+last\s+radio\s+name$/i.test(s)) return B('microbitplus_radiolastname');
+        if (/^read\s+last\s+radio\s+value$/i.test(s)) return B('microbitplus_radiolastvalue');
+        // bluetooth.uartReadUntil(delimiter)
+        if ((m = s.match(/^bluetooth\s+uart\s+read\s+until\s+(newline|comma|dollar|colon|fullstop|hash|carriage return|space|tab|pipe|semicolon)$/i))) {
+            return B('microbitplus_btuartread', {}, { DELIM: [m[1].toLowerCase(), null] });
+        }
         if ((m = s.match(/^read\s+last\s+radio\s+number$/i))) {
             return B('microbitplus_radiolastnum');
         }
@@ -3123,6 +3799,19 @@ class SB3Creator {
         }
         if ((m = matchTopLevel(s, /^pixel\s+x\s+(.+?)\s+y\s+(.+?)\s+of\s+image\s+(.+)$/i))) {
             return B('microbitplus_imagepixel', {
+                X: this.parseValue(m[1], context), Y: this.parseValue(m[2], context), IMAGE: this.parseValue(m[3], context)
+            });
+        }
+        // MakeCode's led.pointBrightness(x, y) (0..255), led.brightness() and
+        // an image's pixelBrightness(x, y).
+        if ((m = matchTopLevel(s, /^point\s+brightness\s+x\s+(.+?)\s+y\s+(.+)$/i))) {
+            return B('microbitplus_pointbrightness', { X: this.parseValue(m[1], context), Y: this.parseValue(m[2], context) });
+        }
+        if (/^display\s+brightness$/i.test(s)) {
+            return B('microbitplus_displaybrightness');
+        }
+        if ((m = matchTopLevel(s, /^pixel\s+brightness\s+x\s+(.+?)\s+y\s+(.+?)\s+of\s+image\s+(.+)$/i))) {
+            return B('microbitplus_imagebrightness', {
                 X: this.parseValue(m[1], context), Y: this.parseValue(m[2], context), IMAGE: this.parseValue(m[3], context)
             });
         }
@@ -5824,6 +6513,34 @@ class SB3Creator {
         if (/^when\s+radio\s+receives\s+(?:a\s+)?text$/i.test(line)) {
             return { block: this.createBlock('microbitplus_whenradiostr', { topLevel: true }).block, extraBlocks: {} };
         }
+        for (const e of mbApiOf('h')) {
+            const mm = matchTopLevel(line, e.re);
+            if (!mm) continue;
+            const { id, block } = cmd(`microbitplus_${e.op}`, { topLevel: true });
+            e.slots.forEach((slot, i) => { block[id].inputs[slot.name] = val(mm[i + 1]); });
+            return ret(block);
+        }
+        // loops.everyInterval(ms, body): the body repeats on a timer, in the background.
+        if ((match = matchTopLevel(line, /^when\s+every\s+(\S+)\s+ms$/i))) {
+            const { id, block } = cmd('microbitplus_everyinterval', { topLevel: true });
+            block[id].inputs.MS = val(match[1]);
+            return ret(block);
+        }
+        // radio.onReceivedValue((name, value) => ...)
+        if (/^when\s+radio\s+receives\s+(?:a\s+)?name\s+and\s+value$/i.test(line)) {
+            return { block: this.createBlock('microbitplus_whenradiokv', { topLevel: true }).block, extraBlocks: {} };
+        }
+        // bluetooth.onBluetoothConnected / onBluetoothDisconnected and onUartDataReceived
+        if ((match = matchTopLevel(line, /^when\s+micro:bit\s+(connected|disconnected)$/i))) {
+            const { id, block } = this.createBlock('microbitplus_whenconn', { topLevel: true });
+            block[id].fields.CONNSTATE = [match[1].toLowerCase(), null];
+            return { block, extraBlocks: {} };
+        }
+        if ((match = matchTopLevel(line, /^when\s+bluetooth\s+uart\s+receives\s+(newline|comma|dollar|colon|fullstop|hash|carriage return|space|tab|pipe|semicolon)$/i))) {
+            const { id, block } = this.createBlock('microbitplus_whenuart', { topLevel: true });
+            block[id].fields.DELIM = [match[1].toLowerCase(), null];
+            return { block, extraBlocks: {} };
+        }
         // MakeCode's input.onSound(DetectedSound.Loud|Quiet): MakeCode has no
         // sound-event REPORTER, only the handler, so it is a hat here too.
         if ((match = matchTopLevel(line, /^when\s+(loud|quiet)\s+sound$/i))) {
@@ -6282,6 +6999,18 @@ class SB3Creator {
             block[id].inputs.BRIGHTNESS = val(match[1]);
             return ret(block);
         }
+        // led.setDisplayMode and led.enable. `display mode` and `led enable`
+        // are qualified for the reason `display brightness` is.
+        if ((match = matchTopLevel(line, /^set\s+display\s+mode\s+to\s+(black\s+and\s+white|greyscale)\s*$/i))) {
+            const { id, block } = cmd('microbitplus_setdisplaymode');
+            block[id].fields.MODE = [/^g/i.test(match[1]) ? 'greyscale' : 'black and white', null];
+            return ret(block);
+        }
+        if ((match = matchTopLevel(line, /^led\s+enable\s+(on|off)\s*$/i))) {
+            const { id, block } = cmd('microbitplus_ledenable');
+            block[id].fields.STATE = [match[1].toLowerCase(), null];
+            return ret(block);
+        }
         if (/^stop\s+animation\s*$/i.test(line)) {
             const { block } = cmd('microbitplus_stopanimation');
             return ret(block);
@@ -6311,6 +7040,14 @@ class SB3Creator {
         // MakeCode's images, changed and shown at run time (the value
         // `create image …` is in parseReporter). BEFORE the variable `set … to`
         // rule, which would read `set pixel … to 1` as a variable.
+        if ((match = matchTopLevel(line, /^set\s+pixel\s+x\s+(.+?)\s+y\s+(.+?)\s+of\s+image\s+(.+?)\s+brightness\s+(.+?)\s*$/i))) {
+            const { id, block } = cmd('microbitplus_imagesetbrightness');
+            block[id].inputs.X = val(match[1]);
+            block[id].inputs.Y = val(match[2]);
+            block[id].inputs.IMAGE = val(match[3]);
+            block[id].inputs.BRIGHTNESS = val(match[4]);
+            return ret(block);
+        }
         if ((match = matchTopLevel(line, /^set\s+pixel\s+x\s+(.+?)\s+y\s+(.+?)\s+of\s+image\s+(.+?)\s+to\s+(.+?)\s*$/i))) {
             const { id, block } = cmd('microbitplus_imagesetpixel');
             block[id].inputs.X = val(match[1]);
@@ -6550,6 +7287,33 @@ class SB3Creator {
             const { id, block } = cmd('microbitplus_radioon');
             block[id].inputs.GROUP = val(match[1]);
             block[id].inputs.POWER = val(match[2]);
+            return ret(block);
+        }
+        // Buffers, radio buffers, events and data logging (MB_API).
+        for (const e of mbApiOf('c')) {
+            const mm = matchTopLevel(line, e.re);
+            if (!mm) continue;
+            const { id, block } = cmd(`microbitplus_${e.op}`);
+            e.slots.forEach((slot, i) => {
+                if (slot.menu) block[id].fields[slot.name] = [mm[i + 1].toLowerCase(), null];
+                else block[id].inputs[slot.name] = val(mm[i + 1]);
+            });
+            return ret(block);
+        }
+        // radio.sendValue(name, value): the name is cut to 8 characters on the air.
+        if ((match = matchTopLevel(line, /^radio\s+send\s+value\s+(\S+)\s*=\s*(\S+)\s*$/i))) {
+            const { id, block } = cmd('microbitplus_radiosendkv');
+            block[id].inputs.KEY = val(match[1]);
+            block[id].inputs.VALUE = val(match[2]);
+            return ret(block);
+        }
+        // Any bluetooth.<call>(…): kept with its name and up to four arguments.
+        if ((match = matchTopLevel(line, /^bluetooth\s+call\s+(\w+)(?:\s+(\S+))?(?:\s+(\S+))?(?:\s+(\S+))?(?:\s+(\S+))?\s*$/i))) {
+            const { id, block } = cmd('microbitplus_bluetooth');
+            block[id].inputs.NAME = [1, [10, match[1]]];
+            ['A1', 'A2', 'A3', 'A4'].forEach((slot, i) => {
+                if (match[2 + i] !== undefined) block[id].inputs[slot] = val(match[2 + i]);
+            });
             return ret(block);
         }
         if ((match = matchTopLevel(line, /^radio\s+send\s+number\s+(\S+)\s*$/i))) {
@@ -8962,6 +9726,8 @@ class SB3Creator {
         if (!b) return '';
         const v = (k) => this.dval(b.inputs[k], blocks);
         const f = (k) => (b.fields[k] ? b.fields[k][0] : '');
+        const mbr = MB_API_BY_OP.get(b.opcode);
+        if (mbr && mbr.k === 'r') return mbApiText(mbr, v, f);
         switch (b.opcode) {
             case 'operator_add': return `${v('NUM1')} + ${v('NUM2')}`;
             case 'operator_subtract': return `${v('NUM1')} - ${v('NUM2')}`;
@@ -9084,6 +9850,12 @@ class SB3Creator {
             case 'microbitplus_createimage': return `create image ${f('MATRIX')}`;
             case 'microbitplus_imagepixel': return `pixel x ${v('X')} y ${v('Y')} of image ${v('IMAGE')}`;
             case 'microbitplus_point': return `point x ${v('X')} y ${v('Y')}`;
+            case 'microbitplus_radiolastname': return 'read last radio name';
+            case 'microbitplus_radiolastvalue': return 'read last radio value';
+            case 'microbitplus_btuartread': return `bluetooth uart read until ${f('DELIM') || 'newline'}`;
+            case 'microbitplus_pointbrightness': return `point brightness x ${v('X')} y ${v('Y')}`;
+            case 'microbitplus_displaybrightness': return 'display brightness';
+            case 'microbitplus_imagebrightness': return `pixel brightness x ${v('X')} y ${v('Y')} of image ${v('IMAGE')}`;
             case 'microbitplus_parsenumber': return `number from text ${v('TEXT')}`;
             case 'microbitplus_map': return `map ${v('VALUE')} from low ${v('FROMLOW')} high ${v('FROMHIGH')} to low ${v('TOLOW')} high ${v('TOHIGH')}`;
             // STC12 / 8051 pin read (digital level or ADC value).
@@ -9228,6 +10000,8 @@ class SB3Creator {
     decompileHat(b, blocks) {
         const f = (k) => (b.fields[k] ? b.fields[k][0] : '');
         const v = (k) => this.dval(b.inputs[k], blocks);
+        const mbh = MB_API_BY_OP.get(b.opcode);
+        if (mbh && mbh.k === 'h') return `WHEN ${mbApiText(mbh, v, f).replace(/^when /i, '')}:`;
         switch (b.opcode) {
             case 'event_whenflagclicked': return 'WHEN flag clicked:';
             case 'event_whenkeypressed': return `WHEN ${f('KEY_OPTION')} key pressed:`;
@@ -9243,6 +10017,10 @@ class SB3Creator {
             case 'devices_whenirreceived': return `WHEN IR received on ${v('SENSOR')}:`;
             case 'microbitplus_whenradionum': return 'WHEN radio receives number:';
             case 'microbitplus_whenradiostr': return 'WHEN radio receives text:';
+            case 'microbitplus_everyinterval': return `WHEN every ${v('MS')} ms:`;
+            case 'microbitplus_whenradiokv': return 'WHEN radio receives name and value:';
+            case 'microbitplus_whenconn': return `WHEN micro:bit ${f('CONNSTATE') === 'disconnected' ? 'disconnected' : 'connected'}:`;
+            case 'microbitplus_whenuart': return `WHEN bluetooth uart receives ${f('DELIM') || 'newline'}:`;
             case 'microbitplus_whensound': return `WHEN ${f('LEVEL') === 'quiet' ? 'quiet' : 'loud'} sound:`;
             case 'procedures_definition': {
                 const proto = blocks[b.inputs.custom_block[1]];
@@ -9269,6 +10047,8 @@ class SB3Creator {
         const f = (k) => (b.fields[k] ? b.fields[k][0] : '');
         const sub = (k, lvl) => (b.inputs[k] ? this.decompileStackFrom(b.inputs[k][1], blocks, lvl) : []);
         const line = (txt) => [pad + txt];
+        const mbc = MB_API_BY_OP.get(b.opcode);
+        if (mbc && mbc.k === 'c') return line(mbApiText(mbc, v, f));
 
         switch (b.opcode) {
             // ---- control structures ----
@@ -9405,6 +10185,14 @@ class SB3Creator {
             case 'microbitplus_cleardisplay': return line('clear display');
             case 'microbitplus_plot': return line(`plot x ${v('X')} y ${v('Y')} ${f('STATE')}`);
             case 'microbitplus_plotbrightness': return line(`plot x ${v('X')} y ${v('Y')} brightness ${v('BRIGHTNESS')}`);
+            case 'microbitplus_radiosendkv': return line(`radio send value ${v('KEY')} = ${v('VALUE')}`);
+            case 'microbitplus_bluetooth': {
+                const args = ['A1', 'A2', 'A3', 'A4'].filter((k) => b.inputs && b.inputs[k]).map((k) => ' ' + v(k));
+                return line(`bluetooth call ${f('NAME') || this.dtext(b.inputs.NAME, blocks)}${args.join('')}`);
+            }
+            case 'microbitplus_imagesetbrightness': return line(`set pixel x ${v('X')} y ${v('Y')} of image ${v('IMAGE')} brightness ${v('BRIGHTNESS')}`);
+            case 'microbitplus_setdisplaymode': return line(`set display mode to ${f('MODE') === 'black and white' ? 'black and white' : 'greyscale'}`);
+            case 'microbitplus_ledenable': return line(`led enable ${f('STATE') === 'off' ? 'off' : 'on'}`);
             case 'microbitplus_imagesetpixel': return line(`set pixel x ${v('X')} y ${v('Y')} of image ${v('IMAGE')} to ${v('VALUE')}`);
             case 'microbitplus_showimage': return line(`show image ${v('IMAGE')} offset ${v('OFFSET')}`);
             case 'microbitplus_plotimage': return line(`plot image ${v('IMAGE')} offset ${v('OFFSET')}`);
@@ -9603,7 +10391,9 @@ class SB3Creator {
             'stc12_whenpin', 'stc12_whenkey',
             'devices_whenabove', 'devices_whencloser', 'devices_whenmotion',
             'devices_whentilted', 'devices_whenirreceived',
-            'microbitplus_whenradionum', 'microbitplus_whenradiostr', 'microbitplus_whensound'].includes(op);
+            'microbitplus_whenradionum', 'microbitplus_whenradiostr', 'microbitplus_whensound',
+            'microbitplus_whenradiokv', 'microbitplus_everyinterval', 'microbitplus_whenconn',
+            'microbitplus_whenuart'].includes(op) || (MB_API_BY_OP.has(op) && MB_API_BY_OP.get(op).k === 'h');
     }
 
     pyName(name) {
@@ -9652,6 +10442,13 @@ class SB3Creator {
         if (!b) return 'None';
         const v = (k) => this.pyVal(b.inputs[k], blocks);
         const f = (k) => (b.fields[k] ? b.fields[k][0] : '');
+        const mbr = MB_API_BY_OP.get(b.opcode);
+        if (mbr && mbr.k === 'r') {
+            const args = {};
+            const menus = {};
+            for (const slot of mbr.slots) { if (slot.menu) menus[slot.name] = f(slot.name); else args[slot.name] = v(slot.name); }
+            return mbr.py(args, menus, this._pyUses, {});
+        }
         switch (b.opcode) {
             case 'operator_add': return `(${v('NUM1')} + ${v('NUM2')})`;
             case 'operator_subtract': return `(${v('NUM1')} - ${v('NUM2')})`;
@@ -9776,6 +10573,15 @@ class SB3Creator {
                 this._pyUses.images = true;
                 return `_bw_img_get(${v('IMAGE')}, ${v('X')}, ${v('Y')})`;
             case 'microbitplus_point': this._pyUses.point = true; return `_bw_point(${v('X')}, ${v('Y')})`;
+            case 'microbitplus_radiolastname': this._pyUses.radio = true; this._pyUses.radiokv = true; return '_radio_last_name';
+            case 'microbitplus_radiolastvalue': this._pyUses.radio = true; this._pyUses.radiokv = true; return '_radio_last_value';
+            // No Bluetooth stack in the simulator: nothing was ever received.
+            case 'microbitplus_btuartread': return "''";
+            case 'microbitplus_pointbrightness': this._pyUses.pointb = true; return `_bw_point_b(${v('X')}, ${v('Y')})`;
+            case 'microbitplus_displaybrightness': this._pyUses.dimread = true; return '_bw_bright';
+            case 'microbitplus_imagebrightness':
+                this._pyUses.images = true;
+                return `_bw_img_get_b(${v('IMAGE')}, ${v('X')}, ${v('Y')})`;
             case 'microbitplus_parsenumber': this._pyUses.parsenum = true; return `_bw_parse_number(${v('TEXT')})`;
             // pins.map, exactly as MakeCode computes it:
             // ((value - fromLow) * (toHigh - toLow)) / (fromHigh - fromLow) + toLow
@@ -13975,13 +14781,12 @@ class SB3Creator {
             .some((bl) => bl && bl.opcode === 'microbitplus_setbrightness'));
         if (dimmable) uses.dim = true;
         // A program that turns on `radio transmit serial number` sends every
-        // packet with its serial number in front (microbitRadioSerialPy);
+        // packet with its serial number in it (microbitRadioSerialPy);
         // decided before the walk, as `dimmable` is, because the sends may
         // come before the switch.
         const radioSerial = targets.some((t) => Object.values(t.blocks || {})
             .some((bl) => bl && bl.opcode === 'microbitplus_radioserial'));
         if (radioSerial) this._pyUses.serialno = true;
-        const tx = (payload) => (radioSerial ? `_bw_tx(${payload})` : payload);
 
         // TWO boards run MicroPython here. The micro:bit's pins are ambient
         // objects (pin0..pin20); the Pico's are CONSTRUCTED — Pin(n, Pin.IN,
@@ -14151,6 +14956,16 @@ class SB3Creator {
             const v = (k) => val(b, k, blocks);
             const vs = (k) => `str(${val(b, k, blocks)})`;
             const f = (k) => (b.fields[k] ? b.fields[k][0] : '');
+            const mbc = MB_API_BY_OP.get(b.opcode);
+            if (mbc && mbc.k === 'c') {
+                const args = {};
+                const menus = {};
+                for (const slot of mbc.slots) { if (slot.menu) menus[slot.name] = f(slot.name); else args[slot.name] = v(slot.name); }
+                const ctx = { serial: radioSerial };
+                const lines = mbc.py(args, menus, this._pyUses, ctx);
+                if (ctx.radio) uses.radio = true;
+                return lines.map((l) => pad + l);
+            }
             const sub = (k) => (b.inputs[k] ? walk(b.inputs[k][1], blocks, pad + '    ') : [`${pad}    pass`]);
             // A Python string literal from a text input: single-quoted for a
             // literal text shadow ([.., [10, "..."]]) so it matches the micro:bit
@@ -14238,6 +15053,28 @@ class SB3Creator {
                 case 'microbitplus_imagesetpixel':
                     this._pyUses.images = true;
                     return [`${pad}_bw_img_set(${v('IMAGE')}, ${v('X')}, ${v('Y')}, ${v('VALUE')})`];
+                // radio.sendValue: MicroPython's radio carries text, so the pair
+                // rides as NUL 'V' <name, cut to 8> NUL <value> (like the serial
+                // number's NUL 'S' prefix); the receiver splits it again.
+                case 'microbitplus_radiosendkv':
+                    uses.radio = true;
+                    this._pyUses.radiosend = true;
+                    return [`${pad}radio.send_bytes(_bw_pkt(1, ${v('VALUE')}, ${pyText('KEY')}))`];
+                // bluetooth.*: the simulator has no radio stack for it (PXT's
+                // own simulator ignores these calls as well), so the call
+                // stays in the blocks and does nothing here.
+                case 'microbitplus_bluetooth':
+                    return [`${pad}pass  # bluetooth.${String(this.dtext(b.inputs.NAME, blocks)).replace(/[^\w]/g, '')}`];
+                case 'microbitplus_imagesetbrightness':
+                    this._pyUses.images = true;
+                    return [`${pad}_bw_img_set_b(${v('IMAGE')}, ${v('X')}, ${v('Y')}, ${v('BRIGHTNESS')})`];
+                case 'microbitplus_setdisplaymode':
+                    this._pyUses.dmode = true;
+                    return [`${pad}_bw_set_mode(${f('MODE') === 'black and white' ? 'True' : 'False'})`];
+                // led.enable(false) frees the LED pins (display.off()); true
+                // gives them back.
+                case 'microbitplus_ledenable':
+                    return [`${pad}display.${f('STATE') === 'off' ? 'off' : 'on'}()`];
                 case 'microbitplus_showimage':
                 case 'microbitplus_plotimage':
                     this._pyUses.images = true;
@@ -14417,13 +15254,15 @@ class SB3Creator {
                 // micro:bit+ RADIO group (DUAL-LOWERING-ORACLE R1–R5)
                 case 'microbitplus_radioon':
                     uses.radio = true;
-                    return [`${pad}radio.config(group=int(${v('GROUP')}), power=int(${v('POWER')}))`, `${pad}radio.on()`];
+                    return [`${pad}radio.config(group=int(${v('GROUP')}), power=int(${v('POWER')}), length=35)`, `${pad}radio.on()`];
                 case 'microbitplus_radiosendnum':
                     uses.radio = true;
-                    return [`${pad}radio.send(${tx(`str(${v('NUM')})`)})`];
+                    this._pyUses.radiosend = true;
+                    return [`${pad}radio.send_bytes(_bw_pkt(0, ${v('NUM')}))`];
                 case 'microbitplus_radiosendstr':
                     uses.radio = true;
-                    return [`${pad}radio.send(${tx(pyText('TEXT'))})`];
+                    this._pyUses.radiosend = true;
+                    return [`${pad}radio.send_bytes(_bw_pkt(2, 0, ${pyText('TEXT')}))`];
                 case 'microbitplus_radioserial':
                     uses.radio = true;
                     return [`${pad}_bw_tx_serial[0] = ${f('STATE') === 'off' ? 'False' : 'True'}`];
@@ -14658,6 +15497,7 @@ class SB3Creator {
         const starts = [];       // started at flag
         const receivers = [];    // [message, fnName]
         const radioHandlers = [];  // [{kind: 'number'|'text', key}] — radio hats
+        const eventHandlers = [];  // control.onEvent hats: '(source, value, key)'
         let taskSeq = 0;
         // Every task is driven with next(), so it has to be a GENERATOR. A script
         // with no wait, loop or yield-from compiled to a plain function, and the
@@ -14682,6 +15522,44 @@ class SB3Creator {
                     const body = asTask(walk(b.next, blocks, '    '));
                     taskDefs.push([`def ${fn}():`, ...globalsFor(this, body), ...body].join('\n'));
                     receivers.push([msg, fn]);
+                } else if (b.opcode === 'microbitplus_whenradiokv') {
+                    // radio.onReceivedValue: the handler gets (name, value) as one
+                    // tuple, read from its own argument as the other radio hats do.
+                    uses.radio = true;
+                    this._pyUses.radiokv = true;
+                    const fn = `_task_${taskSeq++}`;
+                    const body = asTask(walk(b.next, blocks, '    ')
+                        .map((l) => l.replace(/\b_radio_last_name\b/g, '_bw_rx[0]').replace(/\b_radio_last_value\b/g, '_bw_rx[1]')));
+                    taskDefs.push([`def ${fn}(_bw_rx):`, ...globalsFor(this, body), ...body].join('\n'));
+                    const key = `__bw_radio_kv_${radioHandlers.length}`;
+                    radioHandlers.push({ kind: 'kv', key });
+                    receivers.push([key, fn]);
+                } else if (b.opcode === 'microbitplus_whenradiobuf' || b.opcode === 'microbitplus_whenradiopacket') {
+                    // radio.onReceivedBuffer (handed THAT packet's buffer, as the
+                    // number and text hats are) and the legacy radio.onDataPacketReceived
+                    // (every packet; its properties are the `_radio_last_*` the
+                    // receiver sets just before the handler starts — MakeCode's
+                    // own lastPacket).
+                    uses.radio = true;
+                    this._pyUses.radiopkt = true;
+                    const buf = b.opcode === 'microbitplus_whenradiobuf';
+                    const fn = `_task_${taskSeq++}`;
+                    const body = asTask(walk(b.next, blocks, '    ')
+                        .map((l) => (buf ? l.replace(/\b_radio_last_buf\b/g, '_bw_rx') : l)));
+                    taskDefs.push([`def ${fn}(${buf ? '_bw_rx' : ''}):`, ...globalsFor(this, body), ...body].join('\n'));
+                    const key = `__bw_radio_${buf ? 'buffer' : 'packet'}_${radioHandlers.length}`;
+                    radioHandlers.push({ kind: buf ? 'buffer' : 'packet', key });
+                    receivers.push([key, fn]);
+                } else if (b.opcode === 'microbitplus_whenevent') {
+                    // control.onEvent(source, value, body): 0 for either is "any". The
+                    // body reads the last event's source and value (control.eventValue()).
+                    this._pyUses.events = true;
+                    const fn = `_task_${taskSeq++}`;
+                    const body = asTask(walk(b.next, blocks, '    '));
+                    taskDefs.push([`def ${fn}():`, ...globalsFor(this, body), ...body].join('\n'));
+                    const key = `__bw_event_${eventHandlers.length}`;
+                    eventHandlers.push(`(${this.pyVal(b.inputs.SOURCE, blocks)}, ${this.pyVal(b.inputs.VALUE, blocks)}, ${this.pyStr(key)})`);
+                    receivers.push([key, fn]);
                 } else if (b.opcode === 'microbitplus_whenradionum' || b.opcode === 'microbitplus_whenradiostr') {
                     // MakeCode's radio.onReceivedNumber/String. One receiver task
                     // (below) takes packets off the air and starts each matching
@@ -14700,6 +15578,22 @@ class SB3Creator {
                     const key = `__bw_radio_${kind}_${radioHandlers.length}`;
                     radioHandlers.push({ kind, key });
                     receivers.push([key, fn]);
+                } else if (b.opcode === 'microbitplus_everyinterval') {
+                    // loops.everyInterval: run the body, then wait what is left of
+                    // the interval (never negative) — MakeCode's own loop.
+                    const fn = `_task_${taskSeq++}`;
+                    const body = walk(b.next, blocks, '        ');
+                    taskDefs.push([`def ${fn}():`,
+                        ...globalsFor(this, body),
+                        '    while True:',
+                        '        _bw_t0 = running_time()',
+                        ...body,
+                        `        yield max(0, int(${this.pyVal(b.inputs.MS, blocks)}) - (running_time() - _bw_t0))`].join('\n'));
+                    starts.push(fn);
+                } else if (b.opcode === 'microbitplus_whenconn' || b.opcode === 'microbitplus_whenuart' || b.opcode === 'microbitplus_whenuartany') {
+                    // Bluetooth events never happen in the simulator: the handler
+                    // stays in the blocks and is never started.
+                    continue;
                 } else if (b.opcode === 'microbitplus_whensound') {
                     // MakeCode's input.onSound: the body runs once per loud (or
                     // quiet) event, which microphone.was_event reports once.
@@ -14793,56 +15687,96 @@ class SB3Creator {
                     ...globals, ...body, guard, '        yield 0'].join('\n'));
             }
         }
-        if (radioHandlers.length) {
-            // The receiver: one packet per scheduler pass, each handler of the
-            // matching kind started with the packet's value. MicroPython's radio
-            // carries text only and `radio send number` sends str(n), so a packet
-            // that reads as a number IS a number; anything else is text. (MakeCode
-            // tags the packet type instead, so there a sent string "42" stays a
-            // string — the one case the two disagree on.)
-            const keys = (kind) => radioHandlers.filter((h) => h.kind === kind)
-                .map((h) => `(${this.pyStr(h.key)}, `);
-            const num = keys('number').map((k) => `${k}n)`);
-            const txt = keys('text').map((k) => `${k}m)`);
+        if (radioHandlers.length || this._pyUses.radiopkt) {
+            // The receiver: the whole frame, bytes and all (receive_full), as MakeCode's radio.ts
+            // reads a packet (see microbitRadioSerialPy): 32 bytes behind the 3-byte header, type
+            // 0 number, 1 value, 2 string, 3 buffer, 4 double, 5 double value, with the sender's
+            // time and serial number in it. A frame of any other length is a plain MicroPython
+            // radio.send(str) from a board that does not speak MakeCode's: a number if it reads
+            // as one, else a text.
+            this._pyUses.rssi = true; this._pyUses.rserial = true; this._pyUses.radiopkt = true; this._pyUses.radiokv = true;
+            const keysOf = (kind) => radioHandlers.filter((h) => h.kind === kind).map((h) => h.key);
+            const tuples = (kind, value) => keysOf(kind).map((k) => `(${this.pyStr(k)}, ${value})`);
+            const packet = keysOf('packet').map((k) => this.pyStr(k));
+            const post = (kind, value) => {
+                const all = [...tuples(kind, value), ...packet];
+                return all.length ? [`_pending.extend([${all.join(', ')}])`] : [];
+            };
+            const kvTuples = radioHandlers.filter((h) => h.kind === 'kv').map((h) => `(${this.pyStr(h.key)}, (_radio_last_name, kv))`);
+            const kvAll = [...kvTuples, ...packet];
+            const ind = (n, lines) => lines.map((l) => ' '.repeat(n) + l);
             taskDefs.push([
                 'def _bw_radio_rx():',
-                `    global _radio_last_num, _radio_last_str${this._pyUses.rssi ? ', _radio_last_rssi' : ''}${this._pyUses.rserial ? ', _radio_last_serial' : ''}`,
+                '    global _radio_last_num, _radio_last_str, _radio_last_buf, _radio_last_name, _radio_last_value, _radio_last_rssi, _radio_last_serial, _radio_last_time, _radio_last_kind' + (this._pyUses.radioraw ? ', _radio_last_raw' : ''),
+                '    radio.config(length=35)',
                 '    radio.on()',
                 '    while True:',
-                // The signal strength is only in receive_full(), which keeps
-                // the three-byte header receive() strips; asked for only when
-                // a program reads it, so every other receiver is as it was.
-                ...(this._pyUses.rssi ? [
-                    '        f = radio.receive_full()',
-                    '        m = None',
-                    '        if f:',
-                    '            _radio_last_rssi = f[1]',
-                    '            try:',
-                    "                m = str(f[0][3:], 'utf8')",
-                    '            except Exception:',
-                    '                m = None'
-                ] : ['        m = radio.receive()']),
-                // A packet sent with its serial number in front
-                // (microbitRadioSerialPy): the payload is what follows it,
-                // whether or not this program reads the number.
-                "        if m is not None and m[:2] == '\\x00S':",
-                "            j = m.find('\\x00', 2)",
-                ...(this._pyUses.rserial ? ['            try:', '                _radio_last_serial = int(m[2:j])',
-                    '            except ValueError:', '                _radio_last_serial = 0'] : []),
-                '            m = m[j + 1:]',
-                ...(this._pyUses.rserial ? ['        elif m is not None:', '            _radio_last_serial = 0'] : []),
-                '        if m is not None:',
-                '            try:',
-                '                n = float(m)',
-                '                n = int(n) if n == int(n) else n',
-                '            except (ValueError, OverflowError):',
-                '                n = None',
-                '            if n is None:',
-                '                _radio_last_str = m',
-                ...(txt.length ? [`                _pending.extend([${txt.join(', ')}])`] : []),
+                '        f = radio.receive_full()',
+                // A frame of the event protocol (header 01 00 02, CODAL's MicroBitRadioEvent: uint16 source, uint16
+                // value, uint32 time) raises that event here, as the radio event bus does on a MakeCode board.
+                ...(this._pyUses.radioevent ? ['        if f and f[0][2] == 2 and len(f[0]) >= 7:', "            _bw_raise(*struct.unpack('<HH', f[0][3:7]))", '            f = None'] : []),
+                '        if f:',
+                '            p = f[0][3:]',
+                ...(this._pyUses.radioraw ? ["            _radio_last_raw = bytearray(p) + struct.pack('<i', f[1])"] : []),
+                '            _radio_last_rssi = f[1]',
+                '            _radio_last_time = f[2]',
+                '            _radio_last_serial = 0',
+                '            if len(p) == 32 and p[0] < 6:',
+                '                t = p[0]',
+                "                _radio_last_time = struct.unpack('<I', p[1:5])[0]",
+                "                _radio_last_serial = struct.unpack('<i', p[5:9])[0]",
+                '                n = 0',
+                '                if t == 0 or t == 1:',
+                "                    n = struct.unpack('<i', p[9:13])[0]",
+                '                elif t == 4 or t == 5:',
+                "                    n = struct.unpack('<d', p[9:17])[0]",
+                '                o = 13 if t == 1 else 17 if t == 5 else 9',
+                "                m = str(p[o + 1:o + 1 + p[o]], 'utf8') if t > 0 and t != 4 and t != 3 else ''",
+                '                _radio_last_buf = bytearray(p[10:10 + p[9]]) if t == 3 else bytearray(0)',
+                '                if t == 1 or t == 5:',
+                '                    kv = n',
+                '                    _radio_last_name = m',
+                '                    _radio_last_value = kv',
+                '                    _radio_last_str = m',
+                '                    _radio_last_num = kv',
+                '                    _radio_last_kind = 1',
+                ...ind(20, kvAll.length ? [`_pending.extend([${kvAll.join(', ')}])`] : []),
+                '                elif t == 3:',
+                "                    _radio_last_str = ''",
+                '                    _radio_last_num = 0',
+                '                    _radio_last_kind = 3',
+                ...ind(20, post('buffer', '_radio_last_buf')),
+                '                elif t == 2:',
+                '                    _radio_last_str = m',
+                '                    _radio_last_num = 0',
+                '                    _radio_last_kind = 2',
+                ...ind(20, post('text', 'm')),
+                '                else:',
+                "                    _radio_last_str = ''",
+                '                    _radio_last_num = n',
+                '                    _radio_last_kind = 0',
+                ...ind(20, post('number', 'n')),
                 '            else:',
-                '                _radio_last_num = n',
-                ...(num.length ? [`                _pending.extend([${num.join(', ')}])`] : []),
+                '                try:',
+                "                    m = str(p, 'utf8')",
+                '                except Exception:',
+                "                    m = ''",
+                '                try:',
+                '                    n = float(m)',
+                '                    n = int(n) if n == int(n) else n',
+                '                except (ValueError, OverflowError):',
+                '                    n = None',
+                '                _radio_last_buf = bytearray(0)',
+                '                if n is None:',
+                '                    _radio_last_str = m',
+                '                    _radio_last_num = 0',
+                '                    _radio_last_kind = 2',
+                ...ind(20, post('text', 'm')),
+                '                else:',
+                "                    _radio_last_str = ''",
+                '                    _radio_last_num = n',
+                '                    _radio_last_kind = 0',
+                ...ind(20, post('number', 'n')),
                 '        yield 0'].join('\n'));
             starts.push('_bw_radio_rx');
         }
@@ -14891,8 +15825,14 @@ class SB3Creator {
         // them unless a radio hat did: a program that polled the last packet
         // stopped with a NameError on its first read.
         if (uses.radio) header.push('import radio');
+        if (!isPico && (this._pyUses.radiosend || this._pyUses.radiopkt)) header.push('import struct');
         if (this._pyUses.radio || radioHandlers.length) header.push('_radio_last_num = 0', "_radio_last_str = ''");
+        if (this._pyUses.radiokv || radioHandlers.some((h) => h.kind === 'kv')) header.push("_radio_last_name = ''", '_radio_last_value = 0');
+        if (this._pyUses.radiopkt || this._pyUses.radiobuf || radioHandlers.some((h) => h.kind === 'buffer' || h.kind === 'packet')) {
+            header.push('_radio_last_buf = bytearray(0)', '_radio_last_time = 0', '_radio_last_kind = 0');
+        }
         if (this._pyUses.rssi) header.push('_radio_last_rssi = 0');
+        if (this._pyUses.radioraw) header.push('_radio_last_raw = bytearray(36)');
         if (this._pyUses.rserial) header.push('_radio_last_serial = 0');
         if (!isPico) header.push(...microbitRadioSerialPy(this._pyUses, radioSerial));
         // The reporters emit `_arrays.<method>(…)` whether or not anything
@@ -14925,8 +15865,11 @@ class SB3Creator {
         if (this._runtimesUsed.has('stc12') && this._driverPins) {
             header.push('', ...this.stc12SimulatorDriver('py', this._driverPins));
         }
+        if (this._pyUses.dimread) uses.dim = true;
         if (!isPico) header.push(...microbitLedHelpersPy(uses, this._pyUses));
         if (!isPico) header.push(...microbitImageHelpersPy(uses, this._pyUses));
+        if (!isPico) header.push(...microbitApiHelpersPy(this._pyUses));
+        if (eventHandlers.length || this._pyUses.events) header.push(`_bw_evh = [${eventHandlers.join(', ')}]`);
         if (uses._pitch) header.push('', 'def _pitch():', '    x, y, z = accelerometer.get_values()', '    return math.atan2(-y, -z) * 180 / math.pi');
         if (uses._roll) header.push('', 'def _roll():', '    x, y, z = accelerometer.get_values()', '    return math.atan2(x, -z) * 180 / math.pi');
         // BrickWright debug instrumentation. _bw_pos(n) prints a position marker

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {EventEmitter} from 'node:events';
 import {readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
 import {runInNewContext} from 'node:vm';
 import {qualifiedCallableCodecSource} from './helpers/callable-codec-source.mjs';
 import {parseMakeCodeTs} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-import.js';
@@ -26,7 +27,10 @@ test('actual host and canonical supplier factories have identical callable data 
     const supplier=runInNewContext(source.slice(start,end+5)+'\nmakeValues();');
     const host=readFileSync(new URL('../overlay/scratch-vm/src/util/bw-values.js',import.meta.url),'utf8');
     const factory=host.slice(host.indexOf('const makeValues = () => {'),host.lastIndexOf('\nmodule.exports')).trim();
-    assert.equal(factory,source.slice(start,end+5).split('\n').map(line=>line.startsWith('  ')?line.slice(2):line).join('\n').trim());
+    // Host allocation-origin bookkeeping is intentionally absent from supplier transport.
+    // Pin each complete factory independently; never strip differences to assert equality.
+    assert.equal(createHash('sha256').update(factory).digest('hex'),'fc04a71fe8d795966bfa086602fd4102791f92d5316fe368b444d4fefbce962e','reviewed whole host factory');
+    assert.equal(createHash('sha256').update(source.slice(start,end+5)).digest('hex'),'3c5c3fa25c74b6f7d37b89f6f41007984ae3ac273e7a62bb1712d86a766a6484','reviewed whole supplier factory');
     for(const codec of [values,supplier]) {
         const runtime=new EventEmitter(),ref=codec.reference(runtime,'callable','one');
         assert.equal(codec.referenceId(runtime,codec.decode(JSON.parse(JSON.stringify(ref))),'callable'),'one');

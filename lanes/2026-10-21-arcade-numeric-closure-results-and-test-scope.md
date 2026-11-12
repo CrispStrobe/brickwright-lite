@@ -64,3 +64,22 @@ inspect connected callable Blocks, edit its captured increment, preserve alias
 identity and independent instances, save/fresh reopen, export/compile in MakeCode
 and freshly reimport. Record unqualified representations or diagnostics in the
 GUI ledger. No new visible journey is qualified by source tests alone.
+
+## Source and native qualification checkpoint
+
+The complete affected ten-module cohort passes 39 tests without failures,
+skips or TODOs, retaining all preceding 31 source controls and eight new
+numeric-closure controls. Independent saved-result review verified current
+source, genuine Node identity, actual module closure and resource bounds.
+The earlier unexecuted test-review hold is preserved; negative controls now
+query actual invocation nodes and production stayed unchanged.
+
+All eight original counter tests also pass without changed assertions,
+callbacks, frames or cleanup. Actual edited closure export/reimport preserves
+9, 16 and 9 and the reserved-parameter score remains 10. Fifteen captures from
+five genuine exports preserve input snapshots and intentional negative
+refusals. Independent saved-result review verifies the complete source and
+retained audited dependencies. Preserve the original six-pass/two-failure run.
+Full current installed-runtime, MakeCode SDK, integrated hosted and visible GUI
+acceptance remain pending. Historical corpus partials have not been remeasured.
+See [the capability and next work](../docs/ARCADE-NUMERIC-CLOSURE-RESULTS.md).

@@ -70,7 +70,9 @@ export function sdkFontInputAuthority(project) {
         else if(op==='arcade_screenImage')add(value,owner && !Object.keys(block.inputs||{}).length?'Image':'Opaque');
         else if(['operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod'].includes(op))rules.push({value,inputs:[input(target,block,'NUM1'),input(target,block,'NUM2')],needs:['Number','Number'],type:'Number'});
         else if(op==='arrays_valueUnary' && ['+','-','~'].includes(literal(target,block,'OP')))rules.push({value,inputs:[input(target,block,'VALUE')],needs:['Number'],type:'Number'});
-        else if(op==='arrays_valueBinary' && ['+','-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(literal(target,block,'OP')))rules.push({value,inputs:[input(target,block,'LEFT'),input(target,block,'RIGHT')],needs:['Number','Number'],type:'Number'});
+        // `+` is also string concatenation: an operand that is exactly String makes the result exactly String.
+        else if(op==='arrays_valueBinary' && literal(target,block,'OP')==='+')rules.push({value,inputs:[input(target,block,'LEFT'),input(target,block,'RIGHT')],needs:['Number','Number'],type:'Number',concat:true});
+        else if(op==='arrays_valueBinary' && ['-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(literal(target,block,'OP')))rules.push({value,inputs:[input(target,block,'LEFT'),input(target,block,'RIGHT')],needs:['Number','Number'],type:'Number'});
         else if(op==='arcade_fontMetric' && !block.inputs?.FONT && !block.inputs?.PROPERTY &&
             ['font5','font8','font12'].includes(block.fields?.FONT?.[0]) &&
             ['charWidth','charHeight'].includes(block.fields?.PROPERTY?.[0]))add(value,'Number');
@@ -100,7 +102,16 @@ export function sdkFontInputAuthority(project) {
         def.names.forEach((name,index)=>{if(call.args[index]){edge(call.args[index],`${call.destination}:param:${name}`);edge(call.args[index],`${call.destination}:local:${name}`);}else{add(`${call.destination}:param:${name}`,'Undefined');add(`${call.destination}:local:${name}`,'Undefined');}});edge(`${call.destination}:result`,call.value);
     }
     let changed;do{changed=false;for(const[from,to]of edges)for(const type of types.get(from)||[])changed=add(to,type)||changed;
-        for(const rule of rules){if(rule.inputs.every((value,index)=>exact(value,rule.needs[index])))changed=add(rule.value,rule.type)||changed;else if(rule.inputs.some((value,index)=>types.get(value)?.size&& !exact(value,rule.needs[index])))changed=add(rule.value,'Opaque')||changed;}
+        for(const rule of rules){
+            if(rule.concat){
+                // One operand that is exactly String makes the sum a String whatever the other operand is; two exact
+                // Numbers add. An operand still without a type may yet settle, so Opaque waits until all have one.
+                if(rule.inputs.some(value=>exact(value,'String')))changed=add(rule.value,'String')||changed;
+                else if(rule.inputs.every(value=>exact(value,'Number')))changed=add(rule.value,'Number')||changed;
+                else if(rule.inputs.every(value=>types.get(value)?.size))changed=add(rule.value,'Opaque')||changed;
+                continue;
+            }
+            if(rule.inputs.every((value,index)=>exact(value,rule.needs[index])))changed=add(rule.value,rule.type)||changed;else if(rule.inputs.some((value,index)=>types.get(value)?.size&& !exact(value,rule.needs[index])))changed=add(rule.value,'Opaque')||changed;}
     }while(changed);
     for(const rule of rules)if(!types.get(rule.value)?.size)add(rule.value,'Opaque');
     do{changed=false;for(const[from,to]of edges)for(const type of types.get(from)||[])changed=add(to,type)||changed;}while(changed);

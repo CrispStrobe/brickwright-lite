@@ -1,6 +1,6 @@
 # Code file actions in the shared File menu
 
-Owner: shared editor-menu UX maintainer. Status: CLAIMED.
+Owner: shared editor-menu UX maintainer. Status: DONE (source implementation); final hosted qualification pending.
 Base: 88f7367ed653398560c725f75e78845172c066f5.
 
 Extend the existing shared menu task: expose Open code and Save code as through
@@ -25,3 +25,19 @@ controls; hosted browser must open the real chooser, import a supported text
 file and download the same buffer/filename through the shared File menu.
 Normal source qualification applies; documentation registration uses the user’s
 explicit normal direct-main exception. No new builds or suites on the shared VPS.
+
+
+Implementation: the contextual File entries now use a live editor provider and
+the original chooser/save callbacks. Busy/visibility changes are rechecked on
+click, duplicate visible providers refuse, and disposal removes registration.
+27 focused menu/locale/history/lane controls pass, with syntax, unchanged-handler
+and disabled-action mutation checks. The hosted chrome sweep now opens an actual
+.bw source file and verifies the downloaded filename and exact UTF-8 bytes.
+Hosted browser/build qualification remains pending in PR #1536; these host
+controls do not qualify the product.
+
+Next owner: refresh the final PR head and every enabled check. Diagnose any
+failure without relaxing file-byte assertions, history checks or resource limits.
+Merge only after exact-head qualification. A later menu slice can expose existing
+Code conversion or target-specific export callbacks after agreeing their precise
+owner boundaries; do not invent fallback exporters or alter compiler behavior.

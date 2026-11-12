@@ -53,7 +53,7 @@ try {
   // Visible AND selected: the panel is forceRenderTabPanel, so its controls sit
   // in the DOM while another tab is on screen. Presence proves nothing.
   const fpgaIsUp = () => page.evaluate(() => {
-    const el = document.querySelector('[data-testid="bw-fpga-ic-gate"]');
+    const el = document.querySelector('[data-testid="bw-fpga-workspace"]');
     if (!el || el.getBoundingClientRect().width === 0) return false;
     const t = [...document.querySelectorAll('[role="tab"]')];
     return t[5] && t[5].getAttribute('aria-selected') === 'true';
@@ -66,7 +66,7 @@ try {
         new CustomEvent('bw-activate-tab', { detail: { index: 5 } })));
     }
     const ready = await page.waitForFunction(() => {
-      const el = document.querySelector('[data-testid="bw-fpga-ic-gate"]');
+      const el = document.querySelector('[data-testid="bw-fpga-workspace"]');
       const tabs = [...document.querySelectorAll('[role="tab"]')];
       return Boolean(el && el.getBoundingClientRect().width > 0 &&
         tabs[5] && tabs[5].getAttribute('aria-selected') === 'true');
@@ -74,8 +74,21 @@ try {
     if (ready) break;
   }
 
+  await page.getByTestId('bw-fpga-workspace-design').click();
+  await page.getByTestId('bw-fpga-editor').selectOption('canvas');
   const canvas = page.getByTestId('bw-fpga-rf-canvas');
   await canvas.waitFor({ state: 'visible', timeout: 30000 });
+  const minimap = canvas.locator('.react-flow__minimap');
+  const minimapToggle = page.getByTestId('bw-fpga-rf-minimap-toggle');
+  await minimap.waitFor({state: 'visible'});
+  const nodeCount = await canvas.locator('.react-flow__node').count();
+  await minimapToggle.click();
+  await minimap.waitFor({state: 'detached'});
+  check(await minimapToggle.getAttribute('aria-pressed') === 'false', 'minimap hides with correct toggle state');
+  await minimapToggle.press('Enter');
+  await minimap.waitFor({state: 'visible'});
+  check(await minimapToggle.getAttribute('aria-pressed') === 'true', 'keyboard restores minimap');
+  check(await canvas.locator('.react-flow__node').count() === nodeCount, 'minimap toggle preserves the gate design');
   const box = await canvas.boundingBox();
 
   /**

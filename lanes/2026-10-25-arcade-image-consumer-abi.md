@@ -1,9 +1,22 @@
 # Current Image consumer ABI in MakeCode export
 
-Status: CLAIMED; merge before implementation. Owner: Arcade integration,
-continuing PR #1128. Base: `eec6adcb9cd` (refresh exact main before implementation).
+Status: DONE implementation candidate; exact-head SDK/native/editor qualification
+pending in PR #1128. Owner: Arcade integration. Claim PR #1389 merged at
+`ba3b28f89c137a13e1e01acc66ad2a0863cb9a89` before implementation.
 Preserve the active SDK constructor/captured-scalar exclusions; this is a
 separate current-SB3 consumer proof, not a source Number shortcut.
+
+Implementation: `1bf9b915a4d2c0f6ebbc836999a16f8cbc027d95`. Fourteen complete
+new source controls and the final composed 37-control cohort pass. Five cuts
+detect lost alias-writer, sticky-currentness, model-record, ABI-lowering and
+canonical-parent guards. The implementation admits one closed synchronous
+source start, two finite dimensions of absolute value at most 2000 with actual int32 conversion,
+canonical default-frame constructors and separately audited methods. Unknown
+effects and additional entries receive no new proof. Old aliases retain their
+Image generation after resize or field clearing. Existing already-typed Image
+exports remain unchanged; no optional descriptor-based delegation is added.
+The original dialog assertions and allocation matrix remain unchanged.
+These source results do not close the actual SDK, native or GUI boundary below.
 
 ## Observed boundary
 

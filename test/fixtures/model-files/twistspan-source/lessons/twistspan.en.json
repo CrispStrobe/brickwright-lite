@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "id": "twistspan",
+  "language": "en",
+  "what": "One motor briefly turns the yellow upper bar, then holds it still. Two fixed-length 104 mm cords carry a separate orange assembly with no motor and no bearing connecting it to the upper bar. The orange bar twists, rises slightly and swings back under gravity. The main model uses red tie collars 64 mm apart. The supplied inner-tie comparison uses green collars 32 mm apart; all 107 rigid parts, the payload mass and its mass distribution stay the same.",
+  "try": [
+    "Import twistspan.ldr into Robot Lab. Load the text from twistspan.bw in Code, choose To Blocks, then Run. Start from the freshly loaded saved model. This add-on does not install itself into the example gallery.",
+    "During stage 1, motor A moves the upper bar to +20 degrees and holds for 18 seconds. Watch the orange bar, not the motor encoder. Count a complete oscillation from one crossing of the held upper-bar direction to the next crossing in the same direction. Use several complete cycles.",
+    "Watch the small lift near a turning point and the lower position near alignment. Then watch A return to zero at 10 degrees per second and hold for another 6 seconds. The program finishes after about 27.5 seconds; the passive orange bar may continue ringing down after completion.",
+    "Predict the effect of halving the tie spacing before looking at the answer. Import the complete saved twistspan-inner.ldr model afresh, use the exact same twistspan.bw program, and repeat. Its two cords move to the green collars at both ends. Do not remove the unused red collars or add or remove ballast.",
+    "Compare full-cycle periods from the two held intervals. Keep the 104 mm cord length, motor program and rigid payload unchanged. Reload the complete saved model before every rerun; zeroing the motor encoder alone does not reset a moving or displaced payload."
+  ],
+  "why": "When the lower bar twists relative to the upper one, the ends of each cord move sideways relative to one another. A cord of fixed length must then have less vertical reach, so the payload rises. Gravity lowers the potential energy by turning the payload back toward alignment. Its inertia carries it through alignment and the motion repeats. Wider attachment spacing produces more lift for the same small twist, giving a stronger restoring torque. This is a bifilar pendulum: its restoring effect comes from gravity and geometry, not from a modelled elastic twist in the cords.",
+  "matters": "A bifilar suspension can relate an object's moment of inertia to its oscillation period. Here it also provides a controlled geometric comparison: the rigid payload and all its fittings are identical in both files, and only the two rope routes change. In the supplied native recordings, the median full-cycle period was 0.77035 seconds with 64 mm spacing over 22 usable cycles, and 1.52201 seconds with 32 mm spacing over 10 usable cycles. The measured ratio was 1.97574, close to the small-angle prediction of 2. These are simulator observations of the exported model and program; browser integration and a physical hardware build are separate checks.",
+  "question": "If both the upper and lower attachment spacing are halved while cord length and the complete payload stay unchanged, should the orange bar oscillate twice as fast, twice as slowly, or at the same rate? Why?",
+  "answer": "It should take about twice as long per cycle, so it oscillates about half as fast. For small twists, the gravitational stiffness is m*g*a^2/L, where a is half the matching tie spacing. Halving a reduces this stiffness to one quarter, while the unchanged payload keeps the same vertical-axis moment of inertia. The period is proportional to the square root of inertia divided by stiffness, so it doubles. The native period ratio of 1.97574 is a finite, damped simulation measurement rather than an exact mathematical identity. Returning A to zero does not force the freely suspended payload to stop.",
+  "further": [
+    "Compare the recorded passive heading relative to the observed chassis with the actual upper-bar heading. A steady motor encoder is evidence that the input is holding, not a measurement of the orange output.",
+    "Use the geometric rise equation to predict the very small vertical motion at a given relative twist. It assumes taut equal cords, matching upper and lower tie spacings, a level payload and aligned suspension centres; compare against recorded positions rather than imposing the equation on the motion.",
+    "Compare TwinTempo and Sky Courier: those machines wind cords to hoist or position loads. TwistSpan keeps both cord lengths fixed and measures the free rotational response after the upper support stops.",
+    "Manual target suggestions for A are 0 to 20 degrees in 5-degree steps at 10 degrees per second. These are requested target bounds, not physical stops. Reload before running the finite experiment after manual movement.",
+    "The native cords are ideal massless, tension-only distance constraints. Knots, bending, stretch, cord contact and wrapping are not simulated. The model has no physical yaw end stops; the supplied experiment does not qualify arbitrary rotations or a real instrument."
+  ],
+  "formula": "For small relative twist theta (radians), equal taut cords of length L, matching upper and lower half-spacing a, payload mass m and vertical-axis inertia Iz: T0 = 2*pi*sqrt(Iz*L/(m*g*a^2)). Here L = 0.104 m; a = 0.032 m (red collars) or 0.016 m (green collars). With m, Iz and L unchanged, T_inner/T_outer = a_outer/a_inner = 2. For a level symmetric payload, rise(theta) = L - sqrt(L^2 - 4*a^2*sin(theta/2)^2). This is an analytical geometric prediction; actual periods and rise come from independent native pose observations.",
+  "related": [
+    "twin-tempo.ldr",
+    "sky-courier.ldr",
+    "pendulum-array.ldr",
+    "resonance-lab.ldr"
+  ]
+}

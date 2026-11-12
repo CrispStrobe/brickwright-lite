@@ -13,6 +13,7 @@ test('every example and preset has a complete EN/DE lesson with real related-mod
   assert.ok(data.what.length>65&&data.why.length>100&&data.try.length>=3&&data.further.length>=2,lessonId(m));
   assert.equal(typeof data.formula,'string');
   assert.ok(data.question.length>20&&data.answer.length>35);assert.ok(data.related.every(k=>keys.has(k)));
+  const first=data.what.split('. ')[0];assert.ok(!data.what.startsWith(first+'. '+first+'. '),'the mechanism name leads the summary once: '+lessonId(m)+'/'+lang);
  }
 });
 test('lesson loading refuses bad identifiers, incomplete content and HTTP failures, and supports retry and cancellation',async()=>{

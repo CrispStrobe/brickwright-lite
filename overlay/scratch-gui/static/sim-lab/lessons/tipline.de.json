@@ -2,9 +2,9 @@
   "version": 1,
   "id": "tipline",
   "language": "de",
-  "what": "Ein Motor neigt langsam eine gemeinsame Plattform unter zwei frei stehenden Türmen. Der grüne und der orange Turm haben dieselbe Grundfläche, denselben Außenrahmen, dieselbe Zusammenstellung aus 22 Teilen und dieselbe Katalogmasse von 46,46 g. Die acht roten Ballastplatten sitzen im grünen Turm unten und im orangen Turm oben. Keiner der Türme ist an der Plattform befestigt. Vergleiche die erste Instabilität jedes Turms, solange er noch Abstand zur hohen gelben Auffangwand hat: Wandert seine Grundplatte hangabwärts, während er aufrecht bleibt, oder neigt er sich gegenüber der Plattform? Die Wand fängt die spätere Bewegung ab. Die Vergleichsdatei vertauscht nur die Ballasthöhen zwischen den Spuren.",
+  "what": "Neigungsversuch mit gleichen Lasten: Schwerpunkt, Reibung und erste Instabilität. Ein Motor neigt langsam eine gemeinsame Plattform unter zwei frei stehenden Türmen. Der grüne und der orange Turm haben dieselbe Grundfläche, denselben Außenrahmen, dieselbe Zusammenstellung aus 22 Teilen und dieselbe Katalogmasse von 46,46 g. Die acht roten Ballastplatten sitzen im grünen Turm unten und im orangen Turm oben. Keiner der Türme ist an der Plattform befestigt. Vergleiche die erste Instabilität jedes Turms, solange er noch Abstand zur hohen gelben Auffangwand hat: Wandert seine Grundplatte hangabwärts, während er aufrecht bleibt, oder neigt er sich gegenüber der Plattform? Die Wand fängt die spätere Bewegung ab. Die Vergleichsdatei vertauscht nur die Ballasthöhen zwischen den Spuren. Ein Motor neigt zwei gleich schwere freie Türme mit tiefem oder hohem innerem Ballast. In den nativen Aufzeichnungen kippt die hohe Anordnung bei etwa 15°; die tiefe rutscht bei etwa 22°. Vertausche die Ballasthöhen zwischen den Spuren; eine hohe passive Wand fängt die spätere Bewegung ab.",
   "try": [
-    "Importiere tipline.ldr frisch in Robot Lab. Lade den Text aus tipline.bw in Code, wähle To Blocks und anschließend Run. Diese Ergänzung wird als Dateisammlung geliefert und trägt sich nicht selbst in die Beispielgalerie ein.",
+    "Setze die gesamte Szene zurück, lade das Beispielprogramm dieses Modells und starte es. Setze die Szene vor jeder Wiederholung oder jedem Vergleich erneut zurück.",
     "Sage vor der Bewegung voraus, welcher Turm zuerst rutschen und welcher zuerst kippen sollte. Achte auf den roten Ballast: Die Farbe kennzeichnet eine Spur, während die Ballasthöhe die veränderte Größe ist.",
     "Beobachte die erste anhaltende Bewegung jedes Turms von der Seite. Beim Rutschen bewegt sich die Unterseite der Grundplatte entlang der Plattform, während der Turm nahezu senkrecht zu ihr bleibt. Beim Kippen dreht sich der Turm gegenüber der Plattform. Eine seitliche Bewegung seiner Spitze allein unterscheidet diese Vorgänge noch nicht.",
     "Notiere die tatsächliche Plattformneigung beim ersten klaren Rutschen oder Kippen, bevor die jeweilige Last die gelbe Wand erreicht. Beurteile die Plattform gegenüber der Waagerechten und jeden Turm gegenüber der Plattform. Kleine Kontaktbewegungen sind von einem anhaltenden Ereignis zu unterscheiden. Ein späteres Anlehnen an die Wand ist nicht die Kippgrenze; auch eine zuerst rutschende Last kann sich später drehen.",
@@ -27,8 +27,7 @@
   ],
   "formula": "Statisches Kippen an einer scharfen Kante: theta_Kipp = atan(b/h), mit der halben Stützflächenbreite b in Gefällerichtung und der Schwerpunkthöhe h. Für die native abgerundete Kante gilt als Referenz theta_Kipp,r = atan((b-r)/(h-r)). Coulomb-Reibung: theta_Rutsch = atan(mu). Hier sind b = 16 mm, r = 0,4 mm, h_niedrig ungefähr 32,3 mm, h_hoch ungefähr 61,6 mm und das vorbereitete mu = 0,4. Die abgerundeten Kippgrenzen betragen ungefähr 26,06 Grad (niedrig) und 14,30 Grad (hoch), die Rutschgrenze ungefähr 21,80 Grad. Die kleinere statische Grenze sagt die erste Instabilität voraus. Das aufgezeichnete Ereignis verwendet die beschriebenen Weg-, Neigungs- und Zeitkriterien; die Formeln schreiben keine Bahn vor.",
   "related": [
-    "tilt-lab.ldr",
-    "clutch-bench.ldr",
-    "parallel-lift.ldr"
+    "carry-ratio.ldr",
+    "pivot-exchange.ldr"
   ]
 }

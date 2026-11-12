@@ -12,8 +12,8 @@ import NudgeTool from '../selection-tools/nudge-tool';
  * Structurally this is rect-tool.js — same bounding-box handoff, same modifier keys, same tiny-
  * shape guard — with the one rectangle-specific line replaced by a `buildPath` callback. The
  * shape is inscribed in the dragged rectangle rather than drawn from a centre and radius, so a
- * polygon can be squashed or stretched like every other shape in this editor, and shift still
- * means "regular".
+ * polygon stays regular inside the drag box; shift still
+ * constrains that box to a square.
  */
 class BwShapeTool extends paper.Tool {
     static get TOLERANCE () {

@@ -1,6 +1,7 @@
 # Ordinary-class scalar Any consumers
 
-Status: CLAIMED; merge before implementation. Owner: Arcade integration,
+Status: IMPLEMENTED in the integration candidate; final exact-head runtime/editor
+qualification pending. Owner: Arcade integration,
 continuing PR #1128. Preserve the separately claimed Math integration.
 Base: `e7cc6678b5d0b8e887192142146f0cb945ecdba6`.
 
