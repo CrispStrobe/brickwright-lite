@@ -1,24 +1,25 @@
-# R5 workflow manual-run isolation
+# Shared workflow manual-run isolation
 
-Status: CLAIMED. Owner: R5 qualification continuation.
+Status: CLAIMED. Owner: shared concurrency and guard continuation.
 
-Scope: the workflow-level concurrency groups in the following owned workflows:
-`ack-z80-cpm`, `arcade-controls`, `basic-oracle`, `build`, `debugger`,
-`i80386-hdd-gui-actual`, `i8086-execution`, `makecode-arcade-bases`, `mobile`,
-`native-installed-qualification`, `pascal-ack-image`, `robot-lab-own-firmware`,
-`rust-notices`, `spike-linux-package`, `target-performance`, and `tauri`.
-Keep existing push and pull-request supersession and label-group distinctions;
-isolate manual, tag and other non-superseding events by unique run identity so
-queued or running events cannot displace one another.
+The owner authorizes this lane to reconcile the workflow-level concurrency
+policy across the 23 workflows changed by policy commit
+`4be93d2bfd422acdc3f776a73b72d099813538e1`. Keep superseded push and pull-request
+cancellation, including existing label-group distinctions. Isolate manual, tag
+and other non-superseding events by unique run identity so queued or running
+runs cannot displace one another.
 
-The focused policy test may be added under `test/`. The R5-folded
-`test/i80386-hdd-gui-actual.test.mjs` and `test/rust-notices-generator.test.mjs`
-may update their exact policy admission only while preserving historical byte
-hashes, trigger and guard checks, and negative controls. Model measurements,
-cycle qualification, vendor freshness and their separately claimed test files
-are outside this scope. Do not change any other workflow body, dependency, pin,
-product code, threshold or one-shot event.
+Scope includes the exact affected concurrency group lines and focused policy
+tests. The existing i80386, Rust notices, vendor, Pages, cycle, model API,
+debug efficiency and pin-history guard tests may admit the reviewed policy while
+preserving their historical byte hashes, security checks, trigger coverage,
+dependency pins and deployment-ordering protections. A focused helper or fixture
+may be added where needed for closed, reversible projections. The old expectation
+that every superseded push retains a verdict is replaced by the requested
+supersession policy; manual and tag protection remains a positive requirement.
 
-Qualification: source-bound event/ref matrices and negative mutations, exact
-historical reverse projections, affected CI and all enabled exact-head checks.
-No claim of physical or browser qualification follows from policy tests.
+Do not change other workflow jobs, commands, actions, product code, dependency
+pins, one-shot events or thresholds. Qualification requires source-bound
+cross-event group matrices, negative controls, exact historical projections,
+affected tests and all enabled exact-head checks. This does not establish browser,
+physical-hardware or model qualification.
