@@ -8,9 +8,16 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {bindEngineArchive, resolveEngineAdmission, readEngineAdmission, currentJoltFetchPin} from '../scripts/lib/sim-engine-admission.mjs';
 const repo = new URL('../', import.meta.url), read = file => readFileSync(new URL(file, repo));
-const pending = JSON.parse(read('test/fixtures/bw-sim/engine-admissions/bw10.json'));
-const legacyProducer = read('scripts/integrate.mjs').toString(), legacyLock = JSON.parse(read('packages/scratch-gui/package-lock.json'));
+const currentAdmission = JSON.parse(read('test/fixtures/bw-sim/engine-admissions/bw10.json'));
 const clone = value => structuredClone(value);
+// Synthetic lifecycle fixtures never inherit the production admission decision.
+const pending = {...clone(currentAdmission), status: 'pending', archive: {sha256: null, integrity: null},
+    sources: {nativeCanonicalCommit: null, bindingsCanonicalCommit: null},
+    qualification: {summarySha256: null, scalarModuleSha256: null, simdModuleSha256: null}};
+const retained = currentAdmission.retainedPackage;
+const legacyProducer = `const JOLT_PHYSICS_URL = '${retained.url}';\nconst JOLT_PHYSICS_INTEGRITY = '${retained.integrity}';\n`;
+const legacyLock = {packages: {'': {dependencies: {'jolt-physics': retained.url}},
+    'node_modules/jolt-physics': {version: retained.version, resolved: retained.url, integrity: retained.integrity}}};
 const bytes = Buffer.from('SYNTHETIC ADMISSION TEST INPUT: NOT AN ENGINE OR A RELEASE');
 const admittedFixture = () => ({...bindEngineArchive(clone(pending), bytes), status: 'admitted',
     sources: {nativeCanonicalCommit: '1'.repeat(40), bindingsCanonicalCommit: '2'.repeat(40)},
@@ -22,7 +29,7 @@ const inputFor = admission => {
     return {admission, producer, lock, archiveBytes: bytes};
 };
 
-test('pending future package contains no fabricated artifact/source qualification identity', () => {
+test('explicit pending fixture binds injected bytes without admitting them', () => {
     assert.equal(pending.status, 'pending');
     assert.deepEqual(pending.archive, {sha256: null, integrity: null});
     assert(Object.values(pending.sources).every(value => value === null));
@@ -38,8 +45,23 @@ test('pending future package contains no fabricated artifact/source qualificatio
 test('exact retained current pin remains valid while future package is pending', () => {
     const result = resolveEngineAdmission({admission: pending, producer: legacyProducer, lock: legacyLock});
     assert.equal(result.retained, true);assert.equal(result.version, pending.retainedPackage.version);
-    assert.equal(readEngineAdmission().integrity, result.integrity);
-    assert.equal(currentJoltFetchPin().text, result.resolved.replace('https://', ''));
+    // The retained protocol stays valid even after the production record is admitted.
+    assert.equal(resolveEngineAdmission({admission: admittedFixture(), producer: legacyProducer, lock: legacyLock}).retained, true);
+});
+
+test('actual current producer and lock satisfy their declared production admission', () => {
+    assert(['pending', 'admitted'].includes(currentAdmission.status));
+    const actual = readEngineAdmission();
+    const expected = actual.retained ? currentAdmission.retainedPackage : currentAdmission.expectedPackage;
+    assert.equal(actual.version, expected.version);assert.equal(actual.resolved, expected.url);
+    assert.equal(actual.integrity, actual.retained ? expected.integrity : currentAdmission.archive.integrity);
+    assert.equal(currentJoltFetchPin().text, actual.resolved.replace('https://', ''));
+    if (currentAdmission.status === 'admitted') {
+        // Validate the real record's complete declared identities without claiming
+        // synthetic test bytes are the actual production archive.
+        const {archiveBytes, ...declared} = inputFor(currentAdmission);
+        assert.equal(resolveEngineAdmission(declared).retained, false);
+    }
 });
 
 test('explicit admitted fixture binds both digests of injected bytes and exact producer/lock/source identities', () => {
@@ -70,10 +92,23 @@ test('retained provenance census and every original reader/input byte remain man
     mkdirSync(new URL('../test-results/', import.meta.url), {recursive: true});
     const temporary = mkdtempSync(new URL('../test-results/engine-admission-', import.meta.url)), root = pathToFileURL(temporary + path.sep);
     try {
-        for (const file of [...Object.keys(pending.retainedFiles), 'scripts/integrate.mjs', 'packages/scratch-gui/package-lock.json']) {
+        for (const file of Object.keys(pending.retainedFiles)) {
             const destination = new URL(file, root);mkdirSync(new URL('./', destination), {recursive: true});writeFileSync(destination, read(file));
         }
+        for (const [file, data] of [['scripts/integrate.mjs', legacyProducer], ['packages/scratch-gui/package-lock.json', JSON.stringify(legacyLock)]]) {
+            const destination = new URL(file, root);mkdirSync(new URL('./', destination), {recursive: true});writeFileSync(destination, data);
+        }
         assert.equal(readEngineAdmission({root, admission: pending}).retained, true);
+        assert.equal(readEngineAdmission({root, admission: admittedFixture()}).retained, true);
+        // Exercise a future production-style store using explicitly synthetic
+        // admitted data; never change the actual record, producer or lock.
+        const future = admittedFixture(), futureInput = inputFor(future);
+        writeFileSync(new URL('scripts/integrate.mjs', root), futureInput.producer);
+        writeFileSync(new URL('packages/scratch-gui/package-lock.json', root), JSON.stringify(futureInput.lock));
+        assert.throws(() => readEngineAdmission({root, admission: {...future, status: 'pending'}}), /admission is pending/);
+        assert.equal(readEngineAdmission({root, admission: future}).retained, false);
+        writeFileSync(new URL('scripts/integrate.mjs', root), legacyProducer);
+        writeFileSync(new URL('packages/scratch-gui/package-lock.json', root), JSON.stringify(legacyLock));
         const changed = new URL('scripts/verify-sim-resting-creep.mjs', root);writeFileSync(changed, Buffer.concat([read('scripts/verify-sim-resting-creep.mjs'), Buffer.from('\n')]));
         assert.throws(() => readEngineAdmission({root, admission: pending}), /retained original changed/);
         const removed = clone(pending);delete removed.retainedFiles['scripts/verify-sim-resting-creep.mjs'];

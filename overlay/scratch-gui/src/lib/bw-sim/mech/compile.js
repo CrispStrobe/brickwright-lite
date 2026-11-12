@@ -185,7 +185,7 @@ export const compile = (model, catalog, opts = {}) => {
     if (model?.rotor !== undefined && !['legacy', 'native'].includes(model.rotor)) {
         throw new RangeError('rotor must be legacy or native');
     }
-    const edgeProblems = validateInternalEdgeRemovalPairs(model?.internalEdgeRemovalPairs, new Set((model?.parts || []).map(p => p?.id)), 'model.internalEdgeRemovalPairs');
+    const edgeProblems = validateInternalEdgeRemovalPairs(model?.internalEdgeRemovalPairs, new Set((Array.isArray(model?.parts) ? model.parts : []).map(p => p?.id)), 'model.internalEdgeRemovalPairs');
     if (edgeProblems.length) throw new RangeError(edgeProblems.join('; '));
     const diagnostics = [];
     const catalogMap = toCatalogMap(catalog);

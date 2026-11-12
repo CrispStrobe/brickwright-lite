@@ -28,6 +28,17 @@ test('default compile/save bytes stay legacy; empty explicit plan is also legacy
     configureInternalEdgeRemovalPairs({}, new Map(), []);
 });
 
+test('malformed unopted models keep the existing diagnostic result instead of throwing', () => {
+    for (const parts of [{}, 17, 'not-an-array', false, null, undefined]) {
+        const input = {version: 1, parts}, before = JSON.stringify(input);
+        const mechanism = compile(input, catalog, {ground: false});
+        assert.deepEqual(mechanism.bodies, []);assert.deepEqual(mechanism.joints, []);assert.deepEqual(mechanism.gears, []);
+        assert(mechanism.diagnostics.some(d => d.code === 'invalid-model' && d.message === 'model.parts: not an array'));
+        assert(!('internalEdgeRemovalPairs' in mechanism));
+        assert.equal(JSON.stringify(input), before);
+    }
+});
+
 test('ordered part references survive save/reopen, edits and undo without aliasing', () => {
     const original = opted(), text = serializeModel(original);
     assert.match(text, /0 !BW INTERNAL_EDGE_PAIR b a/);
