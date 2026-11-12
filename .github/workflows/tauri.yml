@@ -131,7 +131,7 @@ on:
 # never replaces a pending verdict (the vendor-freshness / ROADMAP 2.1 rule;
 # 2026-11-03 CI trim).
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}${{ !(github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request')) && format('-isolated-{0}', github.run_id) || '' }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request') }}
 jobs:
   test:

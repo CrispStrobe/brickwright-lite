@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {assertReviewedConcurrency} from './helpers/reviewed-concurrency-projections.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
@@ -13,7 +14,7 @@ test('cycle qualification gives a cheap verdict before heavy candidate and brows
     assert.equal((workflow.match(/name: Static qualification contracts/g) || []).length, 1,
         'static policy tests must not be repeated after heavy qualification');
     assert.match(workflow, /timeout-minutes: 3/);
-    assert.match(workflow, /cancel-in-progress: true/);
+    assertReviewedConcurrency(workflow);
     const browser = workflow.slice(workflow.indexOf('- name: Install the qualification browser'),
         workflow.indexOf('- uses: actions/upload-artifact'));
     assert.doesNotMatch(browser, /if: always\(\)/,

@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {assertReviewedConcurrency} from './helpers/reviewed-concurrency-projections.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
@@ -23,7 +24,7 @@ test('cycle candidates and oracles use immutable full commit pins', () => {
 test('heavy qualification is hosted, bounded, fail-closed and retains evidence', () => {
     assert.match(qualifier, /cycle-core qualification is CI-only/);
     assert.match(workflow, /timeout-minutes: 45/);
-    assert.match(workflow, /cancel-in-progress: true/);
+    assertReviewedConcurrency(workflow);
     assert.match(workflow, /if: always\(\)/);
     assert.match(workflow, /cycle-core-qualification\/report\.json/);
     assert.match(qualifier, /evaluationSucceeded:/);
