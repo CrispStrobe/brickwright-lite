@@ -13,7 +13,8 @@ test('cycle qualification gives a cheap verdict before heavy candidate and brows
     assert.equal((workflow.match(/name: Static qualification contracts/g) || []).length, 1,
         'static policy tests must not be repeated after heavy qualification');
     assert.match(workflow, /timeout-minutes: 3/);
-    assert.match(workflow, /cancel-in-progress: true/);
+    assert.match(workflow, /^  group: \$\{\{ github\.workflow \}\}-\$\{\{ github\.ref \}\}$/m);
+    assert.match(workflow, /^  cancel-in-progress: \$\{\{ github\.ref_type != 'tag' && \(github\.event_name == 'push' \|\| github\.event_name == 'pull_request'\) \}\}$/m);
     const browser = workflow.slice(workflow.indexOf('- name: Install the qualification browser'),
         workflow.indexOf('- uses: actions/upload-artifact'));
     assert.doesNotMatch(browser, /if: always\(\)/,
