@@ -1,6 +1,6 @@
 # Held Solstice — route optional startup telemetry to its base recorder
 
-Status: LOCAL SOURCE CANDIDATE 2026-11-12; actual observations pending.
+Status: SOURCE CANDIDATE 2026-11-12; actual observations pending.
 Owner: Codex, Robot Lab startup investigation.
 Base: `ecdd977b88cf69971b3a20bf3ba8fce5ac2b8141`.
 Depends on the held controller and optional worker/session telemetry candidates.
@@ -19,8 +19,8 @@ registries, pins and workflow/concurrency blocks are unchanged. No new engine AP
 
 Qualification: actual-source forwarding and serialized selection controls with fake
 page/worker boundaries, default-option absence, bounds and cold-worker refusal, plus
-nonvacuous mutations. These do not qualify browser execution or a solver fix. The candidate remains unqualified; affected actual observations and independent source/build admission are
-still required before any runtime claim or promotion.
+nonvacuous mutations. These do not qualify browser execution or a solver fix. The candidate remains unqualified; affected actual observations and independent
+source/build admission are still required before any runtime claim or promotion.
 
 Final local controls: seven focused held-routing/failure tests pass, and nine
 final-source mutations are detected. The prior 26 unchanged telemetry/API controls
