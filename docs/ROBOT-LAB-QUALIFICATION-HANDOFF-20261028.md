@@ -127,7 +127,7 @@ differential's carrier is locked (K = (L + R)/2), so motor A cannot reach its jo
 multi-motor mechanisms (the gate owner's decision). Its contract, registry move, fixture and shard were withdrawn;
 `differential-sum-v1` stays registered and its STEP split stays.
 
-**R3 (#PRNUM, `lanes/2026-11-12-robot-r3-geometry-repairs.md`): Vesper, Aster and Apex repaired and qualified; Bloom
+**R3 (#1731, `lanes/2026-11-12-robot-r3-geometry-repairs.md`): Vesper, Aster and Apex repaired and qualified; Bloom
 stays experimental (below).** One judge module, `scripts/lib/sim-lab-r3-judges.mjs`; every constant is read from the
 compiled joints, colliders and catalogue tooth counts. Repairs (real parts only; source records in
 `test/fixtures/model-files/<id>-source/SOURCES.md`): Vesper's fixed pivot bearing 3L beam → thin 1 × 5 liftarm 5 LDU
