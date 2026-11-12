@@ -405,6 +405,29 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
             if(!Number.isSafeInteger(k)||k<0||String(index.fields?.NUM?.value).trim()===''||receiver?.opcode!=='arcade_getLocal'||
                 index.parent!==node.id||receiver.parent!==node.id||Object.keys(index.inputs||{}).length||index.next!=null||receiver.next!=null)return null;
             const closedInputs=(b,names)=>Object.keys(b?.inputs||{}).sort().join(',')===names.slice().sort().join(',');
+            const primitiveLiteral=b=>{
+                if(!b||b.next!=null)return false;
+                const fields=b.fields||{},keys=Object.keys(fields);
+                // The importer wraps an ordinary Number literal as 0 + N.
+                // Admit only its exact closed two-shadow numeric shape.
+                if(b.opcode==='operator_add'){
+                    if(keys.length||!closedInputs(b,['NUM1','NUM2']))return false;
+                    const left=input(b,'NUM1'),right=input(b,'NUM2');
+                    const numeric=n=>n?.opcode==='math_number'&&n.shadow===true&&n.parent===b.id&&n.next==null&&
+                        !Object.keys(n.inputs||{}).length&&Object.keys(n.fields||{}).join(',')==='NUM'&&
+                        ['string','number'].includes(typeof n.fields.NUM?.value)&&String(n.fields.NUM.value).trim()!==''&&Number.isFinite(Number(n.fields.NUM.value));
+                    return numeric(left)&&numeric(right)&&Number(left.fields.NUM.value)===0;
+                }
+                if(Object.keys(b.inputs||{}).length)return false;
+                if(b.opcode==='text')return keys.length===1&&keys[0]==='TEXT'&&typeof fields.TEXT?.value==='string';
+                if(b.opcode==='math_number'){
+                    const raw=fields.NUM?.value;
+                    return keys.length===1&&keys[0]==='NUM'&&['string','number'].includes(typeof raw)&&
+                        String(raw).trim()!==''&&Number.isFinite(Number(raw));
+                }
+                return b.opcode==='arrays_specialValue'&&keys.length===1&&keys[0]==='KIND'&&
+                    ['null','undefined','NaN','Infinity','-Infinity','-0'].includes(fields.KIND?.value);
+            };
             const localName=b=>closedInputs(b,['NAME'])&&input(b,'NAME')?.opcode==='text'&&input(b,'NAME').parent===b.id&&input(b,'NAME').next==null&&Object.keys(input(b,'NAME').inputs||{}).length===0?literal(b,'NAME'):null;
             const name=localName(receiver),scope=captureProof.scopeOf(receiver);
             if(typeof name!=='string'||!scope||scope.target!==target||captureProof.scopeOf(node)!==scope||
@@ -426,7 +449,7 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
             const endpoint=b=>{
                 if(!b||endpointSeen.has(b))return false;endpointSeen.add(b);
                 if(b===node)return closedInputs(b,['ARRAY','INDEX']);
-                if(['math_number','bw_numberLiteral','text','bw_stringLiteral','arrays_specialValue'].includes(b.opcode))return !Object.keys(b.inputs||{}).length&&b.next==null;
+                if(['math_number','text','arrays_specialValue','operator_add'].includes(b.opcode))return primitiveLiteral(b);
                 let valid=b.opcode==='arcade_inspectValue'&&closedInputs(b,['VALUE','LIMIT'])||
                     b.opcode==='arcade_functionArgument'&&closedInputs(b,['VALUE','REST']);
                 if(b===statement)valid=b.opcode==='data_setvariableto'&&closedInputs(b,['VALUE'])||
@@ -450,7 +473,11 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
                 const found=localName(b);if(typeof found!=='string')return null;if(found!==name)continue;
                 if(b===receiver)continue;
                 const parent=read(b.parent),at=chain.indexOf(parent);
-                if(parent?.opcode!=='arrays_mutateReference'||!closedInputs(parent,['ARRAY','OP','VALUE'])||parent.inputs?.ARRAY?.block!==b.id||literal(parent,'OP')!=='push'||input(parent,'OP')?.opcode!=='text'||Object.keys(input(parent,'OP').inputs||{}).length||input(parent,'OP').parent!==parent.id||
+                const ignoredIndex=input(parent,'INDEX'),indexValue=ignoredIndex?.fields?.NUM?.value;
+                if(parent?.opcode!=='arrays_mutateReference'||!closedInputs(parent,['ARRAY','OP','INDEX','VALUE'])||parent.inputs?.ARRAY?.block!==b.id||literal(parent,'OP')!=='push'||input(parent,'OP')?.opcode!=='text'||Object.keys(input(parent,'OP').inputs||{}).length||input(parent,'OP').parent!==parent.id||
+                    ignoredIndex?.opcode!=='math_number'||ignoredIndex.shadow!==true||ignoredIndex.parent!==parent.id||ignoredIndex.next!=null||
+                    Object.keys(ignoredIndex.inputs||{}).length||Object.keys(ignoredIndex.fields||{}).join(',')!=='NUM'||
+                    !['string','number'].includes(typeof indexValue)||String(indexValue).trim()===''||!Number.isFinite(Number(indexValue))||
                     at<=allocation||at>=end)return null;
                 pushes.push(parent);
             }
@@ -459,7 +486,7 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
             // calls returning primitives do not gain side-effect authority.
             for(let at=allocation+1;at<end;at++)if(!pushes.includes(chain[at]))return null;
             pushes.sort((a,b)=>chain.indexOf(a)-chain.indexOf(b));
-            if(pushes.some(push=>{const value=input(push,'VALUE');return !['math_number','bw_numberLiteral','text','bw_stringLiteral','arrays_specialValue'].includes(value?.opcode)||Object.keys(value.inputs||{}).length||value.parent!==push.id||value.next!=null;}))return null;
+            if(pushes.some(push=>{const value=input(push,'VALUE');return !primitiveLiteral(value)||value.parent!==push.id;}))return null;
             return k<pushes.length?input(pushes[k],'VALUE'):null;
         };
         const positionalElement=node=>{
