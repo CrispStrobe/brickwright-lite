@@ -939,6 +939,7 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
                 let calls=Object.values(all).filter(value=>value.opcode==='arcade_callFunction'&&literal(value,'NAME')===procedure||value.opcode==='procedures_call'&&value.mutation?.proccode===procedure);
                 if(Object.values(all).some(value=>value.opcode==='arcade_callFunction'&&typeof literal(value,'NAME')!=='string'))return false;
                 const model=player?null:classRows(),role=model?.roles.get(procedure);
+                let dispatched=false;
                 if(role&&proof.index>0){
                     calls=calls.filter(call=>model.reachable.has(captureProof.scopeOf(call)));
                     const index=proof.index-1,dispatch=[];
@@ -954,11 +955,10 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
                         const arg=index===null?input(node,'VALUE'):argumentsFor(node,index);
                         if(arg===null){const param=role.parameters[index];if(Object.hasOwn(param,'default')){const value=param.default;if(value!==null&&!['number','string','boolean'].includes(typeof value))return false;domains?.add(value===null?'null':typeof value);}else domains?.add('undefined');evidence.add(node);return true;}
                         return arg!==false&&safe(arg,false,evidence,domains);
-                    });if(!valid)return false;}
+                    });if(!valid)return false;dispatched=true;}
                     else if(!calls.length)return false;
                     valid=valid||dispatch.length>0;
                 }
-                const dispatched=valid;
                 valid=(calls.length>0||dispatched)&&calls.every(call=>{
                     if(call.opcode==='procedures_call'){let ids;try{ids=JSON.parse(call.mutation?.argumentids||'[]');}catch{return false;}if(!Array.isArray(ids)||ids.length!==cell.scope.params.length||ids.some(id=>typeof id!=='string')||new Set(ids).size!==ids.length)return false;if(domains){let expected;try{expected=JSON.parse(input(cell.scope.root,'custom_block')?.mutation?.argumentids||'[]');}catch{return false;}if(JSON.stringify(ids)!==JSON.stringify(expected))return false;}return safe(input(call,ids[proof.index]),player,evidence,domains);}
                     const arg=argumentsFor(call,proof.index);if(arg===null&&!player){evidence.add(call);domains?.add('undefined');return true;}return arg!==false&&safe(arg,player,evidence,domains);});

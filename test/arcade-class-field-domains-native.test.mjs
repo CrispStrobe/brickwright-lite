@@ -99,6 +99,17 @@ test('an ordinary explicit setter caller cannot disappear behind field-assignmen
  assert.throws(()=>f.query(),/primitive domain evidence/);
 });
 
+test('setter local writers cannot replace missing field dispatch and retain every domain',()=>{
+ const f=fixture(true),writer=f.add('localWrite','arcade_setLocal','set',{VALUE:{block:'localValue'}});
+ f.value(writer,'NAME','v');f.text('localValue','localWrite','text');
+ f.blocks.set.next='localWrite';writer.next='setn';f.blocks.setn.parent='localWrite';
+ const request={procedure:f.setter,formal:'v'};
+ assert.deepEqual(new Set(f.query([request])[0]),new Set(['number','string']));
+ // A local writer proves a possible value, but never proves an invocation.
+ delete f.blocks.dispatch;f.blocks.alloc.next='out';f.blocks.out.parent='alloc';
+ assert.throws(()=>f.query([request]),/primitive domain evidence/);
+});
+
 test('bounded declaration admission agrees with the genuine heap schema on supported descriptors',()=>{
  const heap=require('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/object-heap');
  for(const type of ['number','boolean','string','any']){
