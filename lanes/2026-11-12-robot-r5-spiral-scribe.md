@@ -35,3 +35,11 @@ one or more compatible existing mount types or locations. Nearest connector
 distances are independent per mount and do not establish a jointly buildable
 assembly. This is not a tooth-pitch, real-geometry, collision, travel or
 physical-build result; promotion remains pending.
+
+A separate source-geometry check reads the repository's LDraw part files. The
+repeated tooth subpart placements in 64781, 32132, 32185 and 18942 each have
+8 LDU spacing; the source files are identified by SHA-256 in the check output.
+These are modeled placements, not calibrated physical measurements or proof of
+contact. A simple change to one of those rack parts therefore does not by
+itself establish a correction for the existing feed discrepancy. The model stays
+experimental while a buildable, independently justified design is sought.
