@@ -7,7 +7,8 @@ const labelSuffix = "-${{ (github.event.action == 'labeled' || github.event.acti
 export const assertReviewedConcurrency = (text, {labels = false} = {}) => {
     const policy = labels ? reviewedPolicy.replace('${{ github.ref }}', '${{ github.ref }}' + labelSuffix) : reviewedPolicy;
     assert.equal((text.match(/^concurrency:/gm) || []).length, 1, 'one workflow concurrency block');
-    assert.equal(text.split(policy).length, 2, 'exact reviewed workflow/ref cancellation policy');
+    assert.equal(/^concurrency:\n(?:  .+\n)+/m.exec(text)?.[0], policy,
+        'exact reviewed workflow/ref cancellation policy');
 };
 export const studyBeforeConcurrencyPolicy = (file, text) => {
     if (file !== '.github/workflows/reference-qualified-instruments.yml') return text;
