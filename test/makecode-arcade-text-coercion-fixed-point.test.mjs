@@ -1,0 +1,70 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import ts from 'typescript';
+import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {projectToArcade, projectJsonToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
+import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
+
+function exportCode(code) {
+    const creator = new SB3Creator();
+    creator.parse(code);
+    assert.deepEqual(creator.warnings, []);
+    const direct = projectToArcade(creator.project);
+    const json = projectJsonToArcade(JSON.stringify(creator.project));
+    assert.deepEqual(direct.unsupported, []);
+    assert.deepEqual(json.unsupported, []);
+    assert.deepEqual(direct.files, json.files);
+    return direct.ts;
+}
+function roundtrip(source) {
+    const imported = arcadeToPseudocode(source);
+    assert.deepEqual(imported.unsupported, []);
+    return exportCode(imported.code);
+}
+function evaluate(source, result) {
+    // Host JS evaluation checks coercion/evaluation count only, not PXT or VM parity.
+    const js = ts.transpileModule(source + '\nobserved = ' + result, {
+        compilerOptions: {target: ts.ScriptTarget.ES2020}
+    }).outputText;
+    const context = {};
+    vm.runInNewContext(js, context, {timeout: 1000});
+    return JSON.parse(JSON.stringify(context.observed));
+}
+
+test('Arcade length and character coercions reach byte identity after first export', () => {
+    // Explicit declarations isolate coercion from the separate initializer-growth gap.
+    let source = 'let x:number; let n:number; let c:string; x=123; n=(""+x).length; c=(""+x).charAt(0);';
+    const first = roundtrip(source);
+    assert.deepEqual(evaluate(first, '[n,c]'), [3, '1']);
+    source = first;
+    for (let generation = 0; generation < 3; generation++) {
+        source = roundtrip(source);
+        assert.equal(source, first);
+        assert.deepEqual(evaluate(source, '[n,c]'), [3, '1']);
+    }
+});
+
+test('text coercion evaluates an effectful operand once per use across exports', () => {
+    let source = 'let reads:number; let n:number; let c:string; reads=0; function next():number { reads += 1; return 123; } n=(""+next()).length; c=(""+next()).charAt(1);';
+    for (let generation = 0; generation < 3; generation++) {
+        source = roundtrip(source);
+        assert.deepEqual(evaluate(source, '[reads,n,c]'), [2, 3, '2']);
+    }
+});
+
+for (const [name, expression, expected] of [
+    ['numeric addition', 'calculate value (12) op "+" with (3)', 2],
+    ['different operator', 'calculate value ("") op "-" with (3)', 2],
+    ['variable text producer', 'calculate value (prefix) op "+" with (123)', 3]
+]) test('length retains coercion for ' + name, () => {
+    const source = exportCode('DEVICE ARCADE\nGLOBAL n\nGLOBAL prefix\nSPRITE Game:\nWHEN arcade source starts:\n  set prefix to ("")\n  set n to (length of (' + expression + '))');
+    assert.match(source, /n = \("" \+ /);
+    assert.equal(evaluate(source, 'n'), expected);
+});
+
+test('stock joins remain text, including a numeric first operand', () => {
+    const source = exportCode('DEVICE ARCADE\nGLOBAL n\nSPRITE Game:\nWHEN arcade source starts:\n  set n to (length of (join (12) (3)))');
+    assert.equal(evaluate(source, 'n'), 3);
+    assert.doesNotMatch(source, /\("" \+ \("" \+/);
+});

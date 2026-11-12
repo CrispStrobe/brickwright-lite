@@ -1619,6 +1619,18 @@ class ArcadeEmitter {
         return m ? this.field(m, field) : '';
     }
 
+    // A leading empty text operand already performs the coercion. Source
+    // reimport represents that addition as a native value operation, rather
+    // than a Scratch join; wrapping it again grows the source every export.
+    textOperand (b, name) {
+        const raw = this.value(b, name);
+        const slot = b.inputs?.[name]?.[1];
+        const operand = typeof slot === 'string' ? this.block(slot) : null;
+        const textAddition = operand?.opcode === 'arrays_valueBinary' &&
+            this.field(operand, 'OP') === '+' && this.literalInput(operand, 'LEFT') === '';
+        return /^"/.test(raw) || operand?.opcode === 'operator_join' || textAddition ? raw : `("" + ${raw})`;
+    }
+
     // ── expressions ──────────────────────────────────────────────────────
     expr (b) {
         if (!b) return '0';
@@ -2307,7 +2319,7 @@ class ArcadeEmitter {
             return this.na();
         }
         case 'arcade_spriteOverlaps': return `${v('A')}.overlapsWith(${v('B')})`;
-        case 'operator_length': return `("" + ${v('STRING')}).length`;
+        case 'operator_length': return `${this.textOperand(b, 'STRING')}.length`;
         // A character of a text (task E17). `letter` counts from 1, PXT's
         // index from 0. String_::charAt gives "" out of range (index < 0 or
         // >= length), as Scratch's letter does for a whole index. It is
@@ -2320,12 +2332,11 @@ class ArcadeEmitter {
         case 'operator_letter_of': {
             // Text whatever it holds, as `length of` reads it: a literal or
             // a join is text already, anything else is made text.
-            const raw = v('STRING');
             const block = name => {
                 const slot = b.inputs?.[name]?.[1];
                 return typeof slot === 'string' ? this.block(slot) : null;
             };
-            const text = /^"/.test(raw) || block('STRING')?.opcode === 'operator_join' ? raw : `("" + ${raw})`;
+            const text = this.textOperand(b, 'STRING');
             const n = this.literalNumber(b, 'LETTER');
             if (n !== null && Number.isInteger(n)) return `${text}.charAt(${n - 1})`;
             const at = block('LETTER');
