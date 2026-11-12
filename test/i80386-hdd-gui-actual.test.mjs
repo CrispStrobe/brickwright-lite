@@ -32,8 +32,53 @@ const runControlChildren = async (specs,deadlineMs) => {
     finally{clearTimeout(timer);}
 };
 
+// Policy 4be93d2bfd422acdc3f776a73b72d099813538e1 changed only these
+// concurrency bytes in the held workflows. Admit the exact new policy, then
+// restore its exact predecessor bytes so every historical digest stays binding.
+const reviewedConcurrency = "concurrency:\n" +
+    "  group: ${{ github.workflow }}-${{ github.ref }}";
+const reviewedCancellation = "\n  cancel-in-progress: ${{ github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request') }}\n";
+const concurrencyPredecessors = new Map([
+    ['i80386-hdd-gui-actual', "concurrency:\n  group: gui-hdd-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.event_name }}\n  cancel-in-progress: false\n\n"],
+    ['ack-z80-cpm', ''], ['basic-oracle', ''], ['target-performance', ''],
+    ['makecode-arcade-bases', "concurrency:\n  group: makecode-arcade-bases-${{ github.ref }}\n  cancel-in-progress: true\n\n"],
+    ['pascal-ack-image', "concurrency:\n  group: pascal-ack-image-${{ github.ref }}\n  cancel-in-progress: true\n\n"],
+    ['rust-notices', "concurrency:\n  group: rust-notices-${{ github.head_ref || github.ref_name }}\n  cancel-in-progress: true\n\n"],
+]);
+const heldBeforeConcurrencyPolicy = (name, workflow) => {
+    assert.ok(concurrencyPredecessors.has(name), `${name}: explicitly reviewed policy scope`);
+    const labelGroup = name === 'i80386-hdd-gui-actual' ?
+        "-${{ (github.event.action == 'labeled' || github.event.action == 'unlabeled') && format('label-{0}', github.event.label.name) || 'code' }}" : '';
+    const predecessor = concurrencyPredecessors.get(name);
+    const policy = reviewedConcurrency + labelGroup + reviewedCancellation + (predecessor === '' ? '\n' : '');
+    assert.equal((workflow.match(/^concurrency:/gm) || []).length, 1, `${name}: one workflow concurrency block`);
+    assert.equal(workflow.split(policy).length, 2, `${name}: exact reviewed concurrency policy`);
+    return workflow.replace(policy, predecessor);
+};
+
+test('reviewed concurrency projection rejects missing, duplicate and altered policy', () => {
+    for (const name of concurrencyPredecessors.keys()) {
+        const workflow = fs.readFileSync(new URL(`../.github/workflows/${name}.yml`, import.meta.url), 'utf8');
+        const held = heldBeforeConcurrencyPolicy(name, workflow);
+        for (const mutation of [
+            workflow.replace('concurrency:', 'unreviewed-concurrency:'),
+            workflow + '\nconcurrency:\n',
+            workflow.replace('${{ github.workflow }}', 'different-workflow'),
+            workflow.replace("github.ref_type != 'tag'", "github.ref_type == 'tag'"),
+            workflow.replace("github.event_name == 'push'", "github.event_name == 'workflow_dispatch'"),
+            workflow.replace("github.event_name == 'pull_request')", "github.event_name == 'pull_request_target')"),
+            workflow.replace(reviewedCancellation, '\n  cancel-in-progress: true\n'),
+        ]) assert.throws(() => heldBeforeConcurrencyPolicy(name, mutation), `${name}: policy drift refuses`);
+        // The projection must preserve even one unrelated byte for the old digest
+        // to reject; it cannot normalize a trigger, job, step or cap modification.
+        assert.equal(heldBeforeConcurrencyPolicy(name, workflow + '# unrelated drift\n'), held + '# unrelated drift\n');
+    }
+    assert.throws(() => heldBeforeConcurrencyPolicy('unreviewed-workflow', ''));
+});
+
 test('V9 manual selection preserves nine prior jobs and consumed execution retirement', () => {
-    const workflow = fs.readFileSync(new URL('../.github/workflows/i80386-hdd-gui-actual.yml',import.meta.url),'utf8');
+    const workflow = heldBeforeConcurrencyPolicy('i80386-hdd-gui-actual',
+        fs.readFileSync(new URL('../.github/workflows/i80386-hdd-gui-actual.yml',import.meta.url),'utf8'));
     const registration = "  workflow_dispatch:\n    inputs:\n      pull_request:\n        description: Owned ready pull request number\n        required: true\n        type: string\n      source_head:\n        description: Reviewed 40-hex source head\n        required: true\n        type: string\n      request_sha256:\n        description: Historical Actual-V8 request SHA-256 (empty for V9)\n        required: false\n        default: ''\n        type: string\n      tag_name:\n        description: Historical Actual-V8 source tag (empty for V9)\n        required: false\n        default: ''\n        type: string\n      protocol:\n        description: Separately reviewed execution protocol\n        required: true\n        default: actual-v8\n        type: choice\n        options: [actual-v8, actual-v9]\n      source_ref:\n        description: Exact owned source branch ref for V9\n        required: false\n        default: ''\n        type: string\n      prelude_sha256:\n        description: Reviewed canonical same-job prelude SHA-256 for V9\n        required: false\n        default: ''\n        type: string\n";
     const anchor = 'on:\n  pull_request:\n    types: [opened, synchronize, reopened, labeled]\n';
     assert.equal(workflow.split(registration).length,2,'one exact closed seven-input manual trigger');
@@ -78,7 +123,7 @@ test('internal V8 tag is excluded from five isolated pushes and current main-onl
     const source = new Map();
     const check = (name, workflow) => {
         assert.equal(workflow.split(block).length,2,`${name}: one exact branch and tag filter`);
-        assert.equal(createHash('sha256').update(workflow.replace(block,'  push:\n')).digest('hex'),
+        assert.equal(createHash('sha256').update(heldBeforeConcurrencyPolicy(name,workflow).replace(block,'  push:\n')).digest('hex'),
             reviewed.get(name),`${name}: every preexisting trigger, path, job and step is byte-held`);
         const branches=workflow.match(/^    branches: \['([^']+)'\]$/gm) || [];
         const tags=workflow.match(/^    tags-ignore: \['([^']+)'\]$/gm) || [];
@@ -126,7 +171,7 @@ test('internal V8 tag is excluded from five isolated pushes and current main-onl
             ['pull_request','refs/heads/lane/a/b',true],
             ['workflow_dispatch','refs/heads/main',true],['unknown','refs/heads/main',false],
         ])assert.equal(accepts(event,ref),wanted,`current Rust route ${event} ${ref}`);
-        assert.equal(createHash('sha256').update(workflow).digest('hex'),
+        assert.equal(createHash('sha256').update(heldBeforeConcurrencyPolicy('rust-notices',workflow)).digest('hex'),
             '6423176bbf016e429a70934b1c8f6b7fd4e852724c4c7313fbeaa1ec245e314c',
             'exact reviewed main-only Rust source: both path lists, manual trigger, runtime and caps held');
     };
