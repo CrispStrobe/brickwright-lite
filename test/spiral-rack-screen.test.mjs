@@ -18,3 +18,13 @@ test('rack screen checks both mounts, tooth orientation and full reference lengt
  assert.equal(screenRack(reference, flipped, ['left','right']).length, 0);
  assert.throws(() => screenRack(reference, reference, ['missing']), /reference connector/);
 });
+
+test('screen allows a rigidly shifted catalog origin but rejects displaced tooth contact', () => {
+ const shifted = structuredClone(reference);
+ for (const c of shifted.connectors) c.position = c.position.map((v, i) => v + [40,7,-3][i]);
+ assert.ok(screenRack(reference, shifted, ['left','right']).some(x =>
+  x.translation.some(v => Math.abs(v) > 0)), 'catalog origin is not assumed to be the model origin');
+ const invalid = structuredClone(reference);
+ invalid.connectors[2].position[1] = -6;
+ assert.equal(screenRack(reference, invalid, ['left','right']).length, 0, 'tooth contact must also coincide');
+});
