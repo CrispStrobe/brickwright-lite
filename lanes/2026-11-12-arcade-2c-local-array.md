@@ -1,6 +1,6 @@
 # Arcade 2c: native local literal-array positional evidence
 
-Owner: Arcade delivery maintainer. Status: IMPLEMENTED candidate; application qualification and landing pending.
+Owner: Arcade delivery maintainer. Status: DONE in the implementation PR; clean guest qualification and landing remain required.
 
 Own the local literal-array positional branch in console-inspect-values.js,
 its mirrored package copy, and focused native controls. Admit only a uniquely
