@@ -35,3 +35,26 @@ Next, instrument the actual native narrow-phase entry and the joint crossing,
 then compare with a suitable reversed-order control while preserving the
 part-pair filter. Qualify any engine or model change separately; do not widen
 the RimRun judge or enable the flag globally to claim a fix.
+
+## Actual RimRun reversal experiment
+
+A paired actual direct-VM experiment rebuilt the pinned native source with the
+exact Emscripten toolchain. It compared trace-only and selected-pair reversal
+with enhanced removal enabled. Both unchanged native RimRun judges passed. For
+both frame–roller pairs, the native trace recorded 2,076 frame-first entries;
+the reversal variant recorded 2,076 reversed queries for each pair. Selected
+part-pair allow/reject controls passed on both modules.
+
+In one-tyre-radius neighborhoods around the four matched tile ends, the
+integrated velocity residual against the ideal rolling model changed from
+−4.007, −5.206, −3.531 and −5.371 mm/s to −0.029, −0.101, −0.042 and
+−0.267 mm/s, respectively. These are finite model comparisons, not measured
+contact impulses. The diagnostic uses selected native body IDs; it is not a
+reusable collision policy. An opt-in implementation, the swapped model,
+flag-off controls, and browser qualification remain necessary before a fix can
+be claimed or shipped.
+
+The paired experiment also ran the swapped model and an enhanced-removal-off
+control on both modules. All six actual runs passed their saved-output audits;
+the two flag-off model tracks were identical. These controls apply to the
+experimental modules and do not qualify a general collision policy.
