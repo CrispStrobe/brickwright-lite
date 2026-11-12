@@ -94,3 +94,50 @@ test('selected staging preserves callable and generic metadata with independentl
     assert.ok(transformed.body.some(node=>node.type==='If'));
     assert.equal(fn.body.length,1,'the original input tree remains untouched');
 });
+
+// The unchanged MakeCode source imports into a local Array literal prefix.
+// Compare its actual original-PXT result with the imported native constrained call.
+test('a local mixed literal Array supplies its fixed Number slot to a constrained native call',async()=>{
+    const source='let observed=-1;function hold(value:number){observed=value}hold([7,<any>"x"][0]);observed+=0;';
+    const original=await runPxtArcade(source,{fakeClock:true,waitForGlobals:{observed:7}});
+    assert.equal(original.observed,7);
+    const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
+    let run;
+    try {
+        run=await runProgram(imported.code,{frames:8,storage:true});
+        assert.deepEqual(run.creator.errors,[]);assert.deepEqual(run.creator.warnings,[]);assert.deepEqual(run.errors,[]);
+        const blocks=run.creator.project.targets.flatMap(t=>Object.values(t.blocks||{}));
+        const pushes=blocks.filter(b=>b.opcode==='arrays_mutateReference');assert.equal(pushes.length,2);
+        for(const push of pushes)assert.deepEqual(Object.keys(push.inputs).sort(),['ARRAY','INDEX','OP','VALUE']);
+        assert.ok(blocks.some(b=>b.opcode==='arcade_declareParameterConstraint'));
+        const observed=run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).find(v=>v.name==='observed'||v.name==='Game_observed');
+        assert.ok(observed);assert.equal(observed.value,original.observed);
+    } finally {if(run){run.vm.stopAll();run.vm.quit();}clearStrayTimers();}
+});
+
+// All sibling calls must execute even though only the middle result is selected.
+// The VM export uses the actual loaded graph, not the Creator input project.
+test('fresh inline Number-call Array preserves sibling effects across native authoring routes',async()=>{
+    const source='let trace=0\nfunction tap(n:number){trace=trace*10+n;return n}\nfunction take(n:number){return n}\nlet output=take([tap(1),tap(2),tap(3)][1])\n';
+    const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
+    const runs=[];
+    const check=run=>{
+        assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
+        const values=Object.fromEntries(run.vm.runtime.targets.flatMap(target=>Object.values(target.variables))
+            .map(variable=>[variable.name.replace(/^Game_/,''),variable.value]));
+        assert.equal(values.trace,123);assert.equal(values.output,2);
+    };
+    try {
+        // No frame advances before saving/exporting this loaded VM graph.
+        const loaded=await runProgram(imported.code,{frames:0,storage:true});runs.push(loaded);
+        assert.deepEqual(loaded.errors,[]);assert.deepEqual(loaded.creator.warnings,[]);
+        const exported=projectToArcade(JSON.parse(loaded.vm.toJSON()));
+        assert.deepEqual(exported.unsupported,[]);assert.deepEqual(exported.warnings,[]);
+        const saved=Buffer.from(await(await loaded.vm.saveProjectSb3()).arrayBuffer());
+        const fresh=await runProgram('SPRITE Placeholder:\nWHEN flag clicked:\n  hide',{frames:0,storage:true});runs.push(fresh);
+        await fresh.vm.loadProject(saved);fresh.vm.greenFlag();await stepFrames(fresh.vm,12);check(fresh);
+        const restored=arcadeToPseudocode(exported.files);assert.deepEqual(restored.unsupported,[]);
+        const reimport=await runProgram(restored.code,{frames:12,storage:true});runs.push(reimport);check(reimport);
+        const code=await runProgram(loaded.creator.decompile(),{frames:12,storage:true});runs.push(code);check(code);
+    } finally {for(const run of runs){run.vm.stopAll();run.vm.quit();}clearStrayTimers();}
+});

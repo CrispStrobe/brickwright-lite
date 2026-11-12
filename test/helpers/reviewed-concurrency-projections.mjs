@@ -4,10 +4,16 @@ import assert from 'node:assert/strict';
 // changes only this block; historical hashes still bind every other byte.
 export const reviewedPolicy = "concurrency:\n  group: ${{ github.workflow }}${{ !(github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request')) && format('-isolated-{0}', github.run_id) || '' }}-${{ github.ref }}\n  cancel-in-progress: ${{ github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request') }}\n";
 export const workflowRefPolicy = "concurrency:\n  group: ${{ github.workflow }}-${{ github.ref }}\n  cancel-in-progress: ${{ github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request') }}\n";
+// Main's earlier public option names the same exact workflow/ref policy.
+// Keep both explicit interfaces; conflicting or unknown selections refuse.
+export const automaticOnlyPolicy = workflowRefPolicy;
 const labelSuffix = "-${{ (github.event.action == 'labeled' || github.event.action == 'unlabeled') && format('label-{0}', github.event.label.name) || 'code' }}";
-export const assertReviewedConcurrency = (text, {labels = false, profile = 'isolated'} = {}) => {
-    assert.ok(['isolated', 'workflow-ref'].includes(profile), 'explicit reviewed concurrency profile');
-    const sourcePolicy = profile === 'workflow-ref' ? workflowRefPolicy : reviewedPolicy;
+export const assertReviewedConcurrency = (text, {labels = false, profile, automaticOnly} = {}) => {
+    assert.ok(profile === undefined || ['isolated', 'workflow-ref'].includes(profile), 'explicit reviewed concurrency profile');
+    assert.ok(automaticOnly === undefined || typeof automaticOnly === 'boolean', 'explicit automatic-only selection');
+    const aliasProfile = automaticOnly === undefined ? undefined : automaticOnly ? 'workflow-ref' : 'isolated';
+    assert.ok(profile === undefined || aliasProfile === undefined || profile === aliasProfile, 'concurrency selections agree');
+    const sourcePolicy = (profile ?? aliasProfile ?? 'isolated') === 'workflow-ref' ? workflowRefPolicy : reviewedPolicy;
     const policy = labels ? sourcePolicy.replace('${{ github.ref }}', '${{ github.ref }}' + labelSuffix) : sourcePolicy;
     assert.equal((text.match(/^concurrency:/gm) || []).length, 1, 'one workflow concurrency block');
     const heading = /^concurrency:\n/m.exec(text);

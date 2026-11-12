@@ -566,6 +566,7 @@ const studyBeforeReviewedConcurrency = text => {
     assert.equal(text.split(REVIEWED_STUDY_CONCURRENCY).length, 2, error);
     return text.replace(REVIEWED_STUDY_CONCURRENCY, PREVIOUS_STUDY_CONCURRENCY);
 };
+
 const sealedStudyBody = (file, text) => file === '.github/workflows/reference-qualified-instruments.yml' ?
     studyBeforeReviewedConcurrency(text) : text;
 
@@ -763,7 +764,7 @@ const historicalTestKnown = () => ({current: new Set([CURRENT_X86_CUI]),
 const historicalFixtureSpans = f => (file, text, known) =>
     historicalCuiSpansForProfile(file, text, known, f.profiles);
 const historicalJudgeWith = (recognize, recognizeBoard = () => [], recognizeV8 = () => [], recognizeV10 = () => []) => vm.runInNewContext(`(${judgeFile.toString()})`,
-    {roleOf, PROVENANCE, COMMENT, CODE_EXT, HEX40, SEALED_STUDY_FILES, assert, createHash, studyBeforeConcurrencyPolicy,
+    {roleOf, PROVENANCE, COMMENT, CODE_EXT, HEX40, SEALED_STUDY_FILES, assert, createHash, studyBeforeConcurrencyPolicy, sealedStudyBody,
         historicalCuiSpans: recognize,
         historicalBoardSpans: recognizeBoard, historicalV8CuiSpans: recognizeV8, historicalV10Spans: recognizeV10});
 
