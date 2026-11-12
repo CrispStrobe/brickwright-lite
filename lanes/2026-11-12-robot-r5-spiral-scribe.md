@@ -27,7 +27,11 @@ complete all enabled checks before a normal matched-head merge.
 
 Static candidate checkpoint: `scripts/audit-spiral-racks.mjs` screens the
 catalogued rack-tooth connectors against the four existing attachment points,
-using all axis-aligned proper rotations and a rigid translation. In the current
+using all axis-aligned proper rotations and a rigid translation. The fixed-mount
+screen permits an axial tooth-centre shift when the candidate fully covers the
+reference span; the redesign-distance screen searches those axial shifts for
+the smallest maximum displacement of distinct compatible mounts.
+In the current
 catalogue only the existing 64781 satisfies all fixed attachments and the
 reference tooth-contact geometry. When mount positions may change, 32132,
 32185 and 18942 retain the reference tooth span/contact in this screen but lack

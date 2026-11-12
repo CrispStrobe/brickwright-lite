@@ -17,5 +17,5 @@ const result = candidates.map(p => ({part: p.part, name: p.name,
  redesign: screenMountRedesign(reference, p, ['h0', 'h1', 'a0', 'a1'])}));
 console.log(JSON.stringify({model: 'spiral-scribe', reference: reference.part,
  constraints: 'unchanged four attachment connectors and rack tooth contact, axis-aligned proper rotations',
- limitations: 'Metadata screen only: distinct connector assignment measures mount displacement but does not prove a shared mounting layout; pitch, part geometry, clearance, travel and physical build not established.',
+ limitations: 'Metadata screen only: redesign searches axial translations that cover the reference tooth span, minimizing the largest distinct-mount displacement; missing assignments retain centre alignment for independent distances; distinct assignments do not prove a shared mounting layout; pitch, part geometry, clearance, travel and physical build not established.',
  candidates: result}, null, 2));
