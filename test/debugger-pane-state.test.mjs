@@ -188,7 +188,9 @@ test('designer loading retains the same active panel when switching from debugge
     host.state.machineBooted = true;
     const first = portals(host.render()).find(portal => portal.key === 'debug-panel');
     assert.ok(first);
-    for (const dock of deviceDocks) {
+    // The controller (Widgets) dock is split with a live debugger; see the
+    // next test. Every other device pane owns the whole column.
+    for (const dock of deviceDocks.filter(d => d !== 'controller')) {
         host.setDock(dock);
         const next = portals(host.render());
         assert.equal(next.length, 1);
@@ -392,6 +394,36 @@ test('building, attaching, ready, and error statuses are not mislabeled as an em
     }
 });
 
+test('beside a live machine the controller dock shares the column with the debugger (I3/I4)', () => {
+    for (const live of [{machineBooted: true}, {stc: {pins: [{name: 'led1'}]}}]) {
+        const {host} = fixture({dock: 'right'});
+        Object.assign(host.state, live);
+        const first = portals(host.render()).find(portal => portal.key === 'debug-panel');
+        host.setDock('controller');
+        assert.equal(host._stagePortalOn(), true, JSON.stringify(live));
+        const tree = host.render();
+        const next = portals(tree);
+        assert.equal(next.length, 2, 'the debugger pane portal plus the keyed panel');
+        assert.equal(next[0].container, host._stageHost);
+        assert.equal(next[1].key, first.key);
+        assert.equal(next[1].container, first.container);
+        host._portalRendered = true;
+        let split = null;
+        host._layoutStageHost = value => { split = value; };
+        applyHostVisibility.call(host);
+        assert.equal(host._stageHost.style.display, 'block');
+        assert.equal(split, true, 'the live debugger takes the lower half of the split column');
+    }
+    // Without a live machine or program the controller face keeps its column.
+    const {host} = fixture({dock: 'controller'});
+    assert.equal(host._stagePortalOn(), false);
+    for (const dock of deviceDocks.filter(d => d !== 'controller')) {
+        host.state.machineBooted = true;
+        host.setDock(dock);
+        assert.equal(host._stagePortalOn(), false, dock);
+    }
+});
+
 test('restoring the original dock refusals or removing stage ownership fails the same pane contracts', () => {
     for (const [name, needle, replacement, oracle] of [
         ['saved device ignored', 'CIRCUIT_DOCKS.has(d) || DEVICE_DOCKS.has(d)',
@@ -404,10 +436,16 @@ test('restoring the original dock refusals or removing stage ownership fails the
                 host.setDock('controller');
                 assert.equal(host.state.debugDock, 'controller');
             }],
-        ['device column covered', 'if (!CIRCUIT_DOCKS.has(this.state.debugDock)) return false;',
+        ['device column covered', 'if (!CIRCUIT_DOCKS.has(this.state.debugDock) && !this._controllerSplitLive()) return false;',
             '', buildCircuit => {
                 const {host} = fixture({dock: 'controller', buildCircuit});
                 assert.equal(host._stagePortalOn(), false);
+            }],
+        ['controller split dropped (I3/I4 regression)', 'this.state.debugDock === \'controller\' &&',
+            'false &&', buildCircuit => {
+                const {host} = fixture({dock: 'controller', buildCircuit});
+                host.state.machineBooted = true;
+                assert.equal(host._stagePortalOn(), true);
             }]
     ]) {
         oracle(makeCircuit);

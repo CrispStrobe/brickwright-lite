@@ -3257,7 +3257,7 @@
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "PASS (obliquity-orrery-turned-axis)",
       "browserLoad": "PASS",
-      "savedProjectReplay": "NOT_RUN",
+      "savedProjectReplay": "PASS (browser robotaddon15, head d1338fa0, Build run 43011878952 job 130510141073: original post-run project exported and fresh-context replay passed)",
       "browserRun": {
         "build": "405b046 (checkpoint-build-229)",
         "browser": "system Chrome, Run button, timeScale 4",
