@@ -15,6 +15,7 @@ import {judgeRimRun,rimrunDisconnectionLoss,rimrunMeasure} from '../scripts/lib/
 import {nineIntakeDisconnectionLoss} from '../scripts/lib/sim-lab-nine-intake-judge.mjs';
 import {judgeObliquityTilt,obliquityDisconnectionLoss,orreryTrack,compiledOrrery} from '../scripts/lib/sim-lab-obliquity-judge.mjs';
 import {r2DisconnectionLoss} from '../scripts/lib/sim-lab-r2-judges.mjs';
+import {r3DisconnectionLoss} from '../scripts/lib/sim-lab-r3-judges.mjs';
 import {catalogFrom,prepareModel,MODELS} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {runRobotLabProgram} from './helpers/robot-lab-direct-vm.mjs';import {observeAddon} from '../scripts/lib/sim-lab-addon-judge.mjs';
 import Creator from '../overlay/scratch-gui/src/lib/sb3-creator-register-art.js';
@@ -28,6 +29,16 @@ const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8'),lab='overlay
 const selected=process.env.BW_MODEL_QUALIFY_MODELS?.split(',');
 const R2_MUTANTS=Object.freeze({'cadence-geneva':['dial_output_gear',{part:'3649.dat'},/dial = −star\/3/],
  'helios-transmission':['sun_input',{part:'94925.dat'},/compound planets/],'orion-cardan':['fork_middle_far',{turn:90},/middle forks in phase/]});
+// R3 (2026-11-12): one wrong-model mutant of each compiled model, each changing a constant the law reads from the compiled model.
+const R3_MUTANTS=Object.freeze({
+ // The slotted lever's pivot moved one hole (8 mm) towards the crank: pivot distance 56 -> 48 mm, a different quick return.
+ 'vesper-quickreturn':[r=>{const lever=r.mechanism.bodies.find(b=>b.parts.includes('slot_housing')).id,frame=r.mechanism.bodies.find(b=>b.parts.includes('pin_O')).id,
+  j=r.mechanism.joints.find(j=>j.type==='hinge'&&[j.body1,j.body2].includes(lever)&&[j.body1,j.body2].includes(frame)),c=r.mechanism.joints.find(j=>j.motor).point,d=c.map((v,i)=>v-j.point[i]),n=Math.hypot(...d);
+  j.point=j.point.map((v,i)=>v+d[i]/n*.008);},/quick-return kinematics/],
+ // The collar four times as heavy (its colliders' masses): the same lift would need a higher speed.
+ 'aster-governor':[r=>{const b=r.mechanism.bodies.find(b=>b.parts.includes('collar'));b.massKg*=4;for(const c of b.colliders)c.massKg*=4;},/held speed/],
+ // The rotor's 24T gear replaced by a 40T: rotor = carrier·(1 − 16/40) = 0.6·carrier, not carrier/3.
+ apex:[r=>{r.runModel.parts.find(p=>p.id==='output_24t').part='3649.dat';},/rotor = carrier\/3/]});
 test('qualification refuses unknown principles, missing models and incomplete disconnections',()=>{
  assert.throws(()=>qualificationContracts(['invented-pass']));assert.throws(()=>qualificationContracts([]));assert.throws(()=>disconnectedSource('0 model\n',['missing']));
 });
@@ -158,6 +169,11 @@ for(const c of qualificationContracts(selected).filter(c=>!c.nativeSuite)){
   assert.throws(()=>judge(bad),pattern);
   t.diagnostic(JSON.stringify({id:c.id+'-mutant',part,change,main:Object.fromEntries(Object.entries(ok).filter(([k])=>!['foundation','compiled','speeds','stages'].includes(k)))}));
  });
+ if(R3_MUTANTS[c.id])test(c.id+': wrong-model mutant is refused by the unchanged judge',async t=>{
+  const r=await run(c,source,false,'mutant-base'),ok=judge(r),bad=structuredClone(r),[mutate,pattern]=R3_MUTANTS[c.id];mutate(bad);
+  assert.throws(()=>judge(bad),pattern);
+  t.diagnostic(JSON.stringify({id:c.id+'-mutant',main:Object.fromEntries(Object.entries(ok).filter(([k])=>!['foundation','compiled','plateaus'].includes(k)))}));
+ });
  test(c.id+': physical disconnection destroys the intended output while the real input still completes',async t=>{
   const r=await run(c,disconnectedSource(source,c.disconnect),false,'disconnected'),o=observeAddon(r,c.observeBase??hubPartOf(r)),input=c.motorless?null:r.mechanism.joints.find(j=>j.motor?.port===c.ports[0]),travel=input?Math.max(...r.track.map(f=>Math.abs(f.joints[input.id].angle)))*180/Math.PI:0;
   assert.ok(r.finishedAt>0);if(!c.motorless)assert.ok(travel>(c.disconnectInputDeg??(c.id==='sine-shuttle'?1070:1430)),'input genuinely still turns');
@@ -190,6 +206,8 @@ for(const c of qualificationContracts(selected).filter(c=>!c.nativeSuite)){
   else if(c.disconnectLoss==='obliquity'){const loss=obliquityDisconnectionLoss(r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
   // R2 judge family (sim-lab-r2-judges.mjs): drive pin, carrier drive bevel, control gear or one Cardan fork removed.
   else if(c.disconnectLoss==='r2'){const loss=r2DisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
+  // R3 (sim-lab-r3-judges.mjs): Vesper's crank pin, Aster's two collar links or Apex's rotor-drive 8T removed.
+  else if(c.disconnectLoss==='r3'){const loss=r3DisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
   else if(c.disconnectLoss==='p6'){const loss=p6DisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
   // Nine Technic intakes: the reviewed part removal must break the passive law while the input route completes.
   else if(c.disconnectLoss==='nine-intake'){const loss=nineIntakeDisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}

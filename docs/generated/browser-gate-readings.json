@@ -7946,6 +7946,36 @@
    "p95": null,
    "max": null,
    "readings": []
+  },
+  "Browser gate \u2014 Robot Lab vesper-quickreturn promotion": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab vesper-quickreturn disconnected control": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab aster-governor promotion": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab aster-governor disconnected control": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab apex promotion": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
   }
  }
 }

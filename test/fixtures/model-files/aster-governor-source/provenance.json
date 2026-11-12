@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/aster-governor.ldr": "7ed33792f4335ee02fcbd021be458db74c74a839a50e03c2624a6b76cbdbd3ab",
+  "programs/aster-governor.bw": "3f6fc4aff0e58e3d1e825c1a6bb2dfafe88400379ac700f9abdf90c7dbdc6c06",
+  "LICENSE.txt": "a096c77ac7c151875cdcfcc89285d7372701076a3e53e29b3ee8abcd4e71ec9e",
+  "SOURCES.md": "5202da3c6a47c3078e7c0e1077e7e28b1d95f4e4e4e2140c27333d57b4c63807"
+ }
+}

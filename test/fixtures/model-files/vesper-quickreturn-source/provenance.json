@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/vesper-quickreturn.ldr": "a8bdcc02769af95593d82bd0d6be66dd3b952f4b6729be2db35e42928523692d",
+  "programs/vesper-quickreturn.bw": "1d0aa655c223bbf4511967202ea56dd376e4dcea053943442cce87fda6643bfd",
+  "LICENSE.txt": "a096c77ac7c151875cdcfcc89285d7372701076a3e53e29b3ee8abcd4e71ec9e",
+  "SOURCES.md": "fec981a4f99377e898738ee55b0982eb9e70f3c38b6a7e62146f07f1719471ec"
+ }
+}

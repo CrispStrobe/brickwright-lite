@@ -308,6 +308,12 @@ export const MODELS = Object.freeze([
         manualJog: {A: {minDeg: 0, maxDeg: 360, stepDeg: 30, speedDps: 30}, B: {minDeg: -360, maxDeg: 0, stepDeg: 30, speedDps: 42}}},
     {file: 'orion-cardan.ldr', title: {en: 'Orion — double Cardan drive', de: 'Orion — Doppel-Kardanantrieb'}, example: 'orion-cardan.bw', mat: 'plain',
         manualJog: {A: {minDeg: 0, maxDeg: 360, stepDeg: 15, speedDps: 60}}},
+    {file: 'vesper-quickreturn.ldr', title: {en: 'Vesper — quick-return shaper', de: 'Vesper — Schnellrücklauf mit Kurbelschleife'}, example: 'vesper-quickreturn.bw', mat: 'plain',
+        manualJog: {A: {minDeg: -2, maxDeg: 1082, stepDeg: 15, speedDps: 30}}},
+    {file: 'aster-governor.ldr', title: {en: 'Aster — centrifugal governor', de: 'Aster — Fliehkraftregler'}, example: 'aster-governor.bw', mat: 'plain',
+        manualJog: {A: {minDeg: 0, maxDeg: 720, stepDeg: 90, speedDps: 90}}},
+    {file: 'apex.ldr', title: {en: 'Apex — Wankel rotary geometry', de: 'Apex — Wankel-Rotorgeometrie'}, example: 'apex.bw', mat: 'plain',
+        manualJog: {A: {minDeg: 0, maxDeg: 1512, stepDeg: 126, speedDps: 36}}},
     {file: 'product-plotter.ldr', title: {en: 'Product Plotter — a mechanical multiplier', de: 'Product Plotter — ein mechanischer Multiplizierer'},
         example: 'product-plotter.bw', mat: 'plain', manualJog: {A: {minDeg: -15, maxDeg: 15, stepDeg: 2, speedDps: 10}, B: {minDeg: -75, maxDeg: 75, stepDeg: 10, speedDps: 30}}, intro: {
             en: 'Motor A tilts a straight guide; motor B slides the green rail. Their intersection moves the passive orange carriage, so similar triangles make its displacement equal the product of both inputs divided by a fixed reference length.',

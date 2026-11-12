@@ -2469,6 +2469,102 @@ export const MODEL_LESSONS = Object.freeze({
             "Gleichlauf"
         ]
     },
+    "vesper-quickreturn.ldr": {
+        "pieces": 91,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "A crank and slotted lever turn steady motor rotation into a slow working stroke and a quick return. The geometry sets the ratio: the ram takes 213.6° of crank rotation one way and 146.4° the other, 1.459 : 1, and reversing the crank swaps the slow side.",
+            "de": "Kurbel und schwingende Kurbelschleife machen aus gleichmäßiger Motordrehung einen langsamen Arbeitshub und einen schnellen Rücklauf. Die Geometrie legt das Verhältnis fest: Der Stößel braucht in die eine Richtung 213,6° Kurbeldrehung, in die andere 146,4°, also 1,459 : 1, und rückwärts tauscht die langsame Seite."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Quick-return mechanism",
+            "de": "Schnellrücklauf"
+        },
+        "keywords": [
+            "Quick-return mechanism",
+            "Schnellrücklauf",
+            "quick return",
+            "slotted lever",
+            "crank and slotted lever",
+            "shaper",
+            "shaping machine",
+            "Whitworth",
+            "Schnellrücklauf",
+            "Kurbelschleife",
+            "schwingende Kurbelschleife",
+            "Stoßmaschine"
+        ]
+    },
+    "aster-governor.ldr": {
+        "pieces": 144,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "Passive flyweights on a hinged rhombus lift a sliding collar as motor A spins the spindle faster: no lift below about 630°/s, then 3, 8 and 16 mm at 675, 725 and 800°/s, as the balance of gravity and centrifugal force (ω²) predicts. It senses speed but, with no throttle, does not regulate it.",
+            "de": "Passive Fliehgewichte an einer Gelenkraute heben eine Gleitmuffe, wenn Motor A die Spindel schneller dreht: unter etwa 630°/s gar nicht, dann 3, 8 und 16 mm bei 675, 725 und 800°/s, wie das Gleichgewicht von Schwerkraft und Fliehkraft (ω²) vorhersagt. Der Regler misst die Drehzahl, regelt sie aber mangels Drossel nicht."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Centrifugal governor",
+            "de": "Fliehkraftregler"
+        },
+        "keywords": [
+            "Centrifugal governor",
+            "Fliehkraftregler",
+            "flyball governor",
+            "Porter governor",
+            "Watt governor",
+            "centrifugal",
+            "speed sensor",
+            "Fliehkraft",
+            "Fliehgewicht",
+            "Porter-Regler",
+            "Watt-Regler",
+            "Drehzahlregler"
+        ]
+    },
+    "apex.ldr": {
+        "pieces": 477,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "Wankel engine kinematics without combustion: the carrier acts as eccentric shaft, 4 mm off-centre, and gears make the three-apex rotor turn at exactly one third of its speed, one rotor turn for three carrier turns.",
+            "de": "Wankel-Kinematik ohne Verbrennung: Der Träger wirkt als Exzenterwelle, 4 mm außermittig, und Zahnräder lassen den Rotor mit drei Spitzen mit genau einem Drittel seiner Drehzahl umlaufen, eine Rotorumdrehung auf drei Trägerumdrehungen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Wankel rotor kinematics",
+            "de": "Wankel-Kinematik"
+        },
+        "keywords": [
+            "Wankel rotor kinematics",
+            "Wankel-Kinematik",
+            "Wankel",
+            "rotary engine",
+            "eccentric shaft",
+            "epitrochoid",
+            "three-apex rotor",
+            "Kreiskolbenmotor",
+            "Wankelmotor",
+            "Exzenterwelle",
+            "Epitrochoide",
+            "Rotor"
+        ]
+    },
     "product-plotter.ldr": {
         "pieces": 301,
         "motors": 2,

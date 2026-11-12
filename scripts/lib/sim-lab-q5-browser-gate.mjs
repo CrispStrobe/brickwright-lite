@@ -2,7 +2,8 @@
 // Copyright (c) 2026 CrispStrobe
 // Browser gates for the two Q5 promotions (#1683) that had none, Evenhand and RimRun, for the R1 promotion
 // Obliquity Orrery (obliquity-tilt-v1, its crank-A disconnection as the control) and for the R2 judge family
-// (Cadence, Equinox, Helios, Orion; sim-lab-r2-judges.mjs, each with its registry disconnection). Each runs the model's own
+// (Cadence, Equinox, Helios, Orion; sim-lab-r2-judges.mjs, each with its registry disconnection) and the R3 repairs
+// (Vesper, Aster, Apex; sim-lab-r3-judges.mjs, the same way). Each runs the model's own
 // law through the real GUI with the qualification registry's judge and thresholds
 // (scripts/lib/robot-lab-qualification.mjs, docs/data/robot-lab-qualification.json), its causal control, then the
 // checks the nine-intake gate runs: bounded manual control, connected instructions and placement BOM, LDR/MPD
@@ -23,13 +24,19 @@ import {qualificationContracts, QUALIFICATION_JUDGES, disconnectedSource} from '
 import {p6DisconnectionLoss} from './sim-lab-p6-judges.mjs';
 import {obliquityDisconnectionLoss} from './sim-lab-obliquity-judge.mjs';
 import {r2DisconnectionLoss} from './sim-lab-r2-judges.mjs';
+import {r3DisconnectionLoss} from './sim-lab-r3-judges.mjs';
 
 export const R2_BROWSER_MODELS = Object.freeze(['cadence-geneva', 'helios-transmission', 'orion-cardan']);
 // Cadence's program sweeps 4320° at 30°/s (about 2.7 min per run); the law run, the disconnected run and the
 // fresh-context replay together exceed the 8-minute step cap, so its disconnected control is its own gate step
 // (`--examples=cadence-geneva-disconnected`, same shard), with the same assertions.
-export const SEPARATE_CONTROL = Object.freeze(['cadence-geneva']);
-export const Q5_BROWSER_MODELS = Object.freeze(['evenhand', 'rimrun', 'obliquity-orrery', ...R2_BROWSER_MODELS]);
+// R3 (2026-11-12): Vesper's and Aster's programs run about 124 s each, so their law run, disconnected run and replay
+// would also crowd the 8-minute cap; their disconnected controls are separate steps on their own shards as well.
+export const R3_BROWSER_MODELS = Object.freeze(['vesper-quickreturn', 'aster-governor', 'apex']);
+export const SEPARATE_CONTROL = Object.freeze(['cadence-geneva', 'vesper-quickreturn', 'aster-governor']);
+export const Q5_BROWSER_MODELS = Object.freeze(['evenhand', 'rimrun', 'obliquity-orrery', ...R2_BROWSER_MODELS, ...R3_BROWSER_MODELS]);
+/** The registry's disconnection-loss measure of an R2 or R3 model. */
+const familyLoss = (id, r) => (R3_BROWSER_MODELS.includes(id) ? r3DisconnectionLoss : r2DisconnectionLoss)(id, r);
 export const Q5_HELD = Object.freeze({});
 // One browser frame is one accepted worker batch. With the program clock installed, each VM step (1/30 s)
 // advances the world, so a frame spans 30 or 35 ms (whole 5 ms steps) at any speed setting; 1× is used.
@@ -180,10 +187,10 @@ async function orreryDisconnected(browser, opts, c) {
     } finally { await page.close(); }
 }
 
-// The R2 family's disconnected controls: the registry's own part removal (Cadence's drive pin axle, Helios's control gear,
-// Orion's far middle fork), loaded as an LDraw file under the same example
-// program. The input still completes its route, the model's law is lost (r2DisconnectionLoss), and the registry
-// judge refuses the run.
+// The R2 and R3 families' disconnected controls: the registry's own part removal (Cadence's drive pin axle, Helios's
+// control gear, Orion's far middle fork; Vesper's crank pin, Aster's two collar links, Apex's rotor-drive 8T), loaded as
+// an LDraw file under the same example program. The input still completes its route, the model's law is lost
+// (r2DisconnectionLoss / r3DisconnectionLoss), and the registry judge refuses the run.
 async function r2Disconnected(browser, opts, c, id) {
     const page = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'}), errors = [];
     page.on('pageerror', e => errors.push(e.stack || e.message));
@@ -204,7 +211,7 @@ async function r2Disconnected(browser, opts, c, id) {
         const input = r.mechanism.joints.find(j => j.motor?.port === c.ports[0]);
         const travel = Math.max(...r.track.map(f => Math.abs(f.joints[input.id].angle))) * 180 / Math.PI;
         assert.ok(travel > c.disconnectInputDeg, `input genuinely still turns: ${travel}°`);
-        const loss = r2DisconnectionLoss(id, r);
+        const loss = familyLoss(id, r);
         assert.ok(loss.lost, 'disconnection loses the law: ' + JSON.stringify(loss));
         assert.throws(() => judgeQ5Browser(id, r, c), `the registry judge refuses the disconnected ${id}`);
         await captureRenderedModel(page, resolve(opts.shotsDir, id + '-disconnected.png'));
@@ -254,7 +261,7 @@ export async function q5BrowserInteractions(page, opts, id) {
     const control = id === 'evenhand' ? await evenhandDisconnected(page.context().browser(), opts, c)
         : id === 'obliquity-orrery' ? await orreryDisconnected(page.context().browser(), opts, c)
         : SEPARATE_CONTROL.includes(id) ? {separateStep: id + '-disconnected'}
-        : R2_BROWSER_MODELS.includes(id) ? await r2Disconnected(page.context().browser(), opts, c, id)
+        : [...R2_BROWSER_MODELS, ...R3_BROWSER_MODELS].includes(id) ? await r2Disconnected(page.context().browser(), opts, c, id)
         : await rimrunSwapped(page.context().browser(), opts, c, main);
     const manual = await manualMechanicsInteractions(page, {...opts, models: [id], captureModel: captureRenderedModel});
     await page.getByTestId('bw-sim-lab-instructions').click();

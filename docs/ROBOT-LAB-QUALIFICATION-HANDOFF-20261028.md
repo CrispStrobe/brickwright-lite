@@ -127,6 +127,36 @@ differential's carrier is locked (K = (L + R)/2), so motor A cannot reach its jo
 multi-motor mechanisms (the gate owner's decision). Its contract, registry move, fixture and shard were withdrawn;
 `differential-sum-v1` stays registered and its STEP split stays.
 
+**R3 (#PRNUM, `lanes/2026-11-12-robot-r3-geometry-repairs.md`): Vesper, Aster and Apex repaired and qualified; Bloom
+stays experimental (below).** One judge module, `scripts/lib/sim-lab-r3-judges.mjs`; every constant is read from the
+compiled joints, colliders and catalogue tooth counts. Repairs (real parts only; source records in
+`test/fixtures/model-files/<id>-source/SOURCES.md`): Vesper's fixed pivot bearing 3L beam → thin 1 × 5 liftarm 5 LDU
+further out (it reached 5.5 LDU into the motor's output-side plate); Aster's four flyweight wheels 7.5 LDU further out
+on axle 10s (they reached 7.5 LDU into the key beams); Apex's housing ring links redistributed over three layers (24
+same-layer pairs overlapped by up to 0.6 LDU beyond the collider tolerance where the ring curves), 8 pins moved and 8
+made 3L. Construction suite clean on all three. Native runs (COLD 500), measured / gate:
+
+| Model | Judge | Law error | Other measured | Disconnection (lost) |
+|---|---|---|---|---|
+| vesper-quickreturn | `quick-return-v1` | ram vs compiled kinematics 0.30 mm / 0.5 mm | stroke 66.18 mm (pred. 66.17); arc ratios 1.4541–1.4582 vs 1.4588 / ±0.02; slow side swaps on reversal | `pin_P`: ram span 0.0002 mm, error 47.1 mm |
+| aster-governor | `governor-lift-v1` | held speed vs speed the lift predicts 1.26–1.46 % / 3 % | lifts 3.04 / 7.84 / 16.09 mm at 675 / 725 / 800 °/s; lift-off 628 °/s; rest 0.02 mm; repeat 0.04 mm | `lower_arm_pos` + `lower_arm_neg`: lift −0.16 mm at 800 °/s |
+| apex | `wankel-ratio-v1` | carrier vs −(20/28)A 0.0016°, rotor vs carrier/3 0.0017° / 0.25° | rotor centre on the 4 mm eccentric circle within 0.00005 mm / 0.1 mm | `idler_upper_8t`: error 14.0° |
+
+Corrections to the table below, by measurement: Vesper's 1.4589 and 66.17 mm are right (the slot is 8 mm off the
+pivot; the centred-slot formula would give 1.452). Aster's point-mass form ω² = g·k·tan a/(e + L sin a) with k from the
+compiled masses is 7–11 % slow, because the arms' and wheels' own mass and inertia are not at the weight axle; the judge
+uses the distributed form ω²(h) = 2g·(dY/dh)/(dJ/dh) from the compiled colliders. Its 1.3–1.5 % residual is the
+engine's step size: with 4 collision steps the same plateaus sit 0.4–1.1 % on the other side of the prediction. Apex's
+law is exact as proposed (eccentricity 4.000 mm). Wrong-model mutants are refused (Vesper pivot moved 8 mm, Aster collar
+×4 mass, Apex rotor gear 24T→40T). Instructions: Vesper and Aster author STEP groups removed (46 and 62 derived steps);
+Apex's author steps split in order (86 steps of ≤ 6; its derived plan has an 8-part step). Browser gates on shards
+robotaddon20 (Vesper), robotaddon21 (Aster) and robotaddon22 (Apex); Vesper's and Aster's ~124 s programs put their
+disconnected controls in a second step on the same shard. **Bloom is not promoted:** every one of its 24 scissor pivots
+is a pin (43093) in the centre hole of angle connector #4 (32192), which reaches 2.0 LDU into that part's mesh for any
+rotation of the pin (2.2 LDU flipped); its six cage hubs (44809) overlap ring ends and spacers by 9–19 LDU (12 pairs);
+the compiler reports locked hinges. That is a redesign of the pivots and hubs, not a minimal repair; no judge was
+written. Details in its checkpoint `promotionReview`.
+
 Read-only triage from code and data on main `d318ed6e`; nothing was compiled
 or run. The experimental set is every id in
 `docs/data/robot-lab-experimental-checkpoint.json` without a contract in

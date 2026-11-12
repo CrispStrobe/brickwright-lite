@@ -28,7 +28,8 @@ The full task list with exact steps is section 00 of
   equinox-differential, helios-transmission, orion-cardan (judge family; DONE 2026-11-12, #1729, except
   equinox-differential: browser manual-control check vs a locked differential, see handoff 00000;
   `lanes/2026-11-11-robot-r2-judge-family.md`);
-  R3 apex, aster-governor, vesper-quickreturn, bloom (geometry repairs);
+  R3 apex, aster-governor, vesper-quickreturn (repaired and promoted, #PRNUM, `lanes/2026-11-12-robot-r3-geometry-repairs.md`),
+  bloom (not promoted: its scissor pivots need a redesign, see handoff 00000);
   R4 solstice-pumpjack, tempest-pendulum, impulse-line (start-guard poses);
   R5 spiral-scribe, quiet-partner; R6 pan-shift, inertia-loop; R7
   vector-delta (blocked by a missing part).
