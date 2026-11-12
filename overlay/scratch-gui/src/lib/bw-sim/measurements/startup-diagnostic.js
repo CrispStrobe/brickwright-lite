@@ -7,7 +7,7 @@ export const startupDiagnosticSelection = (value, mechanism) => {
     if (value == null) return null;
     const validIds = (ids, limit, entries, admit) => Array.isArray(ids) && ids.length > 0 &&
         ids.length <= limit && new Set(ids).size === ids.length &&
-        ids.every(id => typeof id === 'string' && entries.some(entry => entry.id === id && admit(entry)));
+        Array.from(ids).every(id => typeof id === 'string' && entries.some(entry => entry.id === id && admit(entry)));
     if (mechanism.bodies.length > 16 || mechanism.joints.length > 32 ||
         !Number.isSafeInteger(value.revision) || value.revision < 1 ||
         !Number.isFinite(value.stopSeconds) || value.stopSeconds <= 0 || value.stopSeconds > MAX_SECONDS ||

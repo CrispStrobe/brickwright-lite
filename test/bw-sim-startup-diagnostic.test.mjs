@@ -55,7 +55,7 @@ test('redo uses rolled-back initial state and a fresh collector, not rejected-at
 });
 
 test('invalid requests reject before checkpoint or solver steps; absent selection reads nothing',()=>{
-    for(const change of [{revision:0},{stopSeconds:0.551},{bodies:['a','a']},{joints:['missing']},{bodies:[]}]){
+    for(const change of [{revision:0},{stopSeconds:0.551},{bodies:['a','a']},{joints:['missing']},{bodies:[]},{bodies:Array(1)},{joints:Array(1)}]){
         const f=fake();assert.throws(()=>f.runner.run({ticks:[5],startupDiagnostic:{...selection,...change}}),/invalid startup/);
         assert.deepEqual(f.operations,[]);
     }

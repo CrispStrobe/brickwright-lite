@@ -29,6 +29,8 @@
 // `realTimeFactor` how fast the emulator lets simulated time go.
 
 import {observationSelection, collectFixedObservations, createPrecisionAnalysis} from './measurements/precision.js';
+import {startupDiagnosticSelection} from './measurements/startup-diagnostic.js';
+import {admitStartupDiagnostic} from './measurements/startup-diagnostic-consumer.js';
 import {autoPorts} from './hubs/auto-ports.js';
 import {parseModel} from './model/ldraw-model.js';
 import {compile} from './mech/compile.js';
@@ -770,6 +772,35 @@ export class SimSession {
 
     get measurementPrecision () { return this._precisionAnalysis.snapshot(); }
 
+    /** Optional worker startup diagnostic. Enable before the first tick; null disables observations only. */
+    setStartupDiagnostic (value) {
+        if (value == null) {
+            this._startupDiagnosticSelection = null;
+            this._lastStartupDiagnosticObservations = null;
+            return null;
+        }
+        if (this._disposed || !this.worker || this.time !== 0 || this.core.time !== 0 || this._inFlight || this._due() || this._pendingMs > 0) {
+            throw new Error('startup diagnostic requires an idle worker before its first tick');
+        }
+        const selection = startupDiagnosticSelection({...value, revision: (this._startupDiagnosticRevision || 0) + 1}, this.mechanism);
+        this._startupDiagnosticRevision = selection.revision;
+        this._startupDiagnosticSelection = selection;
+        this._lastStartupDiagnosticObservations = null;
+        return structuredClone(selection);
+    }
+
+    get startupDiagnosticRevision () { return this._startupDiagnosticSelection?.revision ?? null; }
+    get startupDiagnosticObservations () { return this._lastStartupDiagnosticObservations ? structuredClone(this._lastStartupDiagnosticObservations) : null; }
+
+    _acceptStartupDiagnostic (packet, batch, endSeconds) {
+        if (this._disposed || !this._startupDiagnosticSelection || batch.startupDiagnostic !== this._startupDiagnosticSelection) return;
+        const accepted = admitStartupDiagnostic(packet, batch.startupDiagnostic, batch.startupDiagnosticStartSeconds, endSeconds);
+        this._lastStartupDiagnosticObservations = {schema: 'robot-lab.startup-accepted-batch.v1',
+            revision: this._startupDiagnosticSelection.revision, acceptedBatch: (this._startupDiagnosticAcceptedCount || 0) + 1,
+            coreStartSeconds: batch.startupDiagnosticStartSeconds, coreEndSeconds: endSeconds, ...accepted};
+        this._startupDiagnosticAcceptedCount = this._lastStartupDiagnosticObservations.acceptedBatch;
+    }
+
     _advanced () {
         if (this._disposed) return;
         const observations = this._measurementCollector?.take();
@@ -811,12 +842,17 @@ export class SimSession {
         this._pendingMs = 0;
         batch.ms = ms;
         batch.observation = this._measurementObservation;
+        if (this._startupDiagnosticSelection) {
+            batch.startupDiagnostic = this._startupDiagnosticSelection;
+            batch.startupDiagnosticStartSeconds = this.core.time;
+        }
         this._post(batch, false);
     }
 
     _post (batch, redo) {
         const sent = this._inFlight = {batch, at: now()};
-        this.client.simBatch({scene: this.scene, steps: batch.steps, ticks: batch.ticks, hubs: batch.hubs, redo, observation: batch.observation}).then(
+        this.client.simBatch({scene: this.scene, steps: batch.steps, ticks: batch.ticks, hubs: batch.hubs, redo, observation: batch.observation,
+            ...(batch.startupDiagnostic ? {startupDiagnostic: batch.startupDiagnostic} : {})}).then(
             reply => { if (this._inFlight === sent) this._receive(sent, reply); },
             error => { if (this._inFlight === sent) this._fail(error); });
     }
@@ -857,6 +893,7 @@ export class SimSession {
         this.core.update(reply);
         // Only the accepted replay may contribute; stale selection replies are refused.
         this._acceptMeasurementObservations(reply.observations);
+        if (batch.startupDiagnostic) this._acceptStartupDiagnostic(reply.startupDiagnostic, batch, reply.t);
         stats.batches++;
         stats.steps += batch.steps || 0;
         this.time += batch.ms;
@@ -907,6 +944,10 @@ export class SimSession {
         this._measurementCollector?.detach();
         this._measurementObservation = null;
         this._lastMeasurementObservations = null;
+        if (this._startupDiagnosticSelection) {
+            this._startupDiagnosticSelection = null;
+            this._lastStartupDiagnosticObservations = null;
+        }
         this.listeners.clear();
         this.runner?.dispose();
         this.bridge?.dispose();
