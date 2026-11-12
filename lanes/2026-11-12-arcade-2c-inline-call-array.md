@@ -19,8 +19,9 @@ workflow/pins/thresholds, or replay originals. Keep row 2c pending until its oth
 constraints are separately satisfied.
 
 Focused controls preserve captured unknown-write and arity refusals, and check
-three-sibling middle-selection emitted order. The actual headless Scratch VM
-produced trace 123 and selected result 2 for that case, without a renderer.
-Before merge, compare actual PXT execution, export/reimport and the browser;
-retain mixed-domain, capture and provenance near misses. The single VM case
-does not qualify the whole project or corpus.
+three-sibling middle-selection emitted order. The actual PXT simulator and
+headless Scratch VM both produced trace 123 and selected result 2. Actual VM
+export, TypeScript reimport, Code reparse and a fresh saved-SB3 reload retained
+those results. Before merge, run the actual browser editor acceptance and all
+enabled final-head checks; retain mixed-domain, capture and provenance near
+misses. This one case does not qualify the whole project or corpus.
