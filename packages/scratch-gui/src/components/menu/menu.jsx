@@ -108,7 +108,13 @@ const MenuItem = ({children, className, ariaLabel, expanded = false, disabled = 
                     event.stopPropagation();
                     setKeyboardClosed(false);
                     setKeyboardOpen(true);
-                    requestAnimationFrame(() => focusSubmenuIfStillOnOpener(ref.current));
+                    const opener = ref.current;
+                    requestAnimationFrame(() => {
+                        if (opener?.isConnected && ref.current === opener &&
+                            opener.getAttribute('aria-expanded') === 'true') {
+                            focusSubmenuIfStillOnOpener(opener);
+                        }
+                    });
                 } else if (['Enter', ' '].includes(event.key)) {
                     event.preventDefault();
                     event.stopPropagation();
