@@ -27,9 +27,9 @@ all 2,020 left and 2,029 right roller–frame contact callbacks listed the frame
 first. The raw capture contains normals and fixed-step indices. These are
 callback observations, not direct instrumentation of the narrow-phase call.
 The result supports investigating body ordering but does not establish why the
-speed loss occurs or prove that enhanced removal fixes it. The original RimRun
-qualification judge was not evaluated by this capture: its extra observation
-fields are not part of this diagnostic.
+speed loss occurs or prove that enhanced removal fixes it. The original RimRun native judge passed on a subsequent capture containing the
+programme variables (acceleration ratio 1.07846 and lead 21.23 mm). This
+checks the instrumented flag-on run, not the unmodified browser or a seam fix.
 
 Next, instrument the actual native narrow-phase entry and the joint crossing,
 then compare with a suitable reversed-order control while preserving the
