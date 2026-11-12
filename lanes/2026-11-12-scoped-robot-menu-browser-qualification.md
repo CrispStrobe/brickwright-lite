@@ -1,6 +1,8 @@
 # Scoped official-build menu and Robot Lab browser qualification
 
-Status: CLAIMED; implementation remains a reviewed candidate.
+Status: HELD. A source candidate exists, but the requested compute policy uses
+Kaggle for heavy work; do not enable these additional GitHub browser guests.
+Actual affected browser qualification remains open.
 Owner: scoped browser qualification lane.
 Base: main `312609f46513d245e8e6ecb26bd91aa1ee83612c`.
 
