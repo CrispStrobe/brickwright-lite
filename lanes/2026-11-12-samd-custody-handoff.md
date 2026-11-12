@@ -21,3 +21,7 @@ bytes. The handoff records both missing consumer-result custody and the exact
 full-run heavy/light failures, preserving the original failed PR1533 gate.
 Public metadata, scope, privacy, relative links and whitespace checks passed;
 this is documentation and input-byte custody verification, not a new guest audit.
+
+Two already-retained full-run failure logs also match their prior SHA256 digests.
+The handoff identifies their exact UI transitions and separately bounds the
+later main run's successful step metadata; product causes remain unproved.

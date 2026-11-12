@@ -50,9 +50,39 @@ four were conditionally skipped and these two failed:
 - [browser (heavy), job123463606621](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40869128682/job/123463606621).
 - [browser (light), job123463606624](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40869128682/job/123463606624).
 
-The fast result and policy landing do not establish successful full-run
-application acceptance. Preserve those failed contexts with the delivery owner;
-this review did not acquire their logs or determine their causes.
+The two already-retained failure logs were accessed and matched their previously
+recorded SHA256 digests: 293,548 bytes for heavy and 605,264 bytes for light.
+Their precise observed failures were:
+
+- Heavy: `scripts/verify-machine-loader-rom-control.mjs:106`, in
+  `open8086Machine`/`driveTimerdemo`, waited 30 seconds for a file chooser.
+  The following Machine Loader proof upload also failed because no files existed.
+- Light Circuit UX: `scripts/verify-circuit-ux.mjs:338` waited 30 seconds for the
+  visible designer's `[data-circuit-view-toggle]` after opening More circuit
+  controls.
+- Light Code chrome: `scripts/verify-chrome-sweep.mjs:189` passed the real edit
+  and enabled Undo checks, then waited 30 seconds for the first `.cm-content`
+  text to equal the pre-edit buffer after clicking Edit Undo.
+- Light CPX: `scripts/verify-cpx-circuit-face.mjs:169` waited 30 seconds for a
+  file chooser during Open circuit.
+
+These observations locate failed UI transitions. They do not prove the
+underlying product causes or an engine/hardware failure. No log was downloaded
+again, no test was replayed and no assertion was changed.
+
+A later main-push [run41735633603](https://github.com/CrispStrobe/brickwright-lite/actions/runs/41735633603)
+on different head `f17192e868049eff3487377a996fc3ffa03f76ac` succeeded. Official
+metadata records these narrower successful contexts:
+
+| Later job | Successful named steps |
+| --- | --- |
+| [heavy126265415625](https://github.com/CrispStrobe/brickwright-lite/actions/runs/41735633603/job/126265415625) | Machine Loader preset reaches the debugger |
+| [light126265415413](https://github.com/CrispStrobe/brickwright-lite/actions/runs/41735633603/job/126265415413) | Circuit UX; Code chrome/Controller/faceplates/Instruments; CPX native circuit face |
+| [FPGA126265414425](https://github.com/CrispStrobe/brickwright-lite/actions/runs/41735633603/job/126265414425) | Builder canvas without synthesis, pinch, flag-on surface and learning path |
+
+This is later-head workflow metadata, not an independent readback of its
+application artifacts or the original SAMD frames. It preserves the old failed
+verdicts and does not identify their fixes or replace the missing result custody.
 
 Remaining work:
 
@@ -62,9 +92,10 @@ Remaining work:
    executable, observer, engine, profile and firmware identities before any new
    independent frame/input/memory acceptance claim. Do not replay or download a
    successful original merely to read it.
-3. Reconcile the separate full-run heavy/light failures through their owning
-   delivery lane before claiming that acceptance complete. Preserve the original
-   failures, thresholds and assertions; do not rerun an unchanged failure.
+3. Reconcile the old heavy/light observations with the later successful metadata
+   through their owning delivery lane before broader application claims. Preserve
+   each head's evidence, original failures, thresholds and assertions; do not
+   rerun an unchanged failure or relabel a later pass as the original result.
 
 Physical capture, a normal SAMD GUI compile/import/export route and universal
 real-time performance remain separately scoped work.
