@@ -273,7 +273,7 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
         if (originals.length !== snapshots.size || originals.some(target => {
             const saved = snapshots.get(target), blocks = Object.entries(target.blocks?._blocks || {}), variables=Object.entries(target.variables||{});
             return !saved || saved.container !== target.blocks || blocks.length !== saved.blocks.size ||
-                variables.length!==saved.variables.size || variables.some(([id,variable])=>saved.variables.get(id)?.variable!==variable || saved.variables.get(id)?.signature!==JSON.stringify([variable.id,variable.name,variable.type,variable.isCloud])) ||
+                variables.length!==saved.variables.size || variables.some(([id,variable])=>saved.variables.get(id)?.variable!==variable || saved.variables.get(id)?.signature!==JSON.stringify([variable.id,variable.name,variable.type])) ||
                 blocks.some(([id,block]) => saved.blocks.get(id)?.block !== block || saved.blocks.get(id)?.semantic !== semantic(block));
         })) fail('source graph changed; restart the project');
     };
@@ -283,7 +283,7 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
         for (const target of runtime.targets) if (target.isOriginal !== false) graphVersion.track(target.blocks);
         if(score&&!score.disposed)score.targets=new Set(runtime.targets);
         for (const target of runtime.targets) if (target.isOriginal !== false)
-            snapshots.set(target,{container:target.blocks,variables:new Map(Object.entries(target.variables||{}).map(([id,variable])=>[id,{variable,signature:JSON.stringify([variable.id,variable.name,variable.type,variable.isCloud])}])),blocks:new Map(Object.entries(target.blocks._blocks).map(([id,block]) =>
+            snapshots.set(target,{container:target.blocks,variables:new Map(Object.entries(target.variables||{}).map(([id,variable])=>[id,{variable,signature:JSON.stringify([variable.id,variable.name,variable.type])}])),blocks:new Map(Object.entries(target.blocks._blocks).map(([id,block]) =>
                 [id,{block,semantic:semantic(block)}]))});
     };
     const prove = (target, block, requested=null, possible=null, util=null, args=null) => {
@@ -727,10 +727,11 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
             const proof=captureProof.proof(cell),scope=cell?.scope;
             if(!at||!proof||proof.escaped||proof.index!==-1||scope?.target!==target||scope.root.opcode!=='arcade_whenSourceStarts'||captureProof.scopeOf(at)!==scope)return false;
             const closed=(b,names)=>Object.keys(b?.inputs||{}).sort().join(',')===names.slice().sort().join(',');
-            const localRead=b=>b?.opcode==='arcade_getLocal'&&closed(b,['NAME'])&&input(b,'NAME')?.opcode==='text'&&input(b,'NAME').parent===b.id&&!Object.keys(input(b,'NAME').inputs||{}).length&&input(b,'NAME').next==null;
+            const literalText=(b,parent)=>b?.opcode==='text'&&b.shadow===true&&b.parent===parent.id&&b.next==null&&!Object.keys(b.inputs||{}).length&&Object.keys(b.fields||{}).join(',')==='TEXT'&&typeof b.fields.TEXT?.value==='string';
+            const localRead=b=>b?.opcode==='arcade_getLocal'&&closed(b,['NAME'])&&literalText(input(b,'NAME'),b);
             const number=(b,path=new Set())=>{
                 if(!b||path.has(b)||b.next!=null)return null;const next=new Set([...path,b]);
-                if(b.opcode==='math_number'){if(Object.keys(b.inputs||{}).length)return null;const value=Number(b.fields?.NUM?.value);return String(b.fields?.NUM?.value).trim()!==''&&Number.isFinite(value)?value:null;}
+                if(b.opcode==='math_number'){if(b.shadow!==true||Object.keys(b.inputs||{}).length||Object.keys(b.fields||{}).join(',')!=='NUM'||!['string','number'].includes(typeof b.fields.NUM?.value))return null;const value=Number(b.fields?.NUM?.value);return String(b.fields?.NUM?.value).trim()!==''&&Number.isFinite(value)?value:null;}
                 if(!['operator_add','operator_subtract','operator_multiply'].includes(b.opcode)||!closed(b,['NUM1','NUM2']))return null;
                 const left=input(b,'NUM1'),right=input(b,'NUM2');if(left?.parent!==b.id||right?.parent!==b.id)return null;
                 const x=number(left,next),y=number(right,next);if(x===null||y===null)return null;
@@ -738,48 +739,28 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
             };
             const chain=[];let previous=scope.root;const walked=new Set();
             for(let b=read(previous.next);b;b=read(b.next)){if(walked.has(b)||b.parent!==previous.id)return false;walked.add(b);chain.push(b);previous=b;}
-            if(!closed(scope.root,[])||!closed(writer,['NAME','VALUE'])||input(writer,'NAME')?.opcode!=='text'||Object.keys(input(writer,'NAME').inputs||{}).length||input(writer,'VALUE')?.parent!==writer.id||!localRead(at))return false;
+            if(!closed(scope.root,[])||!closed(writer,['NAME','VALUE'])||!literalText(input(writer,'NAME'),writer)||input(writer,'VALUE')?.parent!==writer.id||!localRead(at))return false;
             const begin=chain.indexOf(writer),readStatement=read(at.parent),end=chain.indexOf(readStatement);
             if(begin<0||end!==begin+2||readStatement?.opcode!=='data_setvariableto'||!closed(readStatement,['VALUE'])||readStatement.inputs.VALUE.block!==at.id)return false;
             const branch=chain[begin+1],overwrite=input(branch,'SUBSTACK');
             if(branch?.opcode!=='control_if'||!closed(branch,['CONDITION','SUBSTACK'])||overwrite?.parent!==branch.id||overwrite.next!=null||
-                overwrite.opcode!=='arcade_setLocal'||localCellOf(overwrite)!==cell||!closed(overwrite,['NAME','VALUE'])||number(input(overwrite,'VALUE'))===null)return false;
+                overwrite.opcode!=='arcade_setLocal'||localCellOf(overwrite)!==cell||!closed(overwrite,['NAME','VALUE'])||!literalText(input(overwrite,'NAME'),overwrite)||number(input(overwrite,'VALUE'))===null)return false;
             if(proof.writers.length!==2||!proof.writers.every(row=>row.scope===scope&&(row.node===writer||row.node===overwrite)))return false;
-            const bool=(b,before,seen=new Set())=>{
-                if(!b||seen.has(b))return null;const next=new Set([...seen,b]);
+            const literalBoolean=b=>{
+                if(!b)return null;
                 if(b.opcode==='arrays_valueCompare'){
-                    if(!Object.keys(b.inputs||{}).every(key=>['LEFT','RIGHT','OP'].includes(key))||!b.inputs.LEFT||!b.inputs.RIGHT)return null;
-                    const op=literal(b,'OP'),opInput=input(b,'OP');if(opInput&&(opInput.opcode!=='text'||Object.keys(opInput.inputs||{}).length))return null;
-                    const left=number(input(b,'LEFT')),right=number(input(b,'RIGHT'));if(left===null||right===null)return null;
+                    const opInput=input(b,'OP'),fields=Object.keys(b.fields||{});
+                    if(opInput?fields.length||!closed(b,['LEFT','OP','RIGHT'])||!literalText(opInput,b):fields.join(',')!=='OP'||!closed(b,['LEFT','RIGHT'])||typeof b.fields.OP?.value!=='string')return null;
+                    const op=literal(b,'OP'),leftInput=input(b,'LEFT'),rightInput=input(b,'RIGHT');
+                    if(leftInput?.parent!==b.id||rightInput?.parent!==b.id)return null;
+                    const left=number(leftInput),right=number(rightInput);if(left===null||right===null)return null;
                     return op==='<'?left<right:op==='>'?left>right:op==='==='?left===right:op==='!=='?left!==right:null;
                 }
-                if(b.opcode==='data_variable'){
-                    if(!closed(b,[])||b.next!=null)return null;
-                    const id=b.fields?.VARIABLE?.id,variable=target.lookupVariableById?.(id);if(!variable||variable.type!==''||variable.isCloud||cells.referenceTypeOf(target,id))return null;
-                    const writers=[];
-                    for(const owner of runtime.targets.filter(value=>value.isOriginal!==false))for(const candidate of Object.values(owner.blocks?._blocks||{})){
-                        const selected=candidate.fields?.VARIABLE?.id??candidate.fields?.LIST?.id;
-                        if(owner.lookupVariableById?.(selected)!==variable)continue;
-                        if(candidate.opcode==='data_variable')continue;
-                        if(owner!==target||candidate.opcode!=='data_setvariableto'||!closed(candidate,['VALUE'])||input(candidate,'VALUE')?.parent!==candidate.id||!chain.includes(candidate)||chain.indexOf(candidate)>=before)return null;
-                        writers.push(candidate);
-                    }
-                    const real=writers.filter(candidate=>!fixedReset(input(candidate,'VALUE')));if(real.length!==1)return null;
-                    const selected=real[0],position=chain.indexOf(selected);
-                    // No unknown call/effect may intervene after the fixed write.
-                    // Other literal global initializers are safe and commonly
-                    // separate the true/false staging guards.
-                    for(const between of chain.slice(position+1,before)){
-                        if(between.opcode!=='data_setvariableto'||!closed(between,['VALUE']))return null;
-                        const value=input(between,'VALUE');
-                        if(number(value)===null&&(value?.opcode!=='arrays_valueCompare'||bool(value,chain.indexOf(between),next)===null))return null;
-                    }
-                    if(writers.some(candidate=>candidate!==selected&&chain.indexOf(candidate)>=position))return null;
-                    return bool(input(selected,'VALUE'),position,next);
-                }
+                // Even ordinary globals can change through monitor/host paths.
+                // Block-writer enumeration is not closed-world authority here.
                 return null;
             };
-            const initial=bool(input(writer,'VALUE'),begin);if(typeof initial!=='boolean')return false;
+            const initial=literalBoolean(input(writer,'VALUE'));if(typeof initial!=='boolean')return false;
             let condition=input(branch,'CONDITION'),negated=false;
             if(condition?.parent!==branch.id)return false;
             if(condition?.opcode==='operator_not'&&closed(condition,['OPERAND'])){negated=true;const nested=input(condition,'OPERAND');if(nested?.parent!==condition.id)return false;condition=nested;}
