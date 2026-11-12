@@ -1,8 +1,26 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 CrispStrobe
-import {assertReviewedConcurrency, modelWorkflowBeforeConcurrencyPolicy} from './helpers/reviewed-concurrency-projections.mjs';
 import {test} from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
 import {validateSubmission,LIMITS} from '../tools/model-api/lib/protocol.mjs';import {authenticate,sha256,ownerTag,seal,open,signJob,readJob} from '../tools/model-api/lib/crypto.mjs';import {createGateway} from '../tools/model-api/lib/gateway.mjs';import {applyCors} from '../tools/model-api/lib/http.mjs';import {githubBackend} from '../tools/model-api/lib/github.mjs';
+// Transitional exact predecessor policy: model isolation remains in its owning PR.
+const reviewedPolicy = "concurrency:\n  group: ${{ github.workflow }}-${{ github.ref }}\n  cancel-in-progress: ${{ github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request') }}\n";
+const labelSuffix = "-${{ (github.event.action == 'labeled' || github.event.action == 'unlabeled') && format('label-{0}', github.event.label.name) || 'code' }}";
+const assertReviewedConcurrency = (text, {labels = false} = {}) => {
+    const policy = labels ? reviewedPolicy.replace('${{ github.ref }}', '${{ github.ref }}' + labelSuffix) : reviewedPolicy;
+    assert.equal((text.match(/^concurrency:/gm) || []).length, 1, 'one workflow concurrency block');
+    const heading = /^concurrency:\n/m.exec(text);
+    assert.ok(heading, 'workflow concurrency mapping exists');
+    const rest = text.slice(heading.index + heading[0].length);
+    const end = /^[A-Za-z_][A-Za-z0-9_-]*:/m.exec(rest)?.index ?? rest.length;
+    const block = heading[0] + rest.slice(0, end).replace(/\n+$/, '\n');
+    assert.equal(block, policy, 'exact reviewed workflow/ref cancellation policy');
+};
+const modelWorkflowBeforeConcurrencyPolicy = text => {
+    assertReviewedConcurrency(text);
+    assert.equal(text.split(reviewedPolicy + '\n').length, 2, 'exact inserted model policy extent');
+    return text.replace(reviewedPolicy + '\n', '');
+};
+
 const master=Buffer.alloc(32,7),token='x'.repeat(43),other='y'.repeat(43),tokens=[{id:'a',sha256:sha256(token)},{id:'b',sha256:sha256(other)}],model={name:'model.ldr',text:'0 model\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n'},input={model},authorization='Bearer '+token;
 
 import {createAdmission,initialAdmissionDocument} from '../tools/model-api/lib/admission.mjs';

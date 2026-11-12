@@ -7,6 +7,7 @@ import {EventEmitter} from 'node:events';
 import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import test from 'node:test';
+import {quietConsole} from './helpers/quiet-console.mjs';
 import {Q5_HELD, heldBuildInventory, heldRuntimeSnapshot, assertHeldPrivateDirectory, assertHeldSourceBytes, heldModelSource, heldCLIRequest, finishHeldDriver, requestedHeldQ5Models, heldQ5Contract, heldUsesR4Control, heldBrowserOptions, runHeldQ5Checks, selectedHeldQ5Models, assertHeldManualCoverage, withHeldPageErrors, finishHeldCleanup} from '../scripts/lib/sim-lab-q5-held.mjs';
 const browserGate = () => import('../scripts/lib/sim-lab-q5-browser-gate.mjs');
 import {intakeIdentity, writeIntakeReceipt} from '../scripts/lib/sim-lab-intake-receipt.mjs';
@@ -376,7 +377,9 @@ test('held output containment rejects dot-prefixed checkout descendants and acce
         rmSync(sibling, {recursive: true, force: true});
     }
 });
-test('held actual capture imports module-root LDR and MPD despite counterfeit cwd; unheld reads stay local', async () => {
+test('held actual capture imports module-root LDR and MPD despite counterfeit cwd; unheld reads stay local', async t => {
+    const quiet = quietConsole();
+    t.after(() => quiet.restore());
     const {captureIntakeProject} = await import('../scripts/lib/sim-lab-intake-roundtrip.mjs');
     const cwd = process.cwd(), dir = mkdtempSync(join(tmpdir(), 'held-intake-other-cwd-'));
     const expected = heldModelSource(id), imported = [], parts = ['actual-part'];
@@ -410,5 +413,8 @@ test('held actual capture imports module-root LDR and MPD despite counterfeit cw
         imported.length = 0; stopAtInput = true;
         await assert.rejects(captureIntakeProject(page, {shotsDir: dir, buildDir: dir}, 'ordinary-fixture'), error => error === stop);
         assert.deepEqual(imported, [{name: 'ordinary-fixture.ldr', text: 'unchanged ordinary cwd input'}]);
+        assert.ok(quiet.lines.some(([method, message]) => method === 'log' &&
+            message === `PASS ${id}: original post-run project exported and bound for fresh-context replay`),
+        'actual capture completion remains observable without writing to the runner transport');
     } finally { process.chdir(cwd); rmSync(dir, {recursive: true, force: true}); }
 });

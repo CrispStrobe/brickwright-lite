@@ -1,5 +1,4 @@
 import test from 'node:test';
-import {assertReviewedConcurrency} from './helpers/reviewed-concurrency-projections.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
@@ -24,7 +23,10 @@ test('cycle candidates and oracles use immutable full commit pins', () => {
 test('heavy qualification is hosted, bounded, fail-closed and retains evidence', () => {
     assert.match(qualifier, /cycle-core qualification is CI-only/);
     assert.match(workflow, /timeout-minutes: 45/);
-    assertReviewedConcurrency(workflow);
+    // The cycle policy stays exact until its owning isolation PR lands.
+    assert.equal((workflow.match(/^concurrency:/gm) || []).length, 1);
+    const block = workflow.match(/^concurrency:\n(?:[ \t].*\n|\n)*/m)?.[0].replace(/\n+$/, '\n');
+    assert.equal(block, "concurrency:\n  group: ${{ github.workflow }}-${{ github.ref }}\n  cancel-in-progress: ${{ github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request') }}\n");
     assert.match(workflow, /if: always\(\)/);
     assert.match(workflow, /cycle-core-qualification\/report\.json/);
     assert.match(qualifier, /evaluationSucceeded:/);
