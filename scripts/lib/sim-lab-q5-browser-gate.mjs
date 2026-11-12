@@ -327,7 +327,7 @@ export async function q5BrowserInteractions(page, opts, id) {
         .evaluateAll(es => es.reduce((n, e) => n + Number(e.dataset.count), 0)), c.parts, `${id}: placement BOM`);
     await captureUiScreenshot(page, {path: resolve(opts.shotsDir, id + '-bom.png')}, page.getByTestId('bw-sim-instructions'));
     await page.keyboard.press('Escape');
-    await intakeRoundtrip(page, {...opts, ...(held ? {retainPageErrors: true} : {}), extendedObservations: true, observeDynamics, afterMs: c.afterMs, replaySpeed: GATE_SPEED, stepParts: STEP_PARTS[id] ?? null}, id,
+    await intakeRoundtrip(page, {...opts, ...(held ? {retainPageErrors: true, modelSourceFor: heldModelSource} : {}), extendedObservations: true, observeDynamics, afterMs: c.afterMs, replaySpeed: GATE_SPEED, stepParts: STEP_PARTS[id] ?? null}, id,
         (_, r) => judgeQ5Browser(id, r, c));
     writeFileSync(resolve(opts.shotsDir, id + '-q5-browser.json'), JSON.stringify({id, judge: c.judge, main, control, manual,
         instructions: {steps: plan.steps.length, parts: parts.length}}, null, 2) + '\n');

@@ -35,7 +35,7 @@ export async function captureIntakeProject(page,opts,id){
  assert.match(record.ldraw,/^0 Author: (?:CrispStrobe|Christian Ströbele)/m);
  const project=resolve(opts.shotsDir,id+'.sb3');
  await page.getByText('File',{exact:true}).click();await exportedProject(page,project);
- const source=readFileSync('overlay/scratch-gui/static/sim-lab/models/'+id+'.ldr','utf8');
+ const source=opts.modelSourceFor ? opts.modelSourceFor(id) : readFileSync('overlay/scratch-gui/static/sim-lab/models/'+id+'.ldr','utf8');
  for(const [name,text]of [[id+'.ldr',source],[id+'.mpd','0 FILE '+id+'.ldr\n'+source+'\n0 NOFILE\n']]){
   await openFile(page,{name,buffer:Buffer.from(text)});
   const actual=await page.evaluate(()=>({status:window.__bwSimLab.status,parts:window.__bwSimLab._pane.session.model.parts}));
