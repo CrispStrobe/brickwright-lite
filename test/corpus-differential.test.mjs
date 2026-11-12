@@ -17,6 +17,7 @@ import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {runWithFailureOutput} from '../scripts/lib/corpus-child-output.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const SCRIPT = join(here, '..', 'scripts', 'oracle-differential.mjs');
@@ -34,12 +35,12 @@ test('corpus differential: rotating sample agrees', {skip: !enabled && 'CORPUS_D
     // the honest thing to pass is the raw rotation.
     const offset = dayOfYear * SAMPLE_SIZE;
 
-    const out = execFileSync(process.execPath, [SCRIPT, 'corpus', String(SAMPLE_SIZE), String(offset)], {
+    const out = runWithFailureOutput(() => execFileSync(process.execPath, [SCRIPT, 'corpus', String(SAMPLE_SIZE), String(offset)], {
         cwd: join(here, '..'),
         encoding: 'utf8',
         timeout: 180_000, // 3 min ceiling
         env: {...process.env},
-    });
+    }), text => process.stdout.write(text));
     console.log(out);
     // oracle-differential.mjs exits non-zero on any diff; execFileSync throws on that.
     // If we reach here, every pair agreed.
@@ -61,12 +62,12 @@ const REGRESSION_ANCHORS = [
 ];
 
 test('corpus differential: regression anchors run every time', {skip: !enabled && 'CORPUS_DIFFERENTIAL not set'}, () => {
-    const out = execFileSync(process.execPath, [SCRIPT, 'cases', ...REGRESSION_ANCHORS], {
+    const out = runWithFailureOutput(() => execFileSync(process.execPath, [SCRIPT, 'cases', ...REGRESSION_ANCHORS], {
         cwd: join(here, '..'),
         encoding: 'utf8',
         timeout: 180_000,
         env: {...process.env},
-    });
+    }), text => process.stdout.write(text));
     console.log(out);
     // 'cases' exits non-zero on any semantic diff (execFileSync throws), so
     // reaching here means no anchor is a WHAT disagreement. Assert the input

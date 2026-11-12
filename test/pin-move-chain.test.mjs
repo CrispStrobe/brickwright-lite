@@ -76,6 +76,7 @@ import {readFileSync, existsSync, lstatSync, mkdtempSync, writeFileSync, rmSync}
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import vm from 'node:vm';
+import {hddBeforeConcurrencyControl, hddHistoricalHashBody, studyBeforeConcurrencyPolicy} from './helpers/reviewed-concurrency-projections.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const PINS = path.join(ROOT, 'vendor-pins.json');
@@ -130,7 +131,7 @@ const PRE_CONCURRENCY_X86_TEST_PROFILE = Object.freeze({bytes: 637722, sha256: '
 const HISTORICAL_X86_SOURCE_PROFILES = Object.freeze({
     'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 344630, sha256: 'e345b085be8fca6193d56b6c31640836dcf3cec31ae821bed688e77fd0688c8a'}),
     'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 460207, sha256: 'cd3eb6c76da6c9051ad4bb7a95a0b2956d10130ba5963f3baa4b8e864fcc8f07'}),
-    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 641435, sha256: '44ebff4d2a0bfe639f70e5f9f7e5a5efe2561aeb6ac23d52e2ca45722f40a78c'}),
+    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({concurrencyControl: true, bytes: 637722, sha256: '33181b4e00861a13c9a155296d14539771b07cc3dbb510d046bd0c55669bc1d2'}),
 });
 
 import {explainGitFailure} from './helpers/git-absence.mjs';
@@ -304,8 +305,8 @@ const historicalCuiSpansForProfile = (file, text, known, profiles) => {
         return declaration ? [rows[0].index + line.indexOf(pin)] : [];
     }
     const profile = profiles[file];
-    if (!profile || Buffer.byteLength(text) !== profile.bytes ||
-        createHash('sha256').update(text).digest('hex') !== profile.sha256) return []; // REVIEWED_BODY_GUARD
+    if (!profile || Buffer.byteLength((profile.concurrencyControl ? hddHistoricalHashBody(file, text) : text)) !== profile.bytes ||
+        createHash('sha256').update((profile.concurrencyControl ? hddHistoricalHashBody(file, text) : text)).digest('hex') !== profile.sha256) return []; // REVIEWED_BODY_GUARD
     if (file === 'scripts/run-i80386-hdd-gui-actual.py') {
         const tokens = historicalTokens(text, true);
         if (!tokens || tokens.some(t => t.kind === 'name' && t.text === 'globals')) return [];
@@ -489,8 +490,8 @@ const historicalV10SpansForProfile = (file, text, known, profiles) => {
     if (!policy && !producer && !reader && !control) return [];
     if (!policy) {
         const profile = profiles[file];
-        if (!profile || Buffer.byteLength(text) !== profile.bytes ||
-            createHash('sha256').update(text).digest('hex') !== profile.sha256) return []; // REVIEWED_F10_BODY_GUARD
+        if (!profile || Buffer.byteLength((profile.concurrencyControl ? hddHistoricalHashBody(file, text) : text)) !== profile.bytes ||
+            createHash('sha256').update((profile.concurrencyControl ? hddHistoricalHashBody(file, text) : text)).digest('hex') !== profile.sha256) return []; // REVIEWED_F10_BODY_GUARD
     }
     const slots = [];
     if (policy) {
@@ -565,6 +566,7 @@ const studyBeforeReviewedConcurrency = text => {
     assert.equal(text.split(REVIEWED_STUDY_CONCURRENCY).length, 2, error);
     return text.replace(REVIEWED_STUDY_CONCURRENCY, PREVIOUS_STUDY_CONCURRENCY);
 };
+
 const sealedStudyBody = (file, text) => file === '.github/workflows/reference-qualified-instruments.yml' ?
     studyBeforeReviewedConcurrency(text) : text;
 
@@ -762,7 +764,7 @@ const historicalTestKnown = () => ({current: new Set([CURRENT_X86_CUI]),
 const historicalFixtureSpans = f => (file, text, known) =>
     historicalCuiSpansForProfile(file, text, known, f.profiles);
 const historicalJudgeWith = (recognize, recognizeBoard = () => [], recognizeV8 = () => [], recognizeV10 = () => []) => vm.runInNewContext(`(${judgeFile.toString()})`,
-    {roleOf, PROVENANCE, COMMENT, CODE_EXT, HEX40, SEALED_STUDY_FILES, assert, createHash,
+    {roleOf, PROVENANCE, COMMENT, CODE_EXT, HEX40, SEALED_STUDY_FILES, assert, createHash, studyBeforeConcurrencyPolicy, sealedStudyBody,
         historicalCuiSpans: recognize,
         historicalBoardSpans: recognizeBoard, historicalV8CuiSpans: recognizeV8, historicalV10Spans: recognizeV10});
 
@@ -871,8 +873,8 @@ test('current input tokens remain red beside historical roles and expose broad-e
         assert.equal(historicalCuiSpans(f.producerPath, text, k).length, 0);
     }
     const bodyGuard = "    const profile = profiles[file];\n" +
-        "    if (!profile || Buffer.byteLength(text) !== profile.bytes ||\n" +
-        "        createHash('sha256').update(text).digest('hex') !== profile.sha256) return []; // REVIEWED_BODY_GUARD\n";
+        "    if (!profile || Buffer.byteLength((profile.concurrencyControl ? hddHistoricalHashBody(file, text) : text)) !== profile.bytes ||\n" +
+        "        createHash('sha256').update((profile.concurrencyControl ? hddHistoricalHashBody(file, text) : text)).digest('hex') !== profile.sha256) return []; // REVIEWED_BODY_GUARD\n";
     const original = historicalCuiSpansForProfile.toString(), without = original.replace(bodyGuard, '');
     assert.notEqual(without, original, 'remove exactly the reviewed-body guard');
     const noBodyGuard = vm.runInNewContext(`(${without})`, {HISTORICAL_X86_CUI_V5_V7,
@@ -1139,8 +1141,9 @@ test('reviewed current bodies preserve the four original historical source posit
     for (const file of files) {
         const body = readFileSync(path.join(ROOT, file), 'utf8');
         const profile = HISTORICAL_X86_SOURCE_PROFILES[file];
-        assert.equal(Buffer.byteLength(body), profile.bytes, `${file} reviewed byte extent`);
-        assert.equal(createHash('sha256').update(body).digest('hex'), profile.sha256,
+        const heldBody = hddBeforeConcurrencyControl(file, body);
+        assert.equal(Buffer.byteLength(heldBody), profile.bytes, `${file} reviewed byte extent`);
+        assert.equal(createHash('sha256').update(heldBody).digest('hex'), profile.sha256,
             `${file} reviewed body hash`);
         const cui = historicalCuiSpans(file, body, knownRoles);
         const board = historicalBoardSpans(file, body, knownRoles);
@@ -1695,4 +1698,31 @@ test('one frozen constant token never exempts another active pin or a copied con
     const wrong = structuredClone(manifest); wrong.files[0].value = never;
     assert.ok(!known.current.has(never) && !known.previous.has(never));
     assert.throws(() => validateFrozenAdmissions(wrong, observations, k, currentPins()));
+});
+
+
+test('reviewed policy projections retain historical hashes and reject helper and policy cuts', () => {
+    const controlPath = 'test/i80386-hdd-gui-actual.test.mjs';
+    const control = readFileSync(path.join(ROOT, controlPath), 'utf8');
+    const held = hddBeforeConcurrencyControl(controlPath, control);
+    assert.equal(Buffer.byteLength(held), 637722);
+    assert.equal(createHash('sha256').update(held).digest('hex'),
+        '33181b4e00861a13c9a155296d14539771b07cc3dbb510d046bd0c55669bc1d2');
+    for (const changed of [
+        control.replace('const heldBeforeConcurrencyPolicy =', 'const alteredProjection ='),
+        control.replace('heldBeforeConcurrencyPolicy(name,workflow)', 'workflow'),
+        control.replace('assert.equal(workflow.split(policy).length, 2', 'assert.equal(workflow.split(policy).length, 1'),
+    ]) assert.throws(() => hddBeforeConcurrencyControl(controlPath, changed));
+    const drift = hddBeforeConcurrencyControl(controlPath, control + '// unrelated drift\n');
+    assert.notEqual(createHash('sha256').update(drift).digest('hex'),
+        '33181b4e00861a13c9a155296d14539771b07cc3dbb510d046bd0c55669bc1d2');
+    const studyPath = '.github/workflows/reference-qualified-instruments.yml';
+    const study = readFileSync(path.join(ROOT, studyPath), 'utf8');
+    for (const changed of [
+        study.replace('${{ github.workflow }}', '${{ github.run_id }}'),
+        study.replace("github.ref_type != 'tag'", "github.ref_type == 'tag'"),
+        study + '\nconcurrency:\n',
+    ]) assert.throws(() => judgeFile(studyPath, changed, known));
+    assert.throws(() => judgeFile(studyPath, study.replace('contents: read', 'contents: write'), known),
+        /sealed completed-study source changed/);
 });
