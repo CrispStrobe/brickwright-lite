@@ -20,6 +20,28 @@ export const Q5_HELD = Object.freeze({
 export const selectedHeldQ5Models = requested => Object.keys(Q5_HELD).filter(id => requested.includes(id));
 export const heldUsesR4Control = id => Object.hasOwn(Q5_HELD, id) && Q5_HELD[id].disconnectLoss === 'r4';
 export const heldBrowserOptions = id => Object.hasOwn(Q5_HELD, id) ? {includeExperimental: true} : {};
+/** Serialized into the already selected held base page; reads only its actual cold worker IDs. */
+export function heldStartupDiagnostic(id) {
+    if (id !== 'solstice-pumpjack') throw new Error('startup telemetry requires explicit held Solstice');
+    const pane = window.__bwSimLab?._pane, session = pane?.session, mechanism = session?.mechanism;
+    if (window.__bwSimLab?.status !== 'ready' || pane?.state.modelFile !== id + '.ldr' ||
+        !session?.worker || session._disposed || session.time !== 0 || session.core?.time !== 0) {
+        throw new Error('held startup telemetry requires the selected cold ready worker');
+    }
+    if (!Array.isArray(mechanism?.bodies) || !Array.isArray(mechanism?.joints) ||
+        mechanism.bodies.length > 16 || mechanism.joints.length > 32 ||
+        Array.from(mechanism.bodies).some(b => !b || typeof b.id !== 'string') ||
+        Array.from(mechanism.joints).some(j => !j || typeof j.id !== 'string')) {
+        throw new Error('held startup mechanism exceeds diagnostic bounds');
+    }
+    const bodies = mechanism.bodies.filter(b => b.motion === 'dynamic').map(b => b.id);
+    const joints = mechanism.joints.filter(j => ['hinge', 'slider'].includes(j.type)).map(j => j.id);
+    if (!bodies.length || bodies.length > 6 || new Set(bodies).size !== bodies.length ||
+        !joints.length || joints.length > 7 || new Set(joints).size !== joints.length) {
+        throw new Error('held startup selection exceeds diagnostic bounds');
+    }
+    return {bodies, joints, stopSeconds: 0.55};
+}
 export const heldQ5Contract = id => {
     assert.ok(Object.hasOwn(Q5_HELD, id), `No reviewed held Q5 contract: ${id}`);
     return Q5_HELD[id];
