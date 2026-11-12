@@ -172,3 +172,15 @@ stepping, consistent with a shared constraint-relaxation transient, not proof
 of browser-only drift. Next, test the full startup interval in both recorders,
 then isolate the constraint/solver cause with bounded comparisons. Preserve the
 original recordings and limits; a post-settling result does not qualify startup.
+
+PR #1731 also has an opt-in startup telemetry candidate spanning the worker,
+accepted session batches and the explicitly selected held-Solstice recorder.
+The normal and disconnected-control paths keep their existing options. A
+failure can retain partial startup packets in private evidence when the page
+remains accessible; collection has structural count limits, not a hard byte
+limit. Focused source controls cover the routing and failure handling, but do
+not establish engine or browser behavior. Next, bind the exact source and built
+runtime, run a separately admitted native/browser observation with all startup
+samples, and independently inspect the resulting packet before deciding whether
+solver changes are justified. If the page is inaccessible, preserve that
+capture failure rather than inventing missing observations.
