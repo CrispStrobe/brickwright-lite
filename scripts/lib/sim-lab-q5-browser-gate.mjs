@@ -25,6 +25,10 @@ import {obliquityDisconnectionLoss} from './sim-lab-obliquity-judge.mjs';
 import {r2DisconnectionLoss} from './sim-lab-r2-judges.mjs';
 
 export const R2_BROWSER_MODELS = Object.freeze(['cadence-geneva', 'equinox-differential', 'helios-transmission', 'orion-cardan']);
+// Cadence's program sweeps 4320° at 30°/s (about 2.7 min per run); the law run, the disconnected run and the
+// fresh-context replay together exceed the 8-minute step cap, so its disconnected control is its own gate step
+// (`--examples=cadence-geneva-disconnected`, same shard), with the same assertions.
+export const SEPARATE_CONTROL = Object.freeze(['cadence-geneva']);
 export const Q5_BROWSER_MODELS = Object.freeze(['evenhand', 'rimrun', 'obliquity-orrery', ...R2_BROWSER_MODELS]);
 export const Q5_HELD = Object.freeze({});
 // One browser frame is one accepted worker batch. With the program clock installed, each VM step (1/30 s)
@@ -210,6 +214,15 @@ async function r2Disconnected(browser, opts, c, id) {
     } finally { await page.close(); }
 }
 
+/** The disconnected control of a SEPARATE_CONTROL model, run as its own gate step. */
+export async function q5SeparateControl(page, opts, id) {
+    assert.ok(SEPARATE_CONTROL.includes(id), 'a model whose control is a separate step');
+    mkdirSync(opts.shotsDir, {recursive: true});
+    const control = await r2Disconnected(page.context().browser(), opts, contractOf(id), id);
+    writeFileSync(resolve(opts.shotsDir, id + '-q5-control.json'), JSON.stringify({id, control}, null, 2) + '\n');
+    return control;
+}
+
 // RimRun's causal control: the shipped rimrun-swapped scene (ballast layouts exchanged between lanes) under the
 // same program and the same judge. The judge passes and the inner-ballast roller leads in the other lane.
 async function rimrunSwapped(browser, opts, c, main) {
@@ -240,6 +253,7 @@ export async function q5BrowserInteractions(page, opts, id) {
     }))[id];
     const control = id === 'evenhand' ? await evenhandDisconnected(page.context().browser(), opts, c)
         : id === 'obliquity-orrery' ? await orreryDisconnected(page.context().browser(), opts, c)
+        : SEPARATE_CONTROL.includes(id) ? {separateStep: id + '-disconnected'}
         : R2_BROWSER_MODELS.includes(id) ? await r2Disconnected(page.context().browser(), opts, c, id)
         : await rimrunSwapped(page.context().browser(), opts, c, main);
     const manual = await manualMechanicsInteractions(page, {...opts, models: [id], captureModel: captureRenderedModel});
