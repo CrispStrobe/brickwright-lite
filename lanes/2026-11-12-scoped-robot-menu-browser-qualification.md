@@ -1,6 +1,6 @@
 # Scoped official-build menu and Robot Lab browser qualification
 
-Status: DONE (source implementation); final-head hosted guest qualification pending.
+Status: CLAIMED; implementation remains a reviewed candidate.
 Owner: scoped browser qualification lane.
 Base: main `312609f46513d245e8e6ecb26bd91aa1ee83612c`.
 
