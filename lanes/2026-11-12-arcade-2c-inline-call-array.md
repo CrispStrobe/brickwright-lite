@@ -19,7 +19,8 @@ workflow/pins/thresholds, or replay originals. Keep row 2c pending until its oth
 constraints are separately satisfied.
 
 Focused controls preserve captured unknown-write and arity refusals, and check
-three-sibling middle-selection emitted order. Emitted order is source evidence,
-not runtime trace parity. Before merge, qualify the concrete trace-mutating
-`tap` case through actual PXT, VM and export/reimport; compare final trace and
-selected result, and retain mixed-domain, capture and provenance near misses.
+three-sibling middle-selection emitted order. The actual headless Scratch VM
+produced trace 123 and selected result 2 for that case, without a renderer.
+Before merge, compare actual PXT execution, export/reimport and the browser;
+retain mixed-domain, capture and provenance near misses. The single VM case
+does not qualify the whole project or corpus.
