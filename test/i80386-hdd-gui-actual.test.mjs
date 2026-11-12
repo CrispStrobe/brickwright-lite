@@ -36,7 +36,7 @@ const runControlChildren = async (specs,deadlineMs) => {
 // concurrency bytes in the held workflows. Admit the exact new policy, then
 // restore its exact predecessor bytes so every historical digest stays binding.
 const reviewedConcurrency = "concurrency:\n" +
-    "  group: ${{ github.workflow }}-${{ github.ref }}";
+    "  group: ${{ github.workflow }}${{ !(github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request')) && format('-isolated-{0}', github.run_id) || '' }}-${{ github.ref }}";
 const reviewedCancellation = "\n  cancel-in-progress: ${{ github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request') }}\n";
 const concurrencyPredecessors = new Map([
     ['i80386-hdd-gui-actual', "concurrency:\n  group: gui-hdd-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.event_name }}\n  cancel-in-progress: false\n\n"],
