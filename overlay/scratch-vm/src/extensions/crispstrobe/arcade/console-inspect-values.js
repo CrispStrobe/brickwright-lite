@@ -696,11 +696,71 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
             if(!facts||!statementIn(node,facts.body)||localCellOf(index)!==facts.counter||!facts.receiver.has(localCellOf(array)))return null;
             return values;
         };
+        const constantLogicalOverwrite=(writer,cell,at)=>{
+            const proof=captureProof.proof(cell),scope=cell?.scope;
+            if(!at||!proof||proof.escaped||proof.index!==-1||scope?.target!==target||scope.root.opcode!=='arcade_whenSourceStarts'||captureProof.scopeOf(at)!==scope)return false;
+            const closed=(b,names)=>Object.keys(b?.inputs||{}).sort().join(',')===names.slice().sort().join(',');
+            const localRead=b=>b?.opcode==='arcade_getLocal'&&closed(b,['NAME'])&&input(b,'NAME')?.opcode==='text'&&input(b,'NAME').parent===b.id&&!Object.keys(input(b,'NAME').inputs||{}).length&&input(b,'NAME').next==null;
+            const number=(b,path=new Set())=>{
+                if(!b||path.has(b)||b.next!=null)return null;const next=new Set([...path,b]);
+                if(b.opcode==='math_number'){if(Object.keys(b.inputs||{}).length)return null;const value=Number(b.fields?.NUM?.value);return String(b.fields?.NUM?.value).trim()!==''&&Number.isFinite(value)?value:null;}
+                if(!['operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod'].includes(b.opcode)||!closed(b,['NUM1','NUM2']))return null;
+                const left=input(b,'NUM1'),right=input(b,'NUM2');if(left?.parent!==b.id||right?.parent!==b.id)return null;
+                const x=number(left,next),y=number(right,next);if(x===null||y===null)return null;
+                return b.opcode==='operator_add'?x+y:b.opcode==='operator_subtract'?x-y:b.opcode==='operator_multiply'?x*y:b.opcode==='operator_divide'?x/y:x%y;
+            };
+            const chain=[];let previous=scope.root;const walked=new Set();
+            for(let b=read(previous.next);b;b=read(b.next)){if(walked.has(b)||b.parent!==previous.id)return false;walked.add(b);chain.push(b);previous=b;}
+            if(!closed(scope.root,[])||!closed(writer,['NAME','VALUE'])||input(writer,'NAME')?.opcode!=='text'||Object.keys(input(writer,'NAME').inputs||{}).length||input(writer,'VALUE')?.parent!==writer.id||!localRead(at))return false;
+            const begin=chain.indexOf(writer),readStatement=read(at.parent),end=chain.indexOf(readStatement);
+            if(begin<0||end!==begin+2||readStatement?.opcode!=='data_setvariableto'||!closed(readStatement,['VALUE'])||readStatement.inputs.VALUE.block!==at.id)return false;
+            const branch=chain[begin+1],overwrite=input(branch,'SUBSTACK');
+            if(branch?.opcode!=='control_if'||!closed(branch,['CONDITION','SUBSTACK'])||overwrite?.parent!==branch.id||overwrite.next!=null||
+                overwrite.opcode!=='arcade_setLocal'||localCellOf(overwrite)!==cell||!closed(overwrite,['NAME','VALUE'])||number(input(overwrite,'VALUE'))===null)return false;
+            if(proof.writers.length!==2||!proof.writers.every(row=>row.scope===scope&&(row.node===writer||row.node===overwrite)))return false;
+            const bool=(b,before,seen=new Set())=>{
+                if(!b||seen.has(b))return null;const next=new Set([...seen,b]);
+                if(b.opcode==='arrays_valueCompare'){
+                    if(!Object.keys(b.inputs||{}).every(key=>['LEFT','RIGHT','OP'].includes(key))||!b.inputs.LEFT||!b.inputs.RIGHT)return null;
+                    const op=literal(b,'OP'),opInput=input(b,'OP');if(opInput&&(opInput.opcode!=='text'||Object.keys(opInput.inputs||{}).length))return null;
+                    const left=number(input(b,'LEFT')),right=number(input(b,'RIGHT'));if(left===null||right===null)return null;
+                    return op==='<'?left<right:op==='>'?left>right:op==='==='?left===right:op==='!=='?left!==right:null;
+                }
+                if(b.opcode==='data_variable'){
+                    if(!closed(b,[])||b.next!=null)return null;
+                    const id=b.fields?.VARIABLE?.id,variable=target.lookupVariableById?.(id);if(!variable||cells.referenceTypeOf(target,id))return null;
+                    const writers=[];
+                    for(const owner of runtime.targets.filter(value=>value.isOriginal!==false))for(const candidate of Object.values(owner.blocks?._blocks||{})){
+                        if(!['data_setvariableto','data_changevariableby'].includes(candidate.opcode)||owner.lookupVariableById?.(candidate.fields?.VARIABLE?.id)!==variable)continue;
+                        if(owner!==target||candidate.opcode!=='data_setvariableto'||!closed(candidate,['VALUE'])||input(candidate,'VALUE')?.parent!==candidate.id||!chain.includes(candidate)||chain.indexOf(candidate)>=before)return null;
+                        writers.push(candidate);
+                    }
+                    const real=writers.filter(candidate=>!fixedReset(input(candidate,'VALUE')));if(real.length!==1)return null;
+                    const selected=real[0],position=chain.indexOf(selected);
+                    if(writers.some(candidate=>candidate!==selected&&chain.indexOf(candidate)>=position))return null;
+                    return bool(input(selected,'VALUE'),position,next);
+                }
+                return null;
+            };
+            const initial=bool(input(writer,'VALUE'),begin);if(typeof initial!=='boolean')return false;
+            let condition=input(branch,'CONDITION'),negated=false;
+            if(condition?.parent!==branch.id)return false;
+            if(condition?.opcode==='operator_not'&&closed(condition,['OPERAND'])){negated=true;const nested=input(condition,'OPERAND');if(nested?.parent!==condition.id)return false;condition=nested;}
+            if(condition?.opcode!=='arrays_valueTruthy'||!closed(condition,['VALUE']))return false;
+            const guard=input(condition,'VALUE');if(!localRead(guard)||guard.parent!==condition.id||localCellOf(guard)!==cell)return false;
+            if((negated?!initial:initial)!==true)return false;
+            for(const b of Object.values(all)){
+                if(['arcade_getCaptured','arcade_setCaptured'].includes(b.opcode)&&(typeof literal(b,'NAME')!=='string'||literal(b,'NAME')===cell.name))return false;
+                if(captureProof.scopeOf(b)===scope&&b.opcode==='arcade_getLocal'&&
+                    (typeof literal(b,'NAME')!=='string'||localCellOf(b)===cell&&b!==guard&&b!==at))return false;
+            }
+            return true;
+        };
         const safeCell = (cell,player=false,origins=null,domains=null,at=null) => {
             const proof=captureProof.proof(cell);
             if(!proof||cell.scope.target!==target)return false;
             const evidence=new Set();
-            if(!proof.writers.filter(({node:writer})=>!deadReset(writer,cell,at)).every(({node:writer})=>safe(input(writer,'VALUE'),player,evidence,domains)))return false;
+            if(!proof.writers.filter(({node:writer})=>!deadReset(writer,cell,at)&&!constantLogicalOverwrite(writer,cell,at)).every(({node:writer})=>safe(input(writer,'VALUE'),player,evidence,domains)))return false;
             let valid=proof.writers.length>0;
             if(proof.index>=0){
                 const procedure=cell.scope.procedure;if(typeof procedure!=='string')return false;
