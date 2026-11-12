@@ -399,6 +399,54 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
             input:(node,name,owner)=>owner.blocks.getBlock(node?.inputs?.[name]?.block),
             literal:(node,name,owner)=>node?.fields?.[name]?.value??(owner.blocks.getBlock(node?.inputs?.[name]?.block)?.opcode==='text'?owner.blocks.getBlock(node.inputs[name].block).fields?.TEXT?.value:null)});
         const owners = new Map(), seen = new Map([[false,new Set()],[true,new Set()]]);
+        const localPositionalElement=node=>{
+            const index=input(node,'INDEX'),receiver=input(node,'ARRAY');
+            const k=index?.opcode==='math_number'&&index.shadow===true?Number(index.fields?.NUM?.value):NaN;
+            if(!Number.isSafeInteger(k)||k<0||String(index.fields?.NUM?.value).trim()===''||receiver?.opcode!=='arcade_getLocal'||
+                index.parent!==node.id||receiver.parent!==node.id)return null;
+            const closedInputs=(b,names)=>Object.keys(b?.inputs||{}).sort().join(',')===names.slice().sort().join(',');
+            const localName=b=>closedInputs(b,['NAME'])&&input(b,'NAME')?.opcode==='text'&&Object.keys(input(b,'NAME').inputs||{}).length===0?literal(b,'NAME'):null;
+            const name=localName(receiver),scope=captureProof.scopeOf(receiver);
+            if(typeof name!=='string'||!scope||scope.target!==target||captureProof.scopeOf(node)!==scope||
+                !['arcade_whenSourceStarts','procedures_definition'].includes(scope.root.opcode))return null;
+            const cell=captureProof.local(scope,name),proof=captureProof.proof(cell);
+            if(!proof||proof.escaped||proof.index!==-1)return null;
+            const chain=[],visited=new Set();let previous=scope.root;
+            for(let b=read(previous.next);b;b=read(b.next)){
+                if(visited.has(b)||b.parent!==previous.id)return null;
+                visited.add(b);chain.push(b);previous=b;
+            }
+            let statement=node;const climbed=new Set();
+            while(statement&&!chain.includes(statement)&&!climbed.has(statement)){climbed.add(statement);statement=read(statement.parent);}
+            const end=chain.indexOf(statement);if(end<0)return null;
+            let allocation=-1;const resets=[];
+            for(const {node:writer,scope:writerScope}of proof.writers){
+                if(writerScope!==scope||writer.opcode!=='arcade_setLocal')return null;
+                const at=chain.indexOf(writer),value=input(writer,'VALUE');if(at<0||at>=end||!closedInputs(writer,['NAME','VALUE'])||input(writer,'NAME')?.opcode!=='text')return null;
+                if(fixedReset(value)){resets.push(at);continue;}
+                if(allocation>=0||value?.opcode!=='arrays_createReference'||!closedInputs(value,['VALUES'])||text(input(value,'VALUES'))!=='[]')return null;
+                allocation=at;
+            }
+            if(allocation<0||resets.some(at=>at>=allocation))return null;
+            const pushes=[];
+            for(const b of Object.values(all)){
+                if(['arcade_getCaptured','arcade_setCaptured'].includes(b.opcode)&&(typeof literal(b,'NAME')!=='string'||literal(b,'NAME')===name))return null;
+                if(captureProof.scopeOf(b)!==scope||b.opcode!=='arcade_getLocal')continue;
+                const found=localName(b);if(typeof found!=='string')return null;if(found!==name)continue;
+                if(b===receiver)continue;
+                const parent=read(b.parent),at=chain.indexOf(parent);
+                if(parent?.opcode!=='arrays_mutateReference'||!closedInputs(parent,['ARRAY','OP','VALUE'])||parent.inputs?.ARRAY?.block!==b.id||literal(parent,'OP')!=='push'||
+                    at<=allocation||at>=end)return null;
+                pushes.push(parent);
+            }
+            // No call, branch, yield or unrelated effect can occur between the
+            // fresh allocation and the read. Every element is a plain literal;
+            // calls returning primitives do not gain side-effect authority.
+            for(let at=allocation+1;at<end;at++)if(!pushes.includes(chain[at]))return null;
+            pushes.sort((a,b)=>chain.indexOf(a)-chain.indexOf(b));
+            if(pushes.some(push=>{const value=input(push,'VALUE');return !['math_number','bw_numberLiteral','text','bw_stringLiteral','arrays_specialValue'].includes(value?.opcode)||Object.keys(value.inputs||{}).length||value.parent!==push.id||value.next!=null;}))return null;
+            return k<pushes.length?input(pushes[k],'VALUE'):null;
+        };
         const positionalElement=node=>{
             const index=input(node,'INDEX'),receiver=input(node,'ARRAY');
             const k=index?.opcode==='math_number'&&index.shadow===true?Number(index.fields?.NUM?.value):NaN;
@@ -705,11 +753,10 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
                     origins?.add(node);domains.add('number');return true;
                 }
                 if(!player&&op==='arrays_referenceItem'){
-                    // A literal-index read of a global that holds a start-script
-                    // Array built as empty + primitive pushes and is otherwise
-                    // only read: the element is the k-th pushed value (PXT and
-                    // Lite agree). Its own domain is then proved as usual.
-                    const slot=positionalElement(node);
+                    // Literal-index reads use the separately closed local prefix
+                    // or the existing global publication proof. The selected
+                    // pushed element still needs its own primitive domain proof.
+                    const slot=localPositionalElement(node)||positionalElement(node);
                     if(slot){const valid=safe(slot,false,origins,domains);if(valid)origins?.add(node);return valid;}
                     const elements=familyElement(node);
                     if(elements){const valid=elements.every(value=>safe(value,false,origins,domains));if(valid)origins?.add(node);return valid;}
