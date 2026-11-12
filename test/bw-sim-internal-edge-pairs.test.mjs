@@ -2,6 +2,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
 import {parseModel, serializeModel} from '../overlay/scratch-gui/src/lib/bw-sim/model/ldraw-model.js';
 import {compile} from '../overlay/scratch-gui/src/lib/bw-sim/mech/compile.js';
 import {createEditor} from '../overlay/scratch-gui/src/lib/bw-sim/editor/editor-state.js';
@@ -134,4 +135,20 @@ test('setup failures preserve primary error and dispose the owning world once', 
         if (mode === 'clear-throw') assert.equal(observed.cleanupErrors[0].message, 'clear');
         if (mode === 'dispose-throw') assert.equal(observed.cleanupErrors.length, 1);
     }
+});
+
+
+test('current canonical source identity retains its explicitly versioned parent fixture', () => {
+    const checkpoint = JSON.parse(read('docs/data/robot-lab-experimental-checkpoint.json'));
+    const rows = JSON.stringify(checkpoint);assert(rows.includes('internal-edge-pairs-v1'));
+    const find = value => value && typeof value === 'object' ? (value.id === 'rimrun' && value.canonicalLdrawSha256 ? value : Object.values(value).map(find).find(Boolean)) : null;
+    const row = find(checkpoint), dir = 'test/fixtures/model-files/rimrun-internal-edge-pairs-v1-source/';assert(row);
+    const provenance = JSON.parse(read(dir + 'provenance.json'));
+    const digest = text => createHash('sha256').update(text).digest('hex');
+    assert.equal(row.canonicalLdrawSha256, digest(read('overlay/scratch-gui/static/sim-lab/models/rimrun.ldr')));
+    assert.equal(row.canonicalLdrawSha256, provenance.files['models/rimrun.ldr']);
+    assert.equal(row.canonicalLdrawRevision.parentCanonicalLdrawSha256, provenance.parent.modelSha256);
+    assert.equal(row.canonicalLdrawRevision.parentCanonicalLdrawSha256, digest(read('test/fixtures/model-files/rimrun-source/models/rimrun.ldr')));
+    assert.equal(row.canonicalLdrawRevision.fixture, 'rimrun-internal-edge-pairs-v1-source');
+    assert.equal(row.programSha256, digest(read('test/fixtures/model-files/rimrun-source/programs/rimrun.bw')));
 });
