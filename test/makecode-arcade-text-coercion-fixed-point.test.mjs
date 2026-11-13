@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
-import ts from 'typescript';
+import {createRequire} from 'node:module';
+// Transpile from the prepared GUI dependency scope, as the generator scripts do.
+const ts = createRequire(new URL('../packages/scratch-gui/package.json', import.meta.url))('typescript');
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade, projectJsonToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
