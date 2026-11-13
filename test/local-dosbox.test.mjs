@@ -71,3 +71,38 @@ test('local HDD rejects CHS values beyond AT BIOS limits even when byte count ma
             byteLength: sectors * heads * cylinders * 512}), /AT BIOS disk geometry/);
     }
 });
+
+
+test('local HDD refuses unsupported or malformed explicit DOSBox sector geometry', () => {
+    for (const size of [
+        '1024,17,4,1', '256,17,4,1', '', '512,17,4',
+        '512,17,4,1.5', '512,17,4,1junk', '512,17,4,1,2',
+        '512,17,4,1 -size 512,17,4,1', '=512,17,4,1'
+    ]) {
+        const confText = `[autoexec]\nimgmount c disk.img -t hdd -size ${size}`;
+        assert.throws(() => localDosboxMachine({
+            confText, fileName: 'disk.img', byteLength: 4 * 17 * 512
+        }), /DOSBox imgmount -size/, size);
+    }
+});
+
+test('local HDD accepts spaced geometry with options before and after -size', () => {
+    const confText = '[autoexec]\nimgmount c disk.img -t hdd -size 512, 17, 4, 1 -fs none';
+    assert.deepEqual(localDosboxMachine({
+        confText, fileName: 'disk.img', byteLength: 4 * 17 * 512
+    }).slots.hdd.geometry, {cylinders: 1, heads: 4, sectors: 17});
+});
+
+test('local HDD does not reuse an earlier imgmount geometry for the selected image', () => {
+    const confText = '[autoexec]\nimgmount c first.img -size 512,17,4,2\nimgmount c disk.img -t hdd';
+    assert.deepEqual(localDosboxMachine({
+        confText, fileName: 'disk.img', byteLength: 4 * 17 * 512
+    }).slots.hdd.geometry, {cylinders: 1, heads: 4, sectors: 17});
+});
+
+test('DOSBox filenames containing -size text do not supply geometry options', () => {
+    const confText = '[autoexec]\nimgmount c "disk -size 512,17,4,2.img" -t hdd';
+    assert.deepEqual(localDosboxMachine({
+        confText, fileName: 'disk -size 512,17,4,2.img', byteLength: 4 * 17 * 512
+    }).slots.hdd.geometry, {cylinders: 1, heads: 4, sectors: 17});
+});
