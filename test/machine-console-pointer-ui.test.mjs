@@ -106,3 +106,57 @@ test('Widgets console leaves pointer input inert when no machine mouse callback 
         assert.equal(down.prevented, undefined, 'ordinary screen clicks are not intercepted');
         await act(async () => { renderer.unmount(); });
     }));
+
+
+test('Widgets console distinguishes extended and keypad keys and releases both on blur and unmount',
+    async () => withConsole(async MachineConsole => {
+        const received = [];
+        const listeners = new Map();
+        window.addEventListener = (name, listener) => listeners.set(name, listener);
+        window.removeEventListener = (name, listener) => {
+            if (listeners.get(name) === listener) listeners.delete(name);
+        };
+        const focused = {};
+        let renderer;
+        await act(async () => {
+            renderer = create(React.createElement(MachineConsole, {
+                widget, keyboardSet: 'at-set1', keyIn: byte => received.push(byte)
+            }), {createNodeMock: element => element.props['data-testid'] === 'bw-machine-console' ? focused : null});
+        });
+        const key = (code, down = true) => {
+            const event = {code, preventDefault() { this.prevented = true; }, stopPropagation() {}};
+            listeners.get(down ? 'keydown' : 'keyup')(event);
+            return event;
+        };
+        assert.equal(key('ArrowLeft').prevented, undefined, 'unfocused console leaves keys alone');
+        document.activeElement = focused;
+        assert.equal(key('Unknown').prevented, undefined);
+        assert.equal(key('ArrowLeft').prevented, true);
+        key('ArrowLeft'); // repeated browser keydown does not duplicate a held make
+        key('Numpad4'); // same trailing byte, distinct physical key
+        key('ArrowLeft', false);
+        key('Numpad4', false);
+        key('ControlLeft');
+        key('ControlRight');
+        key('ControlLeft', false);
+        await act(async () => { renderer.root.findByProps({'data-testid': 'bw-machine-console'}).props.onBlur(); });
+        key('ControlRight', false); // already released on blur
+        key('NumpadEnter');
+        key('F12');
+        const replacement = [];
+        await act(async () => {
+            renderer.update(React.createElement(MachineConsole, {
+                widget, keyboardSet: 'at-set1', keyIn: byte => replacement.push(byte)
+            }));
+        });
+        assert.deepEqual(replacement, [], 'held keys release into the old runner');
+        key('ControlRight');
+        await act(async () => { renderer.unmount(); });
+        assert.deepEqual(replacement, [0xe0, 0x1d, 0xe0, 0x9d], 'new runner gets its own make and unmount break');
+        assert.deepEqual(received, [
+            0xe0, 0x4b, 0x4b, 0xe0, 0xcb, 0xcb,
+            0x1d, 0xe0, 0x1d, 0x9d, 0xe0, 0x9d,
+            0xe0, 0x1c, 0x58, 0xe0, 0x9c, 0xd8
+        ]);
+        assert.equal(listeners.size, 0, 'unmount removes keyboard listeners');
+    }));

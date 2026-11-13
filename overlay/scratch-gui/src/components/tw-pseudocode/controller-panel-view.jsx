@@ -1952,6 +1952,7 @@ class ControllerPanelView extends React.Component {
                     )}
                     {machineWidget ? (
                         <MachineConsole widget={machineWidget}
+                            keyboardSet={this.props.machineConsole.keyboardSet}
                             keyIn={this.props.machineConsole.keyIn}
                             mouseIn={this.props.machineConsole.mouseIn} />
                     ) : widgets.map(w => (

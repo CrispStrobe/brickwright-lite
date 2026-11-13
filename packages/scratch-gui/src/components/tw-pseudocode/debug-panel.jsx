@@ -487,6 +487,7 @@ class DebugPanel extends React.Component {
             typeof window !== 'undefined' &&
             typeof window.bwMirrorMachineVideo === 'function') {
             window.bwMirrorMachineVideo({videoFn: () => runner.video(), widget: screen,
+                keyboardSet: nextKind === 'i80386' ? 'at-set1' : 'xt-set1',
                 keyInFn: typeof runner.keyIn === 'function' ? sc => runner.keyIn(sc) : null,
                 mouseInFn: typeof runner.mouseIn === 'function' ? event => runner.mouseIn(event) : null});
         }
