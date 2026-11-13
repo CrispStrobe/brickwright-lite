@@ -110,6 +110,27 @@ test('a second finger makes it a pinch: distance ratio and midpoint travel, what
     assert.equal(classifyTouches([down(0, 0, 0), down(50, 0, 5, 2), move(80, 0, 20, 2), up(0, 0, 40), up(80, 0, 50, 2)]), 'pinch');
 });
 
+for (const lifted of [1, 2, 3]) {
+    test(`pinch stays continuous when finger ${lifted} of three lifts`, () => {
+        const tracker = createTouchTracker();
+        tracker.down({id: 1, x: 0, y: 0, t: 0});
+        tracker.down({id: 2, x: 100, y: 0, t: 10});
+        tracker.down({id: 3, x: 1000, y: 0, t: 20});
+        assert.equal(tracker.up({id: lifted, t: 30}), null);
+        assert.equal(tracker.kind, 'pinch');
+        assert.equal(tracker.count, 2);
+        const movingId = lifted === 3 ? 2 : 3;
+        const movingX = lifted === 3 ? 100 : 1000;
+        const initialDistance = lifted === 1 ? 900 : lifted === 2 ? 1000 : 100;
+        assert.deepEqual(tracker.move({id: movingId, x: movingX, y: 0, t: 40}),
+            {type: 'pinch', scale: 1, pan: [0, 0], mid: lifted === 1 ? [550, 0] : lifted === 2 ? [500, 0] : [50, 0]},
+            'a stationary finger must not move or zoom the camera after another lifts');
+        const moved = tracker.move({id: movingId, x: movingX + 10, y: 0, t: 50});
+        assert.equal(moved.scale, (initialDistance + 10) / initialDistance);
+        assert.deepEqual(moved.pan, [5, 0], 'the next real movement still pans normally');
+    });
+}
+
 test('a pointercancel ends the gesture as cancelled; events for unknown fingers are ignored', () => {
     assert.equal(classifyTouches([down(0, 0, 0), move(40, 0, 20), {type: 'cancel', id: 1, x: 40, y: 0, t: 30}]), 'cancel');
     const t = createTouchTracker();

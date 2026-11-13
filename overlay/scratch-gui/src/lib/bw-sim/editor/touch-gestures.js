@@ -119,8 +119,11 @@ export const createTouchTracker = ({slop = TOUCH_SLOP_PX, longPressMs = LONG_PRE
         },
         /** A finger lifted (`cancelled`: the browser took it away, a pointercancel). */
         up ({id, t}, {cancelled = false} = {}) {
+            const changesPair = kind === 'pinch' && [...points.keys()].slice(0, 2).includes(id);
             if (!points.delete(id)) return null;
             if (kind === 'pinch') {
+                // A spare finger replaces a lifted pinch finger without moving the camera.
+                if (changesPair && points.size >= 2) last = pair();
                 if (points.size) return null; // wait for the last finger
                 kind = 'idle';
                 primary = null;
