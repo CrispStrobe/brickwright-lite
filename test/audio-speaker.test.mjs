@@ -100,3 +100,37 @@ test('the speaker survives a null or throwing audio()', () => {
     assert.equal(ctx.oscillators.length, 1);
     spk.stop();
 });
+
+
+test('an unavailable PC speaker report silences active voices and recovers on the next report', () => {
+    const ctx = fakeAudioContext();
+    let unavailable = false;
+    let hz = 440;
+    const sched = manualScheduler();
+    const spk = createMachineAudioSpeaker({
+        audioFn: () => {
+            if (unavailable) throw new Error('runner reset while reading PC speaker');
+            return [{hz, on: true}, {hz: hz * 2, on: true}];
+        },
+        ctx, gain: 0.1, schedule: sched.schedule, cancel: sched.cancel
+    });
+    spk.start();
+    sched.flush();
+    assert.deepEqual(ctx.gains.map(v => v.gain.value), [0.1, 0.1]);
+
+    unavailable = true;
+    assert.doesNotThrow(() => sched.flush());
+    assert.deepEqual(ctx.gains.map(v => v.gain.value), [0, 0],
+        'every previously sounding voice must stop when the report fails');
+    assert.equal(spk.running, true, 'a transient read failure keeps polling');
+    sched.flush();
+    assert.deepEqual(ctx.gains.map(v => v.gain.value), [0, 0]);
+
+    unavailable = false;
+    hz = 220;
+    sched.flush();
+    assert.equal(ctx.oscillators.length, 2, 'recovery reuses the existing voices');
+    assert.deepEqual(ctx.oscillators.map(v => v.frequency.value), [220, 440]);
+    assert.deepEqual(ctx.gains.map(v => v.gain.value), [0.1, 0.1]);
+    spk.stop();
+});
