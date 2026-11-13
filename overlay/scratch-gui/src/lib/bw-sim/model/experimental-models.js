@@ -311,8 +311,8 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "experimental": true,
         "blocked": false,
         "intro": {
-            "en": "One motor turns a carrier around a fixed sun gear; the orbiting planet’s pinion feeds a rack outward, so a passive marker traces an Archimedean spiral (about 37.7 mm per turn).",
-            "de": "Ein Motor dreht einen Träger um ein festes Sonnenrad; das Ritzel des umlaufenden Planeten schiebt eine Zahnstange nach außen, sodass eine passive Markierung eine archimedische Spirale beschreibt (etwa 37,7 mm je Umdrehung)."
+            "en": "One motor turns a carrier around a fixed sun and feeds a marker outward. The simulator predicts 37.7 mm per carrier turn; the drawn 18942 rack and 12-tooth pinion imply 38.4 mm. The model remains experimental; neither value is a measurement of real parts.",
+            "de": "Ein Motor dreht einen Träger um ein festes Sonnenrad und schiebt eine Markierung nach außen. Der Simulator berechnet 37,7 mm Vorschub je Trägerumdrehung; gezeichnete Zahnstange 18942 und 12-Zahn-Ritzel ergeben 38,4 mm. Das Modell bleibt experimentell; keiner der Werte ist an echten Bauteilen gemessen."
         },
         "manualJog": {
             "A": {
@@ -1260,15 +1260,15 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         "experimental": true
     },
     "spiral-scribe.ldr": {
-        "pieces": 185,
+        "pieces": 183,
         "motors": 1,
         "hubs": [
             "spike-prime"
         ],
         "topic": "gears",
         "description": {
-            "en": "One motor turns a carrier around a fixed sun gear; the orbiting planet’s pinion feeds a rack outward, so a passive marker traces an Archimedean spiral (about 37.7 mm per turn).",
-            "de": "Ein Motor dreht einen Träger um ein festes Sonnenrad; das Ritzel des umlaufenden Planeten schiebt eine Zahnstange nach außen, sodass eine passive Markierung eine archimedische Spirale beschreibt (etwa 37,7 mm je Umdrehung)."
+            "en": "One motor turns a carrier around a fixed sun and feeds a marker outward. The simulator predicts 37.7 mm per carrier turn; the drawn 18942 rack and 12-tooth pinion imply 38.4 mm. The model remains experimental; neither value is a measurement of real parts.",
+            "de": "Ein Motor dreht einen Träger um ein festes Sonnenrad und schiebt eine Markierung nach außen. Der Simulator berechnet 37,7 mm Vorschub je Trägerumdrehung; gezeichnete Zahnstange 18942 und 12-Zahn-Ritzel ergeben 38,4 mm. Das Modell bleibt experimentell; keiner der Werte ist an echten Bauteilen gemessen."
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause",

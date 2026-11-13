@@ -57,6 +57,7 @@
  *     asserts a server sent what it promised.
  */
 import {test, describe} from 'node:test';
+import {currentJoltFetchPin} from '../scripts/lib/sim-engine-admission.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync, writeFileSync, mkdtempSync, rmSync} from 'node:fs';
 import {execFileSync, execSync} from 'node:child_process';
@@ -225,6 +226,9 @@ const describeSkips = ({unreadable, nul}) => {
 //                 arrive: a moved tag, a replaced asset and a compromised CDN
 //                 all fail closed here. Not `waived` — nothing is being
 //                 excused — and not `sha-const`, because the URL carries a tag.
+//   admission-policy  not a fetch: an exact versioned admission record or URL
+//                 validation template. Pending records authorize no download;
+//                 only the separately declared current producer is content-bound.
 //   waived        genuinely cannot be sha-addressed; reason required
 const CENSUS = [
     {
@@ -535,17 +539,7 @@ const CENSUS = [
            + 'nothing else (test/makecode-emu-bases-fetch.test.mjs). The bytes are re-derived by '
            + 'scripts/build-makecode-emu-bases.mjs, whose workflow syncs with --no-emu-fetch.'
     },
-    {
-        file: 'scripts/integrate.mjs',
-        kind: 'release',
-        text: 'github.com/CrispStrobe/JoltPhysics.js/releases/download/bw.9-qualified-20261029/jolt-physics-1.1.0-bw.9.tgz',
-        class: 'content-hash',
-        why: 'The Sim Lab physics engine: the Brickwright JoltPhysics.js fork build 1.1.0-bw.9 (Jolt master '
-           + 'plus the gear fixes, the CCD bounce fix, MaterialPairs, RackMeshConstraint, PartPairSimShapeFilter and optional single-thread SIMD, retained distance-constraint velocity impulses and coupled soft-motor/reflected-rotor rows), taken as an npm tarball dependency. The tag is movable, so it is not what '
-           + 'is trusted: packages/scratch-gui/package-lock.json holds the tarball\'s sha512 integrity '
-           + '(sha256 381bbd4fa13e4f71205e9671f1a427320bea917fa5875481de3928aad227aa2d) and npm refuses '
-           + 'different bytes. The qualified release retains the exact archive from the pinned source and native commits.'
-    },
+    currentJoltFetchPin(),
     {
         file: 'scripts/vendor-forward.mjs',
         kind: 'git',
@@ -818,6 +812,13 @@ describe('fetch pinning: every fetch that decides what ships names an immutable 
             + 'claim about a fetch site that is not there — the census is then smaller than '
             + 'it reads, and a detector may have stopped matching a site that IS there. '
             + 'Delete the row, or fix what moved:\n  ' + vanished.map(show).join('\n  '));
+    });
+
+    test('the current engine fetch remains content-bound by producer and lockfile SHA512', () => {
+        const producer = CENSUS.filter(row => row.file === 'scripts/integrate.mjs' && row.kind === 'release');
+        assert.equal(producer.length, 1);
+        assert.equal(producer[0].class, 'content-hash');
+        assert.deepEqual(producer[0], currentJoltFetchPin());
     });
 
     test('every waived row states a reason, and the waived set is the three known ones', () => {

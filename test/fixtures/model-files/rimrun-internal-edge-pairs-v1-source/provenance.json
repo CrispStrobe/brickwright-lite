@@ -1,0 +1,16 @@
+{
+  "author": "CrispStrobe",
+  "license": "BSD-3-Clause",
+  "version": "internal-edge-pairs-v1",
+  "parent": {
+    "fixture": "rimrun-source",
+    "provenanceSha256": "4c3071470b91a827a99eecfc11bb60bdf3f6cf9a11ca14fdf37ad1025f0c47b9",
+    "modelSha256": "9dc5d3d02086996fbb01ff002c701d8aa1e832ea209d06ea0f502a56d2692d69"
+  },
+  "files": {
+    "models/rimrun.ldr": "ad5e908db04a5fe326d81c5861d77b8f43f5985080ca9ffcee6263d81e8d9100",
+    "programs/rimrun.bw": "e260b0f1619ef8c5e352edf6d621d94e23386e73afa49a3615e0809f1af96532",
+    "LICENSE.txt": "4b345db1e5260dce76a731425304606d2303cb6fc85216eab5176adc79acfb52",
+    "SOURCES.md": "b8fff79f6ab619710c916ba6cdfd0d8d91f6df97fe1d590e4690504e606b76a9"
+  }
+}

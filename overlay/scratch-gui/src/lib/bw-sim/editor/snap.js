@@ -485,7 +485,6 @@ export const placePart = (model, {part, position, rotation, id, port}) => {
     while (existingIds.has(finalId)) {
         finalId = `p${model.parts.length + counter}`;
         counter++;
-        if (counter > 100) break;
     }
     const newPart = {id: finalId, part, position: position.slice(), rotation: rotation.slice()};
     if (port) newPart.port = port;

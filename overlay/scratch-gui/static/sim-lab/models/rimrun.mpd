@@ -3,8 +3,10 @@
 0 Name: rimrun.ldr
 0 Author: CrispStrobe
 0 !LICENSE BSD-3-Clause : see ../licenses/rimrun.txt
+0 !BW INTERNAL_EDGE_PAIR left_wheel_-1 hub
+0 !BW INTERNAL_EDGE_PAIR right_wheel_-1 hub
 0 !LDRAW_ORG Unofficial_Model
-0 // Original isolated add-on. Native stock-part mechanics; no model physics overrides.
+0 // Original isolated add-on. Native stock-part mechanics; no mass or inertia overrides.
 0 // 01 — joined smooth tracks
 0 // 07 — hub pinned to the motor posts (four 2780 friction pins through the posts' side holes)
 0 !BW ID hub

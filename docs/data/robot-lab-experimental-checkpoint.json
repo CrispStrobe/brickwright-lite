@@ -3861,7 +3861,13 @@
       "title": "RimRun — equal weight, different roll",
       "placements": 506,
       "archive": "rimrun-addon.zip sha256 3d59bd7595790799bc4eefb0ac282ceafdcb4c8ad110869b15d453c5b5fa977f",
-      "canonicalLdrawSha256": "9dc5d3d02086996fbb01ff002c701d8aa1e832ea209d06ea0f502a56d2692d69",
+      "canonicalLdrawSha256": "ad5e908db04a5fe326d81c5861d77b8f43f5985080ca9ffcee6263d81e8d9100",
+      "canonicalLdrawRevision": {
+        "version": "internal-edge-pairs-v1",
+        "fixture": "rimrun-internal-edge-pairs-v1-source",
+        "parentCanonicalLdrawSha256": "9dc5d3d02086996fbb01ff002c701d8aa1e832ea209d06ea0f502a56d2692d69",
+        "scope": "Two explicit part-pair metadata directives and a header comment; geometry, mass, inertia, program and historical result records are unchanged. Historical results retain their recorded source scope."
+      },
       "program": "rimrun.bw",
       "programSha256": "e260b0f1619ef8c5e352edf6d621d94e23386e73afa49a3615e0809f1af96532",
       "adaptation": "Model, program and licence bytes unchanged from the package; the supplied lesson's links to the still-experimental afterturn and inertia-loop were dropped (lessons may link only established models); comparison lessons and the per-file comparison licence copies written here. Needs the virtual SPIKE hub (toolbar Run connects it). Q5 (2026-11-09): the loose SPIKE hub is pinned to the two motor posts with four 2780 friction pins, in the frame's incline orientation (the loose-part warning is gone), and the eight 32123b half bushes, which sat 7.5 LDU inside their 49295 wheels, now sit flush against the wheel faces. The program is unchanged.",
