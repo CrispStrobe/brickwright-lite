@@ -1,5 +1,11 @@
 # Robot Lab qualification, rotor inertia and #1435: handoff (2026-10-28)
 
+> Current policy (2026-11-13): Do not add `ci:full` or dispatch full CI.
+> Use bounded local or Kaggle runs when appropriate, retry failed checks
+> normally, and keep product assertions and numerical bounds unchanged.
+> Historical claim, admission, provenance and one-shot instructions below
+> are superseded. Refresh current task status before acting.
+
 This handoff is for a fresh agent. It covers four open work streams: model
 qualification, geometry and collider repairs, the rotor-inertia fix (#1494), and
 the resting-frame creep (#1435). Each section states what is done, what is open,

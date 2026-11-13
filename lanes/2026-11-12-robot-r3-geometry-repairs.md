@@ -25,4 +25,5 @@ Bloom is not repaired here: its scissor pivots are pins in the centre hole of an
 mesh check refuses for any pin orientation, and its cage hubs overlap the ring ends by up to 19 LDU; that is a
 redesign. The measurements are in the checkpoint's `promotionReview`.
 
-Qualification: hosted unit/build checks and the chromium browser gates, `ci:full` once on the final head.
+Qualification: run the affected Chromium browser journeys and relevant checks.
+Use bounded local or Kaggle compute where appropriate; do not add `ci:full`.

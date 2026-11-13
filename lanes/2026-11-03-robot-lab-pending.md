@@ -41,6 +41,7 @@ The full task list with exact steps is section 00 of
 - E1 (2026-11-10, open): Jolt enhanced internal-edge removal for tile-joint
   bumps; diagnose pair order first, then opt-in per model.
 
-Rules: iterate without `ci:full`, add it once on the final head; merge only
-with `--match-head-commit` after every enabled check passes; never weaken a
-threshold, judge or gate; no force-push or rebase of shared branches.
+Rules: do not add `ci:full` or dispatch full CI. Use bounded local or Kaggle
+runs where appropriate and retry failed checks normally. Keep model assertions
+and numerical bounds unchanged. Merge only at the reviewed head after enabled
+checks pass; use normal pushes and do not rewrite shared branches.
