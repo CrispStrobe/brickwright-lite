@@ -1260,7 +1260,7 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         "experimental": true
     },
     "spiral-scribe.ldr": {
-        "pieces": 185,
+        "pieces": 183,
         "motors": 1,
         "hubs": [
             "spike-prime"
