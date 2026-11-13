@@ -119,3 +119,17 @@ test('compound constructor writes require every allocation formal Number produce
  refused(source.replace('let box=new Box(2,8);','var box=new Box(2,8);'));
  refused(source.replace('let box=new Box(2,8);','let a:any=2;if(true){var a:any="x"}let box=new Box(a,8);'));
 });
+
+
+test('closed Number getter bitwise NOT retains operand producers and field initialization',()=>{
+ for(const expression of ['~this.n','~(this.n+1)','-(~(this.n*2))+this.n','~~this.n'])
+  accepted(scalarAccessorSource.replace('return this.n','return '+expression));
+ const source=scalarAccessorSource.replace('return this.n','return ~(this.n+1)');
+ for(const extra of ['box.n=<any>"x";','box.n=<any>true;','box.n=<any>undefined;',
+  'box.value=<any>"x";','let alias=box;','function capture(){box.n=<any>true}'])refused(source+extra);
+ for(const expression of ['~this.value','~trace','~take(this.n)','~(this.n+<any>"x")'])
+  refused(source.replace('~(this.n+1)',expression));
+ refused(source.replace('new Box(2)','new Box(<any>"x")'));
+ refused(source.replace('constructor(public n:number){}','n:number;constructor(n:number){}'));
+ refused(source.replace('constructor(public n:number){}','n:number;constructor(n:number){this.n=this.n+1}'));
+});
