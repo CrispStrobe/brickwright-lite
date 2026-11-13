@@ -3,8 +3,9 @@ import {readFileSync} from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 
+import {asHeldLegacyPredecessor} from './helpers/held-legacy-concurrency.mjs';
 import {assertReviewedConcurrency} from './helpers/reviewed-concurrency-projections.mjs';
-const names = ['ack-z80-cpm','arcade-controls','basic-oracle','build','debugger','i80386-freedos-circuits-direct-actual','i80386-hdd-gui-actual','i80386-native-font-selection','i8086-execution','makecode-arcade-bases','mobile','native-installed-qualification','pascal-ack-image','reference-qualified-instruments','robot-lab-own-firmware','robot-model-webkit-comparison','rust-notices','spike-linux-package','target-performance','tauri','vendor-freshness'];
+const names = ["ack-z80-cpm", "arcade-controls", "basic-oracle", "build", "cycle-core-qualification", "debugger", "i80386-freedos-circuits-direct-actual", "i80386-hdd-gui-actual", "i80386-native-font-selection", "i8086-execution", "makecode-arcade-bases", "mobile", "model-measurements", "native-installed-qualification", "pascal-ack-image", "reference-qualified-instruments", "robot-lab-own-firmware", "robot-model-webkit-comparison", "rust-notices", "spike-linux-package", "target-performance", "tauri", "vendor-freshness"];
 const labeled = new Set(['build','i80386-freedos-circuits-direct-actual','i80386-hdd-gui-actual','i80386-native-font-selection']);
 const labelSuffix = "-${{ (github.event.action == 'labeled' || github.event.action == 'unlabeled') && format('label-{0}', github.event.label.name) || 'code' }}";
 const expand = (text, github) => text.replace(/\$\{\{(.*?)\}\}/g, (_, expression) => String(vm.runInNewContext(expression, {github, format: (pattern, ...args) => pattern.replace(/\{(\d+)\}/g, (_, index) => String(args[index]))})));
@@ -80,9 +81,11 @@ for (const name of names) test(`${name}: exact source event/ref isolation, pendi
 });
 
 
-test('unmodified cycle and model workflows require their exact workflow/ref profile', () => {
+test('current cycle and model isolation preserves their exact workflow/ref predecessor', () => {
     for (const name of ['cycle-core-qualification', 'model-measurements']) {
-        const source = readFileSync(new URL(`../.github/workflows/${name}.yml`, import.meta.url), 'utf8');
+        const current = readFileSync(new URL(`../.github/workflows/${name}.yml`, import.meta.url), 'utf8');
+        assertReviewedConcurrency(current);
+        const source = asHeldLegacyPredecessor(current);
         assertReviewedConcurrency(source, {profile: 'workflow-ref'});
         assert.throws(() => assertReviewedConcurrency(source), 'old workflow cannot enter isolated profile');
         const changed = source.replace('${{ github.workflow }}', "${{ github.workflow }}${{ !(github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request')) && format('-isolated-{0}', github.run_id) || '' }}");
