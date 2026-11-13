@@ -5,3 +5,5 @@
 - **Law (`double-pendulum-mode-v1`):** `judgeDoublePendulum` in `scripts/lib/sim-lab-r4-judges.mjs`. Two compound pendulums in series on a held carrier; the normal modes come from the engine's compiled mass properties (slow 0.6650 s, lower/upper +1.485; fast 0.2989 s, −1.436), which the qualification test recomputes. In each held window the arms must be the sum of the two modes.
 - **Disconnection** (`motor_pin_h3` and `motor_pin_h5` removed: the motor no longer drives the carrier. Cuts that change the hanging load, such as the elbow axle or a bob, make the carrier re-settle and the program's own start guard refuses, so they cannot serve as the control.)
 - **Piece count:** 69, honest; qualification has no piece minimum (operator decision 2026-11-07).
+
+- **Building instructions:** coarse authored assembly-stage `0 STEP` markers were removed so the native connector-based generator produces connected pages of at most six parts. Placement records and their order, colours, transforms, ports and program are unchanged.
