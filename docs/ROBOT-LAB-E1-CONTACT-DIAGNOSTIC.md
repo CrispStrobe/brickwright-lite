@@ -50,11 +50,25 @@ integrated velocity residual against the ideal rolling model changed from
 −4.007, −5.206, −3.531 and −5.371 mm/s to −0.029, −0.101, −0.042 and
 −0.267 mm/s, respectively. These are finite model comparisons, not measured
 contact impulses. The diagnostic uses selected native body IDs; it is not a
-reusable collision policy. An opt-in implementation, the swapped model,
-flag-off controls, and browser qualification remain necessary before a fix can
-be claimed or shipped.
+reusable collision policy. The later opt-in implementation and its additional
+controls are described below; browser qualification remains open.
 
 The paired experiment also ran the swapped model and an enhanced-removal-off
 control on both modules. All six actual runs passed their saved-output audits;
 the two flag-off model tracks were identical. These controls apply to the
 experimental modules and do not qualify a general collision policy.
+
+## Opt-in pair policy
+
+The bw.10 engine adds a per-world, explicit source/surface body-pair policy.
+RimRun and its swapped variant declare the frame and rollers as selected pairs;
+other model pairs retain their normal contact handling. The declaration is saved
+with the model and survives editor round trips. Callback replacement and world
+teardown also guard against reentry, and Node multithreaded modules initialize
+their workers correctly.
+
+Fresh direct-VM runs of RimRun and the swapped model passed with enhanced
+removal both on and off, using each of the scalar and SIMD package modules.
+The package's eight export variants passed their filter, legacy and native
+lifecycle controls. These are simulation checks; they do not establish physical
+accuracy or qualify a browser run.
