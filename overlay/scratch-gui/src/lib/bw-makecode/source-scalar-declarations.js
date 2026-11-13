@@ -9,7 +9,7 @@ const TYPED_SDK_NUMBER_CALLS=Object.freeze({__proto__:null,
 /** Directed scalar source flow. This inventory does not admit reference APIs. */
 export function sourceScalarDeclarations(program) {
     const sdkNumericCalls=staticSdkNamespaceReceivers(program,{builtinIdentifiers:['randint']});
-    const types = new Map(), edges = [], expressions = [], functions = new Map();
+    const types = new Map(), edges = [], expressions = [], stringMembers = [], functions = new Map();
     const globals = new Map();
     const cells = new WeakMap();
     let sequence = 0;
@@ -86,6 +86,10 @@ export function sourceScalarDeclarations(program) {
             add(cell,{number:'Number',boolean:'Boolean',string:'String'}[node.bwClassCallableResultType]);
         } else if(node.type==='Call' && node.bwConsoleInspectIntrinsic===true && node.callee?.name==='__bwConsoleInspectValue') {
             (node.args||[]).forEach(argument=>visit(argument,scope));add(cell,'String');
+        } else if (node.type === 'Call' && !node.isNew && node.callee?.type === 'Member' && node.callee.name === 'charAt' && node.args?.length === 1) {
+            const receiver = visit(node.callee.object, scope);
+            node.args.forEach(argument => visit(argument, scope));
+            stringMembers.push({cell, receiver, type: 'String'});
         } else if (node.type === 'Call') {
             const arguments_ = (node.args || []).map(argument => visit(argument, scope));
             const fn = node.callee?.type === 'Identifier' && functions.get(node.callee.name);
@@ -108,6 +112,8 @@ export function sourceScalarDeclarations(program) {
             visit(node.test, scope); edge(visit(node.consequent, scope), cell); edge(visit(node.alternate, scope), cell);
         } else if (node.type === 'Unary') {
             visit(node.argument, scope); add(cell, node.op === '!' ? 'Boolean' : node.op === 'typeof' ? 'String' : 'Number');
+        } else if (node.type === 'Member' && node.name === 'length') {
+            stringMembers.push({cell, receiver: visit(node.object, scope), type: 'Number'});
         } else if (node.type === 'Array' || node.type === 'Member' || node.type === 'Index' || node.type === 'Template') {
             add(cell, 'Unknown');
         } else {
@@ -120,6 +126,9 @@ export function sourceScalarDeclarations(program) {
     do {
         changed = false;
         for (const [from, to] of edges) for (const type of types.get(from) || []) changed = add(to, type) || changed;
+        for (const {cell, receiver, type} of stringMembers) {
+            for (const source of types.get(receiver) || []) changed = add(cell, source === 'String' ? type : 'Unknown') || changed;
+        }
         for (const {cell, left, right} of expressions) {
             const a = types.get(left), b = types.get(right);
             if (!a?.size || !b?.size) continue;

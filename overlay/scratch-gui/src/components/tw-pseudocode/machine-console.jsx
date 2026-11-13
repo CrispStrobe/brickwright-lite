@@ -1,10 +1,10 @@
 import React from 'react';
-import {pcSet1Make} from '../../lib/bw-machines/pc-scancodes.js';
+import {pcSet1Bytes} from '../../lib/bw-machines/pc-scancodes.js';
 import {ps2ButtonBit, ps2Delta} from '../../lib/bw-machines/ps2-pointer.js';
 
 /** Large, focusable VGA face for the Widgets pane. The panel owns frame storage;
  * this face only paints it and sends live input to the active machine runner. */
-export default function MachineConsole({widget, keyIn, mouseIn}) {
+export default function MachineConsole({widget, keyIn, mouseIn, keyboardSet}) {
     const root = React.useRef(null);
     const canvas = React.useRef(null);
     const held = React.useRef(new Set());
@@ -29,7 +29,9 @@ export default function MachineConsole({widget, keyIn, mouseIn}) {
             new ImageData(new Uint8ClampedArray(rgba), width, height), 0, 0);
     }, [widget?.state?.rgba, widget?.state?.frame, widget?.config?.width, widget?.config?.height]);
     const release = () => {
-        for (const sc of held.current) keyIn?.(sc | 0x80);
+        for (const code of held.current) {
+            for (const byte of pcSet1Bytes(code, false, keyboardSet === 'at-set1')) keyIn?.(byte);
+        }
         held.current.clear();
         if (buttons.current) mouseIn?.({dx: 0, dy: 0, buttons: 0});
         buttons.current = 0;
@@ -37,10 +39,12 @@ export default function MachineConsole({widget, keyIn, mouseIn}) {
     };
     React.useEffect(() => () => {
         // On runner change or unmount, never leave guest modifiers/buttons held.
-        for (const sc of held.current) keyIn?.(sc | 0x80);
+        for (const code of held.current) {
+            for (const byte of pcSet1Bytes(code, false, keyboardSet === 'at-set1')) keyIn?.(byte);
+        }
         if (buttons.current) mouseIn?.({dx: 0, dy: 0, buttons: 0});
         held.current.clear(); buttons.current = 0;
-    }, [keyIn, mouseIn]);
+    }, [keyIn, mouseIn, keyboardSet]);
     React.useEffect(() => {
         if (!keyIn) return undefined;
         // Scratch's global keyboard listener can stop propagation before React's
@@ -48,12 +52,17 @@ export default function MachineConsole({widget, keyIn, mouseIn}) {
         // and only when the console itself has focus.
         const onKey = (e, down) => {
             if (document.activeElement !== root.current) return;
-            const sc = pcSet1Make(e.code);
-            if (sc == null) return;
+            const bytes = pcSet1Bytes(e.code, down, keyboardSet === 'at-set1');
+            if (bytes == null) return;
             e.preventDefault(); e.stopPropagation();
             if (down) {
-                if (!held.current.has(sc)) { held.current.add(sc); keyIn(sc); }
-            } else if (held.current.delete(sc)) keyIn(sc | 0x80);
+                if (!held.current.has(e.code)) {
+                    held.current.add(e.code);
+                    for (const byte of bytes) keyIn(byte);
+                }
+            } else if (held.current.delete(e.code)) {
+                for (const byte of bytes) keyIn(byte);
+            }
         };
         const down = e => onKey(e, true);
         const up = e => onKey(e, false);
@@ -63,7 +72,7 @@ export default function MachineConsole({widget, keyIn, mouseIn}) {
             window.removeEventListener('keydown', down, true);
             window.removeEventListener('keyup', up, true);
         };
-    }, [keyIn]);
+    }, [keyIn, keyboardSet]);
     const pointerMove = e => {
         if (!mouseIn) return;
         const next = {x: e.clientX, y: e.clientY};

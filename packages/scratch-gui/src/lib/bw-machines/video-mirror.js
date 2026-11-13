@@ -95,7 +95,10 @@ export function createMachineVideoMirror(opts = {}) {
         // Repaint only on a new frame when the card numbers them (a still
         // screen renumbers nothing); always paint when it gives no counter.
         if (typeof frame.frame === 'number' && frame.frame === lastFrame) return false;
-        if (typeof panel.setVgaFrame === 'function') panel.setVgaFrame(name, frame);
+        if (typeof panel.setVgaFrame !== 'function') return false;
+        // A display can disappear while a runner stays alive. Retry the frame
+        // on the next poll instead of consuming it or breaking the pump.
+        try { panel.setVgaFrame(name, frame); } catch { return false; }
         lastFrame = typeof frame.frame === 'number' ? frame.frame : lastFrame;
         frames += 1;
         return true;
