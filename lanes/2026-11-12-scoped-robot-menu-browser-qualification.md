@@ -1,8 +1,14 @@
 # Scoped official-build menu and Robot Lab browser qualification
 
-Status: HELD. A source candidate exists, but the requested compute policy uses
-Kaggle for heavy work; do not enable these additional GitHub browser guests.
-Actual affected browser qualification remains open.
+Status: IN PROGRESS. The tilemap painter passed on the integrated local build.
+Apex and Tempest exposed a blank view after resizing. The renderer fix passed
+focused controls and the complete local Apex browser journey, using a 720-second
+local allowance; it has not met the workflow's 480-second timing limit. Tempest initially failed its connected-instruction step-size assertion. Its
+oversized authored markers were removed without changing placements or the
+program; the full local browser journey then passed in 373 seconds using the
+renderer-fix JavaScript build with the two updated static model files. Use
+bounded local or Kaggle compute;
+do not add `ci:full`. Keep experimental models at their recorded limits.
 Owner: scoped browser qualification lane.
 Base: main `312609f46513d245e8e6ecb26bd91aa1ee83612c`.
 
@@ -22,11 +28,11 @@ Own only these paths and boundaries for the combined R3/R4 and submenu candidate
   the directory, including failure, timeout and no-output cases.
 - This claim only. Existing menu and Robot Lab claims retain their source scope.
 
-Preserve `needs: build`, exact producer admission, existing job steps, conditions,
-permissions, action pins, model laws, page-error assertions and existing 3/8/8
-minute guest limits. Use the same admitted frontend and embedded SDK. No extra
-frontend build, workflow dispatch, full-CI label, gate weakening or replay of a
-completed qualification. Post-step snapshots must execute after failed/timed-out
+Preserve `needs: build`, existing job steps, conditions, permissions, action
+pins, model laws, page-error assertions and workflow guest time limits. Exercise
+the affected journeys against the matching frontend and embedded SDK. Retry
+failed checks normally; keep their original results and do not weaken assertions.
+Do not dispatch full CI or add a full-CI label. Post-step snapshots must execute after failed/timed-out
 producing steps; do not let a failed snapshot permit the next guest to overwrite
 its output. Keep original failures and absent-output facts.
 

@@ -44,4 +44,19 @@ Measured (native, COLD 500, frameMs 25, strict ports):
 
 Controls (Tempest): frozen-output and 1 cm shift; the disconnection above; a wrong-model mutant (other bob wheel), refused.
 
-Qualification: hosted unit/build checks and the chromium browser gates, `ci:full` once on the final head.
+Qualification: run the affected Chromium browser journeys and relevant checks.
+Use bounded local or Kaggle compute where appropriate; do not add `ci:full`.
+Solstice remains experimental pending browser validation of its solver preset.
+
+Startup follow-up: the browser's early Solstice samples exceed both 0.1 bounds
+before settling. An isolated 5 ms-step comparison using the existing light-link
+solver policy produced the same startup errors as the baseline; raising its
+position iterations to the existing engine cap reduced but did not resolve them.
+The native rotor representation increased the startup errors in the same
+short comparison, so neither experiment is a fix.
+A comparison using the existing light-link policy with 120 velocity iterations
+kept all 110 startup samples within both bounds. A narrowly scoped authored
+model preset also passed the full simulated program and the disconnected
+control under the unchanged bounds. Run the held browser diagnostic, including
+startup observations, before considering promotion. Keep early samples and
+the bounds unchanged; Solstice remains experimental.
