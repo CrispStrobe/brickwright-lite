@@ -155,6 +155,7 @@ test('constructor source arithmetic stays pure and retains actual operand domain
   f=>{f.blocks.arithmeticOP.inputs.EXTRA={block:'extraCall'};f.add('extraCall','arcade_callFunction','arithmeticOP');},
   f=>{f.blocks.arithmeticOP.next='extraCall';f.add('extraCall','arcade_callFunction','arithmeticOP');},
   f=>{f.blocks.arithmeticOP.shadow=false;},
+  f=>{f.blocks.arithmetic.fields={OP:{value:'+'}};},
   f=>{f.blocks.initvalue.inputs.EXTRA={block:'extraCall'};f.add('extraCall','arcade_callFunction','initvalue');},
   f=>{f.blocks.initvalueNAME.inputs.EXTRA={block:'extraCall'};f.add('extraCall','arcade_callFunction','initvalueNAME');},
   f=>{f.blocks.initvalue.fields={NAME:{value:'n'}};f.blocks.initvalueNAME.opcode='arcade_callFunction';},
