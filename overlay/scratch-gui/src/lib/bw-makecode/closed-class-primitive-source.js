@@ -104,12 +104,18 @@ export function closedClassPrimitiveSource(program,graph) {
      graph.bindingOf(node.type==='Assignment'?node.left:node.argument)===key).every(node=>
       node.type==='Assignment'&&node.op==='='&&scalarExpression(node.right,key));
   };
+  // A compound getter reads only initialized own fields and finite literals.
+  // Retain the original expression; no intermediate value is folded or assumed
+  // finite. Calls, nested accessors and external names cannot borrow this proof.
+  const getterNumber=node=>node?.type==='Number'&&Number.isFinite(Number(node.value))||
+   ownMember(node)&&node.object?.name==='this'&&fields.has(node.name)||
+   node?.type==='Unary'&&['+','-'].includes(node.op)&&getterNumber(node.argument)||
+   node?.type==='Binary'&&['+','-','*'].includes(node.op)&&getterNumber(node.left)&&getterNumber(node.right);
   for(const method of cls.methods){
    const statements=method.body||[],body=statements.slice(-1);
    if(!statements.slice(0,-1).every(statement=>scalarEffect(statement,method)))valid=false;
    if(method.kind==='get'){
-    if(method.params.length||body.length!==1||body[0].type!=='Return'||!ownMember(body[0].value)||
-     body[0].value.object?.name!=='this'||!fields.has(body[0].value.name))valid=false;
+    if(method.params.length||body.length!==1||body[0].type!=='Return'||!getterNumber(body[0].value))valid=false;
    }else{
     if(method.params.length!==1||body.length!==1)valid=false;
     const write=body[0]?.type==='ExpressionStatement'&&body[0].expr;

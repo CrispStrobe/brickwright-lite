@@ -54,3 +54,24 @@ test('var hoisting cannot hide a Text writer behind lexical Number facts',()=>{
  refused(scalarAccessorSource.replace('let box=new Box(2);','var box=new Box(2);'));
  refused(scalarAccessorSource.replace('let box=new Box(2);','let value:any=2;if(true){var value:any="x"}let box=new Box(value);'));
 });
+
+
+test('compound getters recursively require initialized own Number field producers',()=>{
+ for(const expression of ['this.n+1','-(this.n*2)+this.n','(this.n+1)*(this.n-2)','1e308*1e308+this.n'])
+  accepted(scalarAccessorSource.replace('return this.n','return '+expression));
+ const compound=scalarAccessorSource.replace('return this.n','return (this.n+1)*this.n');
+ for(const source of [
+  compound+'box.n=<any>"x";',compound+'function captured(){box.n=<any>true}',
+  compound+'let alias=box;alias.n=<any>"x";',
+  compound.replace('new Box(2)','new Box(<any>"x")'),
+  compound.replace('let box=new Box(2);','var box=new Box(2);'),
+  compound.replace('return (this.n+1)*this.n','return this.n+<any>"x"'),
+  compound.replace('return (this.n+1)*this.n','return this.n+trace'),
+  compound.replace('return (this.n+1)*this.n','return this.value+1'),
+  compound.replace('return (this.n+1)*this.n','return take(this.n)+1'),
+  compound.replace('return (this.n+1)*this.n','return this.n/0'),
+  compound.replace('return (this.n+1)*this.n','return this.n%2'),
+  compound.replace('return (this.n+1)*this.n','return this.n+1e999'),
+  compound.replace('constructor(public n:number){}','n:number;constructor(n:number){}')
+ ])refused(source);
+});

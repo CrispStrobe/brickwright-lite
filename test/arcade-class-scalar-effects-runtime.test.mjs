@@ -15,6 +15,20 @@ const earlierReadSource=`let trace=0;
  function pair(a:number,b:number){return a*10+b}
  let box=new Box(2);let combined=pair(trace,box.value);
  let added=trace+box.value;let done=trace;`;
+const compoundSource=`let trace=0;
+ class Box{constructor(public n:number,public m:number){}
+ get value():number{trace=trace*10+1;return -(this.n*2)+this.m+1}}
+ function pair(a:number,b:number){trace=trace*10+2;return a*10+b}
+ function take(n:number){return n}
+ let box=new Box(2,8);let first=take(box.value);
+ let combined=pair(box.value,box.value);let earlier=trace+box.value;
+ let skipped=false&&take(box.value);box.n=1e308;box.m=1e308;
+ let infinite=take(box.value)<-1e308;box.n=0;box.m=0;
+ let recovered=take(box.value);let done=trace;`;
+const compoundNonfiniteSource=`class Box{constructor(public n:number){}
+ get value():number{return this.n*1e308-this.n*1e308}}
+ function take(n:number){return n}
+ let box=new Box(1e308);let result=take(box.value);let nan=result!==result;let done=nan;`;
 const overflowSource=`let trace=0;
  class Box{constructor(public n:number){}
  get value():number{trace=1e308*1e308;return this.n}
@@ -23,6 +37,8 @@ const overflowSource=`let trace=0;
  let box=new Box(2);let first=take(box.value);let infinite=trace>1e308;
  box.value=3;let nan=trace!==trace;let done=nan;`;
 for(const [name,source,expected]of [
+ ['compound getter',compoundSource,{first:5,combined:55,earlier:1117,skipped:false,infinite:true,recovered:1,trace:1112111,done:1112111}],
+ ['compound NaN',compoundNonfiniteSource,{nan:true,done:true}],
  ['earlier read',earlierReadSource,{combined:2,added:3,trace:2,done:2}],
  ['ordered',orderedSource,{first:2,second:3,combined:33,skipped:false,trace:13213114,done:13213114}],
  ['nonfinite arithmetic',overflowSource,{first:2,infinite:true,nan:true,done:true}]
