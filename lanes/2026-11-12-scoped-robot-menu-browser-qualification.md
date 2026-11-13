@@ -3,11 +3,15 @@
 Status: IN PROGRESS. The tilemap painter passed on the integrated local build.
 Apex and Tempest exposed a blank view after resizing. The renderer fix passed
 focused controls and the complete local Apex browser journey, using a 720-second
-local allowance; it has not met the workflow's 480-second timing limit. Tempest initially failed its connected-instruction step-size assertion. Its
+local allowance; on the integrated build it passed again in 524 seconds. Neither
+run establishes the workflow's 480-second timing limit. Tempest initially failed
+its connected-instruction step-size assertion. Its
 oversized authored markers were removed without changing placements or the
 program; the full local browser journey then passed in 373 seconds using the
-renderer-fix JavaScript build with the two updated static model files. Use
-bounded local or Kaggle compute;
+renderer-fix JavaScript build with the two updated static model files. The
+integrated build also passed the held Solstice browser journey in 407 seconds,
+including its existing physics bounds and disconnected control. Use bounded local
+or Kaggle compute;
 do not add `ci:full`. Keep experimental models at their recorded limits.
 Owner: scoped browser qualification lane.
 Base: main `312609f46513d245e8e6ecb26bd91aa1ee83612c`.
