@@ -15,7 +15,10 @@ export function closedClassPrimitiveSource(program,graph) {
   for(const value of Object.values(node))if(value&&typeof value==='object')walk(value,node,root,next);
  };
  for(const root of program.body||[])walk(root,null,root,null);
- const pureNumber=node=>node?.type==='Number'&&Number.isFinite(Number(node.value))||node?.type==='Identifier'&&graph.isInitializedAt(node)||
+ // This fallback does not model function-scoped var hoisting/redeclaration.
+ // A lexical graph binding alone cannot close a same-spelling var writer.
+ const varNames=new Set(nodes.filter(node=>node.type==='Declaration'&&node.kind==='var').flatMap(node=>(node.decls||[]).map(declaration=>declaration.name)));
+ const pureNumber=node=>node?.type==='Number'&&Number.isFinite(Number(node.value))||node?.type==='Identifier'&&!varNames.has(node.name)&&graph.isInitializedAt(node)||
   node?.type==='Unary'&&['+','-','~'].includes(node.op)&&pureNumber(node.argument)||
   node?.type==='Binary'&&['+','-','*','/','%','|','&','^','<<','>>','>>>'].includes(node.op)&&pureNumber(node.left)&&pureNumber(node.right);
  const proved=new WeakSet(),number=node=>{const types=graph.typesAt(node);return pureNumber(node)&&types.size===1&&types.has('Number');};
@@ -26,7 +29,7 @@ export function closedClassPrimitiveSource(program,graph) {
    cls.methods.some(method=>method.isStatic||!['get','set'].includes(method.kind))||
    [ctor,...cls.methods].some(method=>method.optionalParams?.length||method.parameterDefaults?.length||method.restParam||method.typeParameters?.length))continue;
   const classBinding=graph.bindingOf(cls,cls.name),allocations=[],instances=new Map(),getters=new Map(),setters=new Map();
-  let valid=graph.declarationCountAt(cls,cls.name)===1;
+  let valid=!varNames.has(cls.name)&&graph.declarationCountAt(cls,cls.name)===1;
   for(const method of cls.methods){const map=method.kind==='get'?getters:setters;if(map.has(method.name)||fields.has(method.name))valid=false;map.set(method.name,method);}
   for(const node of nodes)if(node.type==='Identifier'&&graph.bindingOf(node)===classBinding){
    const call=parents.get(node),parent=parents.get(call),root=roots.get(call);
@@ -34,7 +37,7 @@ export function closedClassPrimitiveSource(program,graph) {
     contexts.get(call)!==null||program.body.indexOf(root)<=program.body.indexOf(cls)) {valid=false;continue;}
    // A lexical instance is never rebound, aliased, captured or passed elsewhere.
    if(parent?.init===call&&root?.type==='Declaration'&&root.decls.includes(parent)){
-    const key=graph.bindingOf(call,parent.name);if(!key||instances.has(key)||graph.declarationCountAt(call,parent.name)!==1)valid=false;
+    const key=graph.bindingOf(call,parent.name);if(varNames.has(parent.name)||!key||instances.has(key)||graph.declarationCountAt(call,parent.name)!==1)valid=false;
     instances.set(key,{decl:parent,root});
    }else if(parent?.type!=='Member'||parent.object!==call)valid=false;
    allocations.push(call);
@@ -80,8 +83,30 @@ export function closedClassPrimitiveSource(program,graph) {
   if(initialized.size!==fields.size)valid=false;
   const formalNumber=(node,method)=>node?.type==='Identifier'&&method?.kind==='set'&&method.params.length===1&&node.name===method.params[0]&&
    writes.filter(write=>write.left?.name===method.name).every(write=>write.type==='Assignment'&&write.op==='='&&number(write.right));
+  // Scalar effects execute in their original method body. Only an existing
+  // Number cell may be updated; calls, member writes and formal rewrites do
+  // not acquire authority from this prefix check.
+  const scalarCells=new Map();
+  for(const root of program.body.slice(0,program.body.indexOf(cls)))if(root.type==='Declaration')
+   for(const declaration of root.decls||[])if(!varNames.has(declaration.name)&&declaration.init?.type==='Number'&&Number.isFinite(Number(declaration.init.value))&&
+    graph.declarationCountAt(declaration.init,declaration.name)===1){
+    const key=graph.bindingOf(declaration.init,declaration.name);if(key)scalarCells.set(key,declaration);
+   }
+  const scalarExpression=(node,key)=>node?.type==='Number'&&Number.isFinite(Number(node.value))||
+   node?.type==='Identifier'&&graph.bindingOf(node)===key||
+   node?.type==='Unary'&&['+','-','~'].includes(node.op)&&scalarExpression(node.argument,key)||
+   node?.type==='Binary'&&['+','-','*'].includes(node.op)&&scalarExpression(node.left,key)&&scalarExpression(node.right,key);
+  const scalarEffect=(statement,method)=>{
+   const write=statement?.type==='ExpressionStatement'&&statement.expr,key=graph.bindingOf(write?.left);
+   return write?.type==='Assignment'&&write.op==='='&&write.left?.type==='Identifier'&&
+    !method.params.includes(write.left.name)&&scalarCells.has(key)&&scalarExpression(write.right,key)&&
+    nodes.filter(node=>(node.type==='Assignment'||node.type==='Update')&&
+     graph.bindingOf(node.type==='Assignment'?node.left:node.argument)===key).every(node=>
+      node.type==='Assignment'&&node.op==='='&&scalarExpression(node.right,key));
+  };
   for(const method of cls.methods){
-   const body=method.body||[];
+   const statements=method.body||[],body=statements.slice(-1);
+   if(!statements.slice(0,-1).every(statement=>scalarEffect(statement,method)))valid=false;
    if(method.kind==='get'){
     if(method.params.length||body.length!==1||body[0].type!=='Return'||!ownMember(body[0].value)||
      body[0].value.object?.name!=='this'||!fields.has(body[0].value.name))valid=false;
