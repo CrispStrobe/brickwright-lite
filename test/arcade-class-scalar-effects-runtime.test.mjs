@@ -63,7 +63,45 @@ const compoundConstructorNonfiniteSource=`class Box{n:number;constructor(a:numbe
  let infiniteBox=new Box(1e308,0);let infinite=take(infiniteBox.value)<-1e308;
  let nanBox=new Box(1e308,1e308);let result=take(nanBox.value);let nan=result!==result;
  let finiteBox=new Box(0,0);let recovered=take(finiteBox.value);let done=nan;`;
+const bitwiseGetterSource=`let trace=0;
+ class Box{constructor(public n:number){}
+ get value():number{trace=trace+1;return ~(this.n*2)}}
+ function pair(a:number,b:number){return a*10+b}
+ function take(n:number){return n}
+ let box=new Box(2.75);let first=take(box.value);let ordered=pair(trace,box.value);
+ box.n=1073741823.5;let signedMinimum=take(box.value);
+ box.n=1073741824;let signedMaximum=take(box.value);
+ box.n=2147483648;let wrapped=take(box.value);
+ box.n=1e308;let infinite=take(box.value);
+ box.n=-2.75;let negative=take(box.value);let done=trace;`;
+const bitwiseNaNGetterSource=`class Box{constructor(public n:number){}
+ get value():number{return ~(this.n*1e308-this.n*1e308)}}
+ function take(n:number){return n}
+ let box=new Box(1e308);let nanOperand=take(box.value);
+ box.n=0;let recovered=take(box.value);let done=recovered;`;
+const bitwiseConstructorSource=`let trace=0;
+ class Box{n:number;constructor(a:number,b:number){this.n=~(a*2)+b}
+ get value():number{trace=trace+1;return this.n}}
+ function argument():number{trace=trace+2;return 2.75}
+ function pair(a:number,b:number){return a*10+b}
+ function take(n:number){return n}
+ let actual=argument();let box=new Box(actual,0);let first=take(box.value);
+ let ordered=pair(trace,box.value);
+ let low=new Box(1073741823.5,0);let signedMinimum=take(low.value);
+ let high=new Box(1073741824,0);let signedMaximum=take(high.value);
+ let wrap=new Box(2147483648,0);let wrapped=take(wrap.value);
+ let huge=new Box(1e308,0);let infinite=take(huge.value);
+ let neg=new Box(-2.75,0);let negative=take(neg.value);let done=trace;`;
+const bitwiseNaNConstructorSource=`class Box{n:number;constructor(a:number,b:number){this.n=~(a*1e308-b*1e308)}
+ get value():number{return this.n}}
+ function take(n:number){return n}
+ let nanBox=new Box(1e308,1e308);let nanOperand=take(nanBox.value);
+ let zeroBox=new Box(0,0);let recovered=take(zeroBox.value);let done=recovered;`;
 for(const [name,source,expected]of [
+ ['bitwise constructor',bitwiseConstructorSource,{first:-6,ordered:24,signedMinimum:-2147483648,signedMaximum:2147483647,wrapped:-1,infinite:-1,negative:4,trace:9,done:9}],
+ ['bitwise NaN constructor',bitwiseNaNConstructorSource,{nanOperand:-1,recovered:-1,done:-1}],
+ ['bitwise getter',bitwiseGetterSource,{first:-6,ordered:4,signedMinimum:-2147483648,signedMaximum:2147483647,wrapped:-1,infinite:-1,negative:4,trace:7,done:7}],
+ ['bitwise NaN getter',bitwiseNaNGetterSource,{nanOperand:-1,recovered:-1,done:-1}],
  ['compound constructor',compoundConstructorSource,{first:25,earlier:46,second:28,trace:2111,done:2111}],
  ['compound constructor nonfinite',compoundConstructorNonfiniteSource,{infinite:true,nan:true,recovered:0,done:true}],
  ['compound setter',compoundSetterSource,{first:18,earlier:4231,second:57,trace:42131213,done:42131213}],
@@ -90,4 +128,21 @@ for(const [name,source,expected]of [
   const fresh=await runProgram('SPRITE Placeholder:\nWHEN flag clicked:\n  hide',{frames:0,storage:true});runs.push(fresh);
   fresh.vm.stopAll();await fresh.vm.loadProject(saved);fresh.vm.greenFlag();await stepFrames(fresh.vm,30);check(fresh);
  }finally{for(const run of runs){run.vm.stopAll();run.vm.quit();}clearStrayTimers();}
+});
+
+test('native constructor unary evidence refuses actual object and reference arguments',{timeout:120000},async()=>{
+ const source=`class Box{n:number;constructor(a:number){this.n=~a}
+ get value():number{return this.n}}
+ function take(n:number){return n}
+ let box=new Box(2);let first=take(box.value);`;
+ const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
+ const supplied='(0 + (2))';assert.equal(imported.code.split(supplied).length,2);
+ for(const actual of ['new array reference from ("[]")','arcade new object class ("Box") arguments ("[]")','convert value (new array reference from ("[]")) op "~"']){
+  const code=imported.code.replace(supplied,'('+actual+')');
+  const run=await runProgram(code,{frames:30,storage:true});
+  try{
+   assert.deepEqual(run.creator.warnings,[]);
+   assert.ok(run.errors.some(error=>error.includes('connected input lacks complete primitive domain evidence')),actual);
+  }finally{run.vm.stopAll();run.vm.quit();clearStrayTimers();}
+ }
 });

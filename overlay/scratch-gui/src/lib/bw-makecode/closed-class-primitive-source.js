@@ -110,11 +110,13 @@ export function closedClassPrimitiveSource(program,graph) {
       node.type==='Assignment'&&node.op==='='&&scalarExpression(node.right,key));
   };
   // A compound getter reads only initialized own fields and finite literals.
+  // Bitwise NOT keeps the original JS ToInt32 operation, including nonfinite
+  // intermediates; its operand still needs this closed Number producer proof.
   // Retain the original expression; no intermediate value is folded or assumed
   // finite. Calls, nested accessors and external names cannot borrow this proof.
   const getterNumber=node=>node?.type==='Number'&&Number.isFinite(Number(node.value))||
    ownMember(node)&&node.object?.name==='this'&&fields.has(node.name)||
-   node?.type==='Unary'&&['+','-'].includes(node.op)&&getterNumber(node.argument)||
+   node?.type==='Unary'&&['+','-','~'].includes(node.op)&&getterNumber(node.argument)||
    node?.type==='Binary'&&['+','-','*'].includes(node.op)&&getterNumber(node.left)&&getterNumber(node.right);
   // Setter arithmetic retains the formal's actual producer obligation at every
   // dispatch. Own field reads have the same closed initialization proof as a
