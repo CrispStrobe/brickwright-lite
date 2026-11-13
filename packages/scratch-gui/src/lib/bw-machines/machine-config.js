@@ -106,7 +106,11 @@ function normalizeSlot(value) {
         return {
             url: isStr(value.url) ? value.url : (isStr(value.href) ? value.href : null),
             sha256: isStr(value.sha256) ? value.sha256.toLowerCase() : null,
-            geometry: isObj(value.geometry) ? {...value.geometry} : null
+            geometry: isObj(value.geometry) ? {...value.geometry} : null,
+            // Keep the explicit ROM load address through repeated normalization
+            // (activation and the store both normalize). Zero is meaningful;
+            // omission leaves the target's existing default placement intact.
+            ...(typeof value.romAt === 'number' ? {romAt: value.romAt} : {})
         };
     }
     return {url: null, sha256: null, geometry: null};
