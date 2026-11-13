@@ -464,7 +464,13 @@ export const prepareModel = (text, catalog, {mat = null, autoPorts: plugIn = !OW
         if (issue.count > 1) issue.message = `${issue.message} (and ${issue.count - 1} more)`;
     }
     if (refusals.some(r => r.code === 'bad-motor-direction' || r.code === 'bad-rotor-model' || r.code === 'bad-internal-edge-pair')) {
-        return {model: parsedModel, runModel: parsedModel, mechanism: null, issues};
+        // Keep the geometry available for inspection, but do not hand the editor
+        // dangling collision-policy references. The named error still prevents
+        // simulation; parseModel retains the original invalid declarations for
+        // callers that validate, compile or save the raw parsed model.
+        const displayModel = {...parsedModel};
+        if (refusals.some(r => r.code === 'bad-internal-edge-pair')) delete displayModel.internalEdgeRemovalPairs;
+        return {model: displayModel, runModel: displayModel, mechanism: null, issues};
     }
     if (parsedModel.parts.length === 0) {
         issues.push({severity: 'error', code: 'empty-model', message: 'The model has no parts the Sim Lab knows.', parts: []});

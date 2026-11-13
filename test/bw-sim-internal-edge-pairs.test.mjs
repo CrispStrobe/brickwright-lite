@@ -59,11 +59,14 @@ test('ordered part references survive save/reopen, edits and undo without aliasi
 
 test('malformed, duplicate, same and unknown imported references refuse simulation', () => {
     const base = serializeModel(model());
-    for (const declaration of ['b missing', 'b b', 'b', 'b a extra', 'b a\n0 !BW INTERNAL_EDGE_PAIR a b']) {
+    for (const declaration of ['', 'b missing', 'b b', 'b', 'b a extra', 'b a\n0 !BW INTERNAL_EDGE_PAIR a b', 'b a\n0 !BW INTERNAL_EDGE_PAIR c missing']) {
         const text = `0 !BW INTERNAL_EDGE_PAIR ${declaration}\n${base}`;
         const parsed = parseModel(text, {catalog});assert(parsed.refusals.some(r => r.code === 'bad-internal-edge-pair'));
         const prepared = prepareModel(text, catalog, {autoPorts: false});
-        assert.equal(prepared.mechanism, null);assert(prepared.issues.some(i => i.code === 'bad-internal-edge-pair'));
+        assert.equal(prepared.mechanism, null);assert(prepared.issues.some(i => i.code === 'bad-internal-edge-pair' && i.severity === 'error'));
+        assert.deepEqual(validatePlacedModel(prepared.model, catalog), []);
+        assert.deepEqual(prepared.model.parts, parsed.model.parts, 'refused collision policy keeps all placed geometry visible');
+        assert.equal(prepared.model.internalEdgeRemovalPairs, undefined);
         assert.throws(() => compile(parsed.model, catalog), /internalEdgeRemovalPairs/);
         assert.throws(() => serializeModel(parsed.model), /internalEdgeRemovalPairs/);
     }
