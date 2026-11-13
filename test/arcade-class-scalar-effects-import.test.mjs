@@ -75,3 +75,24 @@ test('compound getters recursively require initialized own Number field producer
   compound.replace('constructor(public n:number){}','n:number;constructor(n:number){}')
  ])refused(source);
 });
+
+test('compound setters retain every actual formal producer and initialized field proof',()=>{
+ for(const expression of ['v+1','-(v*2)+this.n','(v+1)*(this.n-2)','1e308*1e308-v'])
+  accepted(scalarAccessorSource.replace('this.n=v','this.n='+expression));
+ const compound=scalarAccessorSource.replace('this.n=v','this.n=(v+1)*this.n');
+ for(const extra of ['box.value=<any>"x";','box.value=<any>true;','box.value=<any>undefined;',
+  'box.n=<any>"x";','let alias=box;alias.n=<any>"x";',
+  'function captured(){box.n=<any>true}','box["n"]=<any>"x";',
+  'function captured(){box.value=<any>"x";}','let absent:number;box.value=absent;',
+  'box.value=take(4);'])refused(compound+extra);
+ for(const rhs of ['v+<any>"x"','v+<any>true','v+<any>undefined','v+this.value','take(v)',
+  'v/0','v%2','v+1e999'])refused(compound.replace('(v+1)*this.n',rhs));
+ refused(compound.replace('new Box(2)','new Box(<any>"x")'));
+ refused(compound.replace('let box=new Box(2);','let before=take(box.value);let box=new Box(2);'));
+ refused(compound.replace('constructor(public n:number){}','n:number;constructor(n:number){this.n=this.n+1;}'));
+ refused(compound.replace('constructor(public n:number){}','n:number;constructor(n:number){}'));
+ refused(compound.replace('this.n=(v+1)*this.n','this.value=v+1'));
+ refused(compound.replace('let box=new Box(2);','var box=new Box(2);'));
+ refused(compound.replace('this.n=(v+1)*this.n','v=<any>"x";this.n=v+1'));
+ refused(compound.replace('this.n=(v+1)*this.n','this.n=this.n+trace'));
+});

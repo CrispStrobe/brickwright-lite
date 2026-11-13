@@ -111,6 +111,13 @@ export function closedClassPrimitiveSource(program,graph) {
    ownMember(node)&&node.object?.name==='this'&&fields.has(node.name)||
    node?.type==='Unary'&&['+','-'].includes(node.op)&&getterNumber(node.argument)||
    node?.type==='Binary'&&['+','-','*'].includes(node.op)&&getterNumber(node.left)&&getterNumber(node.right);
+  // Setter arithmetic retains the formal's actual producer obligation at every
+  // dispatch. Own field reads have the same closed initialization proof as a
+  // getter; external cells, calls and nested accessors remain outside it.
+  const setterNumber=(node,method)=>node?.type==='Number'&&Number.isFinite(Number(node.value))||formalNumber(node,method)||
+   ownMember(node)&&node.object?.name==='this'&&fields.has(node.name)||
+   node?.type==='Unary'&&['+','-'].includes(node.op)&&setterNumber(node.argument,method)||
+   node?.type==='Binary'&&['+','-','*'].includes(node.op)&&setterNumber(node.left,method)&&setterNumber(node.right,method);
   for(const method of cls.methods){
    const statements=method.body||[],body=statements.slice(-1);
    if(!statements.slice(0,-1).every(statement=>scalarEffect(statement,method)))valid=false;
@@ -120,7 +127,7 @@ export function closedClassPrimitiveSource(program,graph) {
     if(method.params.length!==1||body.length!==1)valid=false;
     const write=body[0]?.type==='ExpressionStatement'&&body[0].expr;
     if(write?.type!=='Assignment'||write.op!=='='||!ownMember(write.left)||write.left.object?.name!=='this'||
-     !fields.has(write.left.name)||!(number(write.right)||formalNumber(write.right,method)))valid=false;
+     !fields.has(write.left.name)||!(number(write.right)||setterNumber(write.right,method)))valid=false;
    }
   }
   for(const write of writes){
@@ -128,7 +135,7 @@ export function closedClassPrimitiveSource(program,graph) {
    const lhs=write.left;
    if(write.type!=='Assignment'||write.op!=='='||!lhs||getters.has(lhs.name)&&!setters.has(lhs.name))valid=false;
    else if(setters.has(lhs.name)){if(!number(write.right))valid=false;}
-   else if(!fields.has(lhs.name)||!(number(write.right)||formalNumber(write.right,contexts.get(write))))valid=false;
+   else if(!fields.has(lhs.name)||!(number(write.right)||contexts.get(write)?.kind==='set'&&setterNumber(write.right,contexts.get(write))))valid=false;
   }
   if(!valid)continue;
   for(const node of nodes)if(ownMember(node)&&(fields.has(node.name)||getters.has(node.name))&&contexts.get(node)===null)proved.add(node);

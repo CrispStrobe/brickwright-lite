@@ -36,7 +36,23 @@ const overflowSource=`let trace=0;
  function take(n:number){return n}
  let box=new Box(2);let first=take(box.value);let infinite=trace>1e308;
  box.value=3;let nan=trace!==trace;let done=nan;`;
+const compoundSetterSource=`let trace=0;
+ class Box{constructor(public n:number,public m:number){}
+ get value():number{trace=trace*10+1;return this.n}
+ set value(v:number){trace=trace*10+2;this.n=(v+this.n)*this.m}}
+ function argument():number{trace=trace*10+4;return 4}
+ function take(n:number){trace=trace*10+3;return n}
+ let box=new Box(2,3);let argumentValue=argument();box.value=argumentValue;let first=take(box.value);
+ let earlier=trace+box.value;box.value=1;let second=take(box.value);let done=trace;`;
+const compoundSetterNonfiniteSource=`class Box{constructor(public n:number){}
+ get value():number{return this.n}
+ set value(v:number){this.n=v*1e308-v*1e308}}
+ function take(n:number){return n}
+ let box=new Box(2);box.value=1e308;let result=take(box.value);let nan=result!==result;
+ box.value=0;let recovered=take(box.value);let done=nan;`;
 for(const [name,source,expected]of [
+ ['compound setter',compoundSetterSource,{first:18,earlier:4231,second:57,trace:42131213,done:42131213}],
+ ['compound setter NaN',compoundSetterNonfiniteSource,{nan:true,recovered:0,done:true}],
  ['compound getter',compoundSource,{first:5,combined:55,earlier:1117,skipped:false,infinite:true,recovered:1,trace:1112111,done:1112111}],
  ['compound NaN',compoundNonfiniteSource,{nan:true,done:true}],
  ['earlier read',earlierReadSource,{combined:2,added:3,trace:2,done:2}],
