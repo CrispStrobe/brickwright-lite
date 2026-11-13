@@ -172,3 +172,99 @@ test('constructor source arithmetic stays pure and retains actual operand domain
   f=>{f.blocks.initvalue.inputs.NAME.block='selfName';f.text('selfName','initvalue','self');}
  ]){const f=compound();change(f);assert.throws(()=>f.query(),/primitive domain evidence/);}
 });
+
+
+test('constructor unary Number operations require a closed operation and pure owned operand',()=>{
+ const unary=(operation='~',fixed=false)=>{
+  const f=fixture(),expr=f.add('unary','arrays_valueUnary','init',{VALUE:{block:'initvalue'}});
+  if(fixed)expr.fields={OP:{value:operation}};else f.value(expr,'OP',operation);
+  f.blocks.initvalue.parent='unary';f.blocks.init.inputs.VALUE={block:'unary'};
+  return f;
+ };
+ for(const operation of ['+','-','~'])for(const fixed of [false,true])
+  assert.deepEqual(unary(operation,fixed).query(),[['number']]);
+ const ordinaryActual=()=>{
+  const f=unary(),fn=f.procedure('source','source',[]);fn.next='sourceReturn';
+  f.add('sourceReturn','arcade_returnValue','source',{VALUE:{block:'sourceValue'}});f.number('sourceValue','sourceReturn',3);
+  f.blocks.one.opcode='arcade_callFunction';f.blocks.one.fields={};f.blocks.one.inputs={};
+  f.value(f.blocks.one,'NAME','source');f.value(f.blocks.one,'ARGS','[]');return f;
+ };
+ const variableActual=(local=false)=>{
+  const f=unary(),writer=f.add('sourceWriter',local?'arcade_setLocal':'data_setvariableto','decl',{VALUE:{block:'sourceValue'}},local?{}:{VARIABLE:{id:'source'}});
+  f.number('sourceValue','sourceWriter',3);writer.next='alloc';f.blocks.decl.next='sourceWriter';f.blocks.alloc.parent='sourceWriter';
+  f.blocks.one.opcode=local?'arcade_getLocal':'data_variable';f.blocks.one.fields=local?{}:{VARIABLE:{id:'source'}};f.blocks.one.inputs={};
+  if(local){f.value(writer,'NAME','source');f.value(f.blocks.one,'NAME','source');}
+  else{const lookup=f.target.lookupVariableById,variable={id:'source',name:'source',type:'',value:0};f.target.variables.source=variable;f.target.lookupVariableById=id=>id==='source'?variable:lookup(id);}
+  return f;
+ };
+ for(const prepare of [ordinaryActual,variableActual,()=>variableActual(true)])assert.deepEqual(prepare().query(),[['number']]);
+ for(const change of [
+  f=>{f.blocks.arg.parent='alloc';},f=>{f.blocks.one.parent='new';},
+  f=>{f.blocks.argREST.parent='new';},
+  f=>{f.blocks.arg.inputs.EXTRA={block:'extra'};f.number('extra','arg',3);},
+  f=>{f.blocks.arg.fields.VALUE={value:'masked'};},
+ ]){const f=unary();change(f);assert.throws(()=>f.query(),/primitive domain evidence/);}
+ for(const change of [
+  f=>{f.blocks.sourceValue.parent='source';},
+  f=>{f.blocks.sourceReturn.parent='out';},
+  f=>{f.blocks.sourceReturn.inputs.EXTRA={block:'extra'};f.number('extra','sourceReturn',3);},
+  f=>{f.blocks.sourceReturn.fields.VALUE={value:'masked'};},
+  f=>{f.blocks.oneARGS.parent='arg';},
+ ]){const f=ordinaryActual();change(f);assert.throws(()=>f.query(),/primitive domain evidence/);}
+ for(const local of [false,true])for(const change of [
+  f=>{f.blocks.sourceValue.parent='decl';},
+  f=>{f.blocks.sourceWriter.parent='out';},
+  f=>{f.blocks.sourceWriter.inputs.EXTRA={block:'extra'};f.number('extra','sourceWriter',3);},
+  f=>{f.blocks.sourceWriter.fields.VALUE={value:'masked'};},
+ ]){const f=variableActual(local);change(f);assert.throws(()=>f.query(),/primitive domain evidence/);}
+ for(const kind of ['NaN','Infinity','-0','undefined']){
+  const f=unary();f.blocks.one.opcode='arrays_specialValue';f.blocks.one.fields={KIND:{value:kind}};
+  assert.throws(()=>f.query(),/primitive domain evidence/);
+ }
+ for(const operation of ['~','+','-']){
+  const f=unary();f.blocks.one.opcode='arrays_valueUnary';f.blocks.one.fields={};
+  f.value(f.blocks.one,'OP',operation);f.blocks.one.inputs.VALUE={block:'opaque'};
+  const opaque=f.add('opaque','arrays_createReference','one');f.value(opaque,'VALUES','[]');
+  assert.throws(()=>f.query(),/primitive domain evidence/);
+ }
+ // Number is an actual-formal obligation, even for unary operations which
+ // could convert other primitive values. Opaque actuals must never borrow it.
+ for(const change of [
+  f=>{f.blocks.one.opcode='text';f.blocks.one.fields={TEXT:{value:'x'}};},
+  f=>{f.blocks.one.opcode='arrays_specialValue';f.blocks.one.fields={KIND:{value:'undefined'}};},
+  f=>{f.blocks.one.opcode='arrays_specialValue';f.blocks.one.fields={KIND:{value:'null'}};},
+  f=>{f.blocks.one.opcode='operator_equals';f.blocks.one.fields={};f.blocks.one.inputs={OPERAND1:{block:'boolA'},OPERAND2:{block:'boolB'}};f.number('boolA','one',1);f.number('boolB','one',1);},
+  f=>{f.blocks.one.opcode='arrays_createReference';f.blocks.one.fields={};f.value(f.blocks.one,'VALUES','[]');},
+  f=>{f.blocks.one.opcode='arcade_createObject';f.blocks.one.fields={};f.value(f.blocks.one,'CLASS','Box');f.value(f.blocks.one,'ARGS','[]');},
+ ])for(const nested of [false,true]){
+  const f=unary();change(f);
+  if(nested){const binary=f.add('nested','arrays_valueBinary','unary',{LEFT:{block:'initvalue'},RIGHT:{block:'constant'}});f.value(binary,'OP','*');f.number('constant','nested',2);f.blocks.initvalue.parent='nested';f.blocks.unary.inputs.VALUE={block:'nested'};}
+  assert.throws(()=>f.query(),/primitive domain evidence/);
+ }
+ for(const change of [
+  f=>{f.blocks.unaryOP.fields.TEXT.value='typeof';},
+  f=>{f.blocks.unaryOP.fields.TEXT.value='!';},
+  f=>{delete f.blocks.unaryOP.fields.TEXT;},
+  f=>{f.blocks.unary.inputs.EXTRA={block:'hidden'};f.add('hidden','arcade_callFunction','unary');},
+  f=>{f.blocks.unary.fields={OP:{value:'~'}};},
+  f=>{f.blocks.unaryOP.opcode='arcade_callFunction';},
+  f=>{f.blocks.unaryOP.inputs.EXTRA={block:'hidden'};f.add('hidden','arcade_callFunction','unaryOP');},
+  f=>{f.blocks.unaryOP.fields.EXTRA={value:'hidden'};},
+  f=>{f.blocks.unaryOP.parent='init';},
+  f=>{f.blocks.unaryOP.shadow=false;},
+  f=>{f.blocks.unaryOP.next='hidden';f.add('hidden','arcade_callFunction','unaryOP');},
+  f=>{f.blocks.unary.parent='ctor';},
+  f=>{f.blocks.initvalue.parent='init';},
+  f=>{f.blocks.unary.next='hidden';f.add('hidden','arcade_callFunction','unary');},
+  f=>{f.blocks.initvalue.opcode='arcade_callFunction';},
+  f=>{f.blocks.initvalueNAME.fields.TEXT.value='self';},
+  f=>{f.blocks.initvalue.inputs.EXTRA={block:'hidden'};f.add('hidden','arcade_callFunction','initvalue');},
+  f=>{f.blocks.initvalueNAME.inputs.EXTRA={block:'hidden'};f.add('hidden','arcade_callFunction','initvalueNAME');},
+  f=>{f.blocks.initvalue.opcode='arcade_objectField';f.blocks.initvalue.inputs={};},
+ ]){const f=unary();change(f);assert.throws(()=>f.query(),/primitive domain evidence/);}
+ for(const change of [
+  f=>{f.blocks.unary.fields.OP.value='typeof';},
+  f=>{f.blocks.unary.fields.EXTRA={value:'hidden'};},
+  f=>{f.blocks.unary.inputs.OP={block:'hidden'};f.add('hidden','arcade_callFunction','unary');},
+ ]){const f=unary('~',true);change(f);assert.throws(()=>f.query(),/primitive domain evidence/);}
+});

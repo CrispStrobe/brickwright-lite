@@ -133,3 +133,25 @@ test('closed Number getter bitwise NOT retains operand producers and field initi
  refused(source.replace('constructor(public n:number){}','n:number;constructor(n:number){}'));
  refused(source.replace('constructor(public n:number){}','n:number;constructor(n:number){this.n=this.n+1}'));
 });
+
+
+test('constructor bitwise NOT requires every actual Number argument and a closed operand',()=>{
+ const source=`class Box{n:number;constructor(a:number,b:number){this.n=~(a*2)+b}
+ get value():number{return this.n}}
+ function take(n:number){return n}
+ let box=new Box(2,8);let first=take(box.value);`;
+ for(const expression of ['~a','~~a','-(~(a*2))+b','~(a*1e308-b*1e308)'])
+  accepted(source.replace('~(a*2)+b',expression));
+ accepted(source+'let other=new Box(4,9);let second=take(other.value);');
+ for(const extra of ['let other=new Box(<any>"x",8);','let other=new Box(2,<any>true);',
+  'let other=new Box(2,<any>undefined);','let absent:number;let other=new Box(absent,8);',
+  'let alias=box;','box.n=<any>"x";','function capture(){box.n=<any>true}'])refused(source+extra);
+ for(const expression of ['~this.n','~this.value','~take(a)','~external',
+  '~(a+<any>"x")','~(a+<any>true)','~(a+1e999)'])
+  refused(source.replace('~(a*2)+b',expression));
+ refused(source.replace('constructor(a:number,b:number)','constructor(a:number,b:number=8)'));
+ refused(source.replace('constructor(a:number,b:number)','constructor(a:number,b?:number)'));
+ refused(source.replace('new Box(2,8)','new Box(2)'));
+ refused(source.replace('this.n=~(a*2)+b','a=<any>"x";this.n=~(a*2)+b'));
+ refused(source.replace('let box=new Box(2,8);','let before=take(box.value);let box=new Box(2,8);'));
+});

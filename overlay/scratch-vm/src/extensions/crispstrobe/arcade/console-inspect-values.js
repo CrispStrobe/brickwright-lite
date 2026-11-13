@@ -911,6 +911,61 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
                     !Object.keys(value.inputs||{}).length&&Object.keys(value.fields||{}).join(',')==='TEXT'&&
                     typeof value.fields.TEXT?.value==='string'?value.fields.TEXT.value:null;
             };
+            // A constructor unary operand needs a closed Number producer all the
+            // way through actual formals. General domain shortcuts for value
+            // arithmetic do not prove that opaque conversion returned a Number.
+            const ownedStatement=node=>{
+                const root=captureProof.scopeOf(node)?.root,visited=new Set();if(!root)return false;
+                while(node!==root){
+                    if(!node||visited.has(node))return false;visited.add(node);const parent=read(node.parent);
+                    if(!parent||parent.next!==node.id&&(!['control_if','control_if_else','control_repeat','control_repeat_until','control_forever'].includes(parent.opcode)||
+                        !(parent.opcode==='control_if_else'?['SUBSTACK','SUBSTACK2']:['SUBSTACK']).some(key=>input(parent,key)===node)))return false;
+                    node=parent;
+                }
+                return true;
+            };
+            const closedArguments=call=>{
+                const values=[],visited=new Set();let owner=call,key='ARGS';
+                while(true){
+                    if(closedText(owner,key)==='[]')return values;
+                    const node=input(owner,key);
+                    if(!node||visited.has(node)||node.opcode!=='arcade_functionArgument'||node.parent!==owner.id||node.next!=null||
+                        Object.keys(node.fields||{}).length||Object.keys(node.inputs||{}).sort().join(',')!=='REST,VALUE'||input(node,'VALUE')?.parent!==node.id)return null;
+                    visited.add(node);values.push(input(node,'VALUE'));owner=node;key='REST';
+                }
+            };
+            const closedActualNumber=(value,path=new Set(),owner=null)=>{
+                if(!value||path.has(value)||value.next!=null||owner&&value.parent!==owner.id)return false;const next=new Set([...path,value]);
+                const fields=Object.keys(value.fields||{}).join(','),inputs=Object.keys(value.inputs||{}).sort().join(',');
+                const child=key=>{const node=input(value,key);return node?.parent===value.id&&closedActualNumber(node,next);};
+                const operation=(keys,allowed)=>fields==='OP'&&inputs===keys.sort().join(',')&&allowed.includes(value.fields.OP?.value)||
+                    !fields&&inputs===[...keys,'OP'].sort().join(',')&&allowed.includes(closedText(value,'OP'));
+                if(value.opcode==='math_number')return fields==='NUM'&&!inputs&&['string','number'].includes(typeof value.fields.NUM?.value)&&String(value.fields.NUM?.value).trim()!==''&&Number.isFinite(Number(value.fields.NUM?.value));
+                if(value.opcode==='arrays_specialValue')return false;
+                if(value.opcode==='arrays_valueUnary')return operation(['VALUE'],['+','-','~'])&&child('VALUE');
+                if(value.opcode==='arrays_valueBinary')return operation(['LEFT','RIGHT'],['+','-','*'])&&child('LEFT')&&child('RIGHT');
+                if(['operator_add','operator_subtract','operator_multiply'].includes(value.opcode))return !fields&&inputs==='NUM1,NUM2'&&child('NUM1')&&child('NUM2');
+                if(value.opcode==='arcade_getLocal'){
+                    const name=closedText(value,'NAME'),scope=captureProof.scopeOf(value),cell=captureProof.local(scope,name),proof=cell&&captureProof.proof(cell);
+                    if(fields||inputs!=='NAME'||!proof||!proof.writers.every(({node})=>node.opcode==='arcade_setLocal'&&ownedStatement(node)&&!Object.keys(node.fields||{}).length&&Object.keys(node.inputs||{}).sort().join(',')==='NAME,VALUE'&&closedText(node,'NAME')===name&&closedActualNumber(input(node,'VALUE'),next,node)))return false;
+                    if(proof.index<0)return proof.writers.length>0;
+                    if(scope.procedure!==cls.constructor||proof.index===0)return false;
+                    const allocations=Object.values(all).filter(node=>node.opcode==='arcade_createObject'&&literal(node,'CLASS')===cls.name);
+                    const calls=Object.values(all).filter(node=>(node.opcode==='arcade_callFunction'&&literal(node,'NAME')===scope.procedure||node.opcode==='procedures_call'&&node.mutation?.proccode===scope.procedure)&&model.reachable.has(captureProof.scopeOf(node)));
+                    return allocations.length>0&&!calls.length&&allocations.every(node=>{const args=closedArguments(node);return !Object.keys(node.fields||{}).length&&Object.keys(node.inputs||{}).sort().join(',')==='ARGS,CLASS'&&closedText(node,'CLASS')===cls.name&&args?.length===cls.parameters.length&&closedActualNumber(args[proof.index-1],next);});
+                }
+                if(value.opcode==='data_variable'){
+                    const variable=target.lookupVariableById(value.fields?.VARIABLE?.id);if(!variable)return false;
+                    const writers=Object.values(all).filter(node=>node.opcode==='data_setvariableto'&&target.lookupVariableById(node.fields?.VARIABLE?.id)===variable);
+                    return fields==='VARIABLE'&&!inputs&&writers.length>0&&writers.every(node=>ownedStatement(node)&&Object.keys(node.fields||{}).join(',')==='VARIABLE'&&Object.keys(node.inputs||{}).join(',')==='VALUE'&&closedActualNumber(input(node,'VALUE'),next,node));
+                }
+                if(value.opcode==='arcade_callFunction'){
+                    const name=closedText(value,'NAME'),definition=classDefinition(name);if(fields||inputs!=='ARGS,NAME'||!definition||closedArguments(value)?.length!==0)return false;
+                    const completion=normalReturns(definition);
+                    return !completion.fallthrough&&completion.results.length>0&&completion.results.every(node=>captureProof.scopeOf(node)?.params.length===0&&ownedStatement(node)&&!Object.keys(node.fields||{}).length&&Object.keys(node.inputs||{}).join(',')==='VALUE'&&closedActualNumber(input(node,'VALUE'),next,node));
+                }
+                return false;
+            };
             let assigned=false;
             for(const procedure of [cls.initializer,cls.constructor]){
                 if(!procedure)continue;const definition=classDefinition(procedure);if(!definition)return false;
@@ -925,10 +980,20 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
                     const written=cls.fields.find(f=>f.name===literal(b,'FIELD'));if(!written||written.getter||written.setter)return false;
                     // Construction cannot publish the unfinished receiver or
                     // call a reader before its backing field is initialized.
-                    const pure=(value,path=new Set(),owner=null)=>{
+                    const pure=(value,path=new Set(),owner=null,numberOnly=false)=>{
                         if(!value||path.has(value)||value.next!=null||owner&&value.parent!==owner.id)return false;const next=new Set([...path,value]);
+                        // Unary Number evidence cannot use an opaque actual formal.
+                        // Check each descendant too: numeric reporters can otherwise
+                        // hide an object/reference behind their coercion result.
+                        if(numberOnly){const domains=new Set();if(!closedActualNumber(value)||!safe(value,false,null,domains)||domains.size!==1||!domains.has('number'))return false;}
                         // Source arithmetic keeps JS Number behavior. Its operation
                         // must be static and every operand must stay construction-pure.
+                        if(value.opcode==='arrays_valueUnary'){
+                            const fields=Object.keys(value.fields||{}).join(','),inputs=Object.keys(value.inputs||{}).sort().join(',');
+                            const fixed=fields==='OP'&&inputs==='VALUE'&&['+','-','~'].includes(value.fields.OP?.value);
+                            const reporter=!fields&&inputs==='OP,VALUE'&&['+','-','~'].includes(closedText(value,'OP'));
+                            return (fixed||reporter)&&pure(input(value,'VALUE'),next,value,true);
+                        }
                         if(value.opcode==='arrays_valueBinary'){
                             const operation=input(value,'OP');
                             const fields=Object.keys(value.fields||{}).join(','),inputs=Object.keys(value.inputs||{}).sort().join(',');
@@ -936,7 +1001,7 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
                             const reporter=!fields&&inputs==='LEFT,OP,RIGHT'&&operation?.opcode==='text'&&operation.shadow===true&&
                                 operation.parent===value.id&&operation.next==null&&!Object.keys(operation.inputs||{}).length&&
                                 Object.keys(operation.fields||{}).join(',')==='TEXT'&&['+','-','*'].includes(operation.fields.TEXT?.value);
-                            return (fixed||reporter)&&pure(input(value,'LEFT'),next,value)&&pure(input(value,'RIGHT'),next,value);
+                            return (fixed||reporter)&&pure(input(value,'LEFT'),next,value,numberOnly)&&pure(input(value,'RIGHT'),next,value,numberOnly);
                         }
                         if(!['text','math_number','bw_numberLiteral','arrays_specialValue','arcade_getLocal','operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_not','operator_equals','operator_lt','operator_gt'].includes(value.opcode))return false;
                         if(value.opcode==='arcade_getLocal'){
@@ -946,7 +1011,7 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
                                 !Object.keys(name.inputs||{}).length&&Object.keys(name.fields||{}).join(',')==='TEXT'&&
                                 typeof name.fields.TEXT?.value==='string'&&name.fields.TEXT.value!==captureProof.scopeOf(value)?.params[0];
                         }
-                        return Object.keys(value.inputs||{}).every(name=>pure(input(value,name),next,value));
+                        return Object.keys(value.inputs||{}).every(name=>pure(input(value,name),next,value,numberOnly));
                     };
                     if(!pure(input(b,'VALUE'),new Set(),b))return false;
                     if(field&&literal(b,'FIELD')===field.name)assigned=true;
