@@ -489,12 +489,10 @@ export const placePart = (model, {part, position, rotation, id, port}) => {
     }
     const newPart = {id: finalId, part, position: position.slice(), rotation: rotation.slice()};
     if (port) newPart.port = port;
-    // Deep copy model (including groups)
-    const newModel = {
-        version: model.version,
-        parts: [...model.parts.map(p => ({...p, position: p.position.slice(), rotation: p.rotation.slice()})), newPart]
-    };
-    if (model.groups) newModel.groups = model.groups.map(g => ({id: g.id, name: g.name, parts: g.parts.slice()}));
+    // Retain the complete model, including instructions and flexible connections,
+    // without sharing mutable metadata with the input.
+    const newModel = structuredClone(model);
+    newModel.parts.push(newPart);
     return newModel;
 };
 
