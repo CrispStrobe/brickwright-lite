@@ -1620,15 +1620,15 @@ class ArcadeEmitter {
     }
 
     // A leading empty text operand already performs the coercion. Source
-    // reimport represents that addition as a native value operation, rather
+    // reimport represents that addition as a value operation, rather
     // than a Scratch join; wrapping it again grows the source every export.
     textOperand (b, name) {
         const slot = b.inputs?.[name]?.[1];
         const operand = typeof slot === 'string' ? this.block(slot) : null;
-        const textAddition = operand?.opcode === 'arrays_valueBinary' &&
+        const textAddition = ['arrays_valueBinary', 'arcade_sourceValueBinary'].includes(operand?.opcode) &&
             this.field(operand, 'OP') === '+' && this.literalInput(operand, 'LEFT') === '';
         const raw = this.value(b, name);
-        // The native addition helper keeps its Array conversion and operand
+        // Each addition helper keeps its own Array conversion and operand
         // evaluation. Its result is text here, but its signature returns any;
         // give PXT the receiver type required for its string member lowering.
         if (textAddition) return `(<string>${raw})`;

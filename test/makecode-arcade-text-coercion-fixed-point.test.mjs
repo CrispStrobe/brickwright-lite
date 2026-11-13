@@ -67,6 +67,16 @@ for (const [name, expression, expected] of [
     assert.equal(evaluate(source, 'n'), expected);
 });
 
+for (const [name, expression, expected] of [
+    ['numeric addition', 'arcade source value (12) op "+" with (3)', 2],
+    ['different operator', 'arcade source value ("") op "-" with (3)', 2],
+    ['variable text producer', 'arcade source value (prefix) op "+" with (123)', 3]
+]) test('source length retains coercion for ' + name, () => {
+    const source = exportCode('DEVICE ARCADE\nGLOBAL n\nGLOBAL prefix\nSPRITE Game:\nWHEN arcade source starts:\n  set prefix to ("")\n  set n to (length of (' + expression + '))');
+    assert.match(source, /n = \("" \+ /);
+    assert.equal(evaluate(source, 'n'), expected);
+});
+
 test('stock joins remain text, including a numeric first operand', () => {
     const source = exportCode('DEVICE ARCADE\nGLOBAL n\nSPRITE Game:\nWHEN arcade source starts:\n  set n to (length of (join (12) (3)))');
     assert.equal(evaluate(source, 'n'), 3);
@@ -86,4 +96,24 @@ test('native Array text coercion retains the addition helper and actual member v
     assert.deepEqual(evaluate(source, '[arrayLength,arrayChar]'), [4, ',']);
     source = roundtrip(source);
     assert.deepEqual(evaluate(source, '[arrayLength,arrayChar]'), [4, ',']);
+});
+
+// PXT source additions preserve collection-object conversion, independently
+// from the native Array helper's element conversion. Neither helper may be
+// reconstructed as a bare addition just to avoid a redundant text wrapper.
+test('source Array text coercion keeps its helper without wrapper growth', () => {
+    const source = 'let a:number[]; let arrayLength:number; let arrayChar:string; a=[12,3]; arrayLength=(""+a).length; arrayChar=(""+a).charAt(2);';
+    const first = roundtrip(source);
+    assert.match(first, /arrayLength = \(<string>__bwSourceBinaryAdd\("", a\)\)\.length/);
+    assert.match(first, /arrayChar = \(<string>__bwSourceBinaryAdd\("", a\)\)\.charAt\(2\)/);
+    assert.doesNotMatch(first, /array\.join\(","\)/);
+    let current = first;
+    for (let generation = 0; generation < 3; generation++) {
+        current = roundtrip(current);
+        // Procedure-name drift is a separate E18 issue. Check only the text
+        // receiver boundary rather than declaring whole-export identity.
+        assert.match(current, /arrayLength = \(<string>__bwSourceBinaryAdd\("", a\)\)\.length/);
+        assert.match(current, /arrayChar = \(<string>__bwSourceBinaryAdd\("", a\)\)\.charAt\(2\)/);
+        assert.doesNotMatch(current, /array\.join\(","\)/);
+    }
 });
