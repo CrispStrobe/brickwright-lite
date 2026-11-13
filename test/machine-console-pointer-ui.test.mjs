@@ -160,3 +160,34 @@ test('Widgets console distinguishes extended and keypad keys and releases both o
         ]);
         assert.equal(listeners.size, 0, 'unmount removes keyboard listeners');
     }));
+
+test('legacy Widgets keyboard ignores AT aliases while original keys remain held',
+    async () => withConsole(async MachineConsole => {
+        const received = [];
+        const listeners = new Map();
+        window.addEventListener = (name, listener) => listeners.set(name, listener);
+        window.removeEventListener = name => listeners.delete(name);
+        const focused = {};
+        let renderer;
+        await act(async () => {
+            renderer = create(React.createElement(MachineConsole, {
+                widget, keyIn: byte => received.push(byte)
+            }), {createNodeMock: element => element.props['data-testid'] === 'bw-machine-console' ? focused : null});
+        });
+        document.activeElement = focused;
+        const key = (code, down = true) => {
+            const event = {code, preventDefault() { this.prevented = true; }, stopPropagation() {}};
+            listeners.get(down ? 'keydown' : 'keyup')(event);
+            return event;
+        };
+        key('ControlLeft');
+        key('ArrowLeft');
+        for (const code of ['ControlRight', 'AltRight', 'Numpad4', 'NumpadEnter', 'NumpadDivide', 'F11', 'F12']) {
+            assert.equal(key(code).prevented, undefined, code);
+            assert.equal(key(code, false).prevented, undefined, code);
+        }
+        assert.deepEqual(received, [0x1d, 0x4b], 'ignored aliases do not release the held original keys');
+        key('ArrowLeft', false);
+        await act(async () => { renderer.unmount(); });
+        assert.deepEqual(received, [0x1d, 0x4b, 0xcb, 0x9d]);
+    }));
