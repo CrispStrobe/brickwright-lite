@@ -68,7 +68,13 @@ test('unit shards retain exact integrated build prerequisites and hard deploymen
     assert.doesNotMatch(build,/Admit the pinned Arrays source for native unit inputs/);
     const unitPrep=fullUnitPrep.slice(0,-arraysAdmission.length).trimEnd();
     const buildPrep=build.slice(build.indexOf('    runs-on:'),build.indexOf('      # A green suite says')).trimEnd();
-    assert.equal(unitPrep,buildPrep,'unit preparation must not omit or drift from the integrated build prerequisites');
+    // The Pages producer uses Node 24 while unit shards cover the Node 22 floor.
+    // Admit only that exact runtime difference; every other prerequisite stays identical.
+    const unitNode='        with: { node-version: 22 }';
+    const buildNode='        with: { node-version: 24 }';
+    assert.equal(unitPrep.split(unitNode).length,2,'unit preparation selects Node 22 exactly once');
+    assert.equal(buildPrep.split(buildNode).length,2,'Pages preparation selects Node 24 exactly once');
+    assert.equal(unitPrep,buildPrep.replace(buildNode,unitNode),'unit preparation must not omit or drift from the integrated build prerequisites');
     assert.ok(unitPrep.includes('steps.stc_flasher_pin.outputs.sha'));
     assert.match(unit,/BW_TEST_SHARD: \$\{\{ matrix.shard \}\}\/8/);
     assert.match(unit,/steps\.arrays_number_value_source\.outcome == 'success'/);
