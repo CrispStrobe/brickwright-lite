@@ -46,7 +46,12 @@ Controls (Tempest): frozen-output and 1 cm shift; the disconnection above; a wro
 
 Qualification: run the affected Chromium browser journeys and relevant checks.
 Use bounded local or Kaggle compute where appropriate; do not add `ci:full`.
-Solstice remains experimental pending browser validation of its solver preset.
+Solstice remains experimental. With the opt-in light-links solver preset, the
+integrated local browser run passed the existing 0.1° / 0.1 mm limits
+(0.00977° / 0.01258 mm), disconnected control, instructions, saved-project
+replay and English/German lessons in 407 seconds. Before any promotion, review
+the preset and its effect on other models, run the applicable promotion suite,
+and update the registry, catalogue and qualification contract together.
 
 Startup follow-up: the browser's early Solstice samples exceed both 0.1 bounds
 before settling. An isolated 5 ms-step comparison using the existing light-link
