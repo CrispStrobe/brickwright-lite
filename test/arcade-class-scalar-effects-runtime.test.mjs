@@ -50,7 +50,22 @@ const compoundSetterNonfiniteSource=`class Box{constructor(public n:number){}
  function take(n:number){return n}
  let box=new Box(2);box.value=1e308;let result=take(box.value);let nan=result!==result;
  box.value=0;let recovered=take(box.value);let done=nan;`;
+const compoundConstructorSource=`let trace=0;
+ class Box{n:number;m:number;constructor(a:number,b:number){this.n=-(a*2)+b+1;this.m=(a+b)*2}
+ get value():number{trace=trace*10+1;return this.n+this.m}}
+ function argument():number{trace=trace*10+2;return 2}
+ function take(n:number){return n}
+ let actual=argument();let box=new Box(actual,8);let first=take(box.value);
+ let earlier=trace+box.value;let other=new Box(4,9);let second=take(other.value);let done=trace;`;
+const compoundConstructorNonfiniteSource=`class Box{n:number;constructor(a:number,b:number){this.n=-(a*1e308)+b*1e308}
+ get value():number{return this.n}}
+ function take(n:number){return n}
+ let infiniteBox=new Box(1e308,0);let infinite=take(infiniteBox.value)<-1e308;
+ let nanBox=new Box(1e308,1e308);let result=take(nanBox.value);let nan=result!==result;
+ let finiteBox=new Box(0,0);let recovered=take(finiteBox.value);let done=nan;`;
 for(const [name,source,expected]of [
+ ['compound constructor',compoundConstructorSource,{first:25,earlier:46,second:28,trace:2111,done:2111}],
+ ['compound constructor nonfinite',compoundConstructorNonfiniteSource,{infinite:true,nan:true,recovered:0,done:true}],
  ['compound setter',compoundSetterSource,{first:18,earlier:4231,second:57,trace:42131213,done:42131213}],
  ['compound setter NaN',compoundSetterNonfiniteSource,{nan:true,recovered:0,done:true}],
  ['compound getter',compoundSource,{first:5,combined:55,earlier:1117,skipped:false,infinite:true,recovered:1,trace:1112111,done:1112111}],

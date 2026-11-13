@@ -905,25 +905,52 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
         };
         const classDefinition=procedure=>Object.values(all).find(b=>b.opcode==='procedures_definition'&&input(b,'custom_block')?.mutation?.proccode===procedure);
         const constructedField=(cls,field,model)=>{
+            const closedText=(owner,key)=>{
+                const value=input(owner,key);
+                return value?.opcode==='text'&&value.shadow===true&&value.parent===owner.id&&value.next==null&&
+                    !Object.keys(value.inputs||{}).length&&Object.keys(value.fields||{}).join(',')==='TEXT'&&
+                    typeof value.fields.TEXT?.value==='string'?value.fields.TEXT.value:null;
+            };
             let assigned=false;
             for(const procedure of [cls.initializer,cls.constructor]){
                 if(!procedure)continue;const definition=classDefinition(procedure);if(!definition)return false;
-                let b=read(definition.next);const visited=new Set();
+                let b=read(definition.next),previous=definition;const visited=new Set();
                 while(b){
-                    if(visited.has(b))return false;visited.add(b);
-                    if(b.opcode!=='arcade_setObjectField'||receiverClass(input(b,'OBJECT'),model)!==cls||typeof literal(b,'FIELD')!=='string')return false;
+                    if(visited.has(b)||b.parent!==previous.id)return false;visited.add(b);
+                    const receiver=input(b,'OBJECT');
+                    if(b.opcode!=='arcade_setObjectField'||Object.keys(b.fields||{}).length||Object.keys(b.inputs||{}).sort().join(',')!=='FIELD,OBJECT,VALUE'||
+                        closedText(b,'FIELD')===null||receiver?.opcode!=='arcade_getLocal'||receiver.parent!==b.id||receiver.next!=null||
+                        Object.keys(receiver.fields||{}).length||Object.keys(receiver.inputs||{}).join(',')!=='NAME'||
+                        closedText(receiver,'NAME')!==captureProof.scopeOf(b)?.params[0]||receiverClass(receiver,model)!==cls)return false;
                     const written=cls.fields.find(f=>f.name===literal(b,'FIELD'));if(!written||written.getter||written.setter)return false;
                     // Construction cannot publish the unfinished receiver or
                     // call a reader before its backing field is initialized.
-                    const pure=(value,path=new Set())=>{
-                        if(!value||path.has(value))return false;const next=new Set([...path,value]);
+                    const pure=(value,path=new Set(),owner=null)=>{
+                        if(!value||path.has(value)||value.next!=null||owner&&value.parent!==owner.id)return false;const next=new Set([...path,value]);
+                        // Source arithmetic keeps JS Number behavior. Its operation
+                        // must be static and every operand must stay construction-pure.
+                        if(value.opcode==='arrays_valueBinary'){
+                            const operation=input(value,'OP');
+                            const fields=Object.keys(value.fields||{}).join(','),inputs=Object.keys(value.inputs||{}).sort().join(',');
+                            const fixed=fields==='OP'&&inputs==='LEFT,RIGHT'&&['+','-','*'].includes(value.fields.OP?.value);
+                            const reporter=!fields&&inputs==='LEFT,OP,RIGHT'&&operation?.opcode==='text'&&operation.shadow===true&&
+                                operation.parent===value.id&&operation.next==null&&!Object.keys(operation.inputs||{}).length&&
+                                Object.keys(operation.fields||{}).join(',')==='TEXT'&&['+','-','*'].includes(operation.fields.TEXT?.value);
+                            return (fixed||reporter)&&pure(input(value,'LEFT'),next,value)&&pure(input(value,'RIGHT'),next,value);
+                        }
                         if(!['text','math_number','bw_numberLiteral','arrays_specialValue','arcade_getLocal','operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_not','operator_equals','operator_lt','operator_gt'].includes(value.opcode))return false;
-                        if(value.opcode==='arcade_getLocal')return literal(value,'NAME')!==captureProof.scopeOf(value)?.params[0];
-                        return Object.keys(value.inputs||{}).every(name=>pure(input(value,name),next));
+                        if(value.opcode==='arcade_getLocal'){
+                            const name=input(value,'NAME');
+                            return !Object.keys(value.fields||{}).length&&Object.keys(value.inputs||{}).join(',')==='NAME'&&
+                                name?.opcode==='text'&&name.shadow===true&&name.parent===value.id&&name.next==null&&
+                                !Object.keys(name.inputs||{}).length&&Object.keys(name.fields||{}).join(',')==='TEXT'&&
+                                typeof name.fields.TEXT?.value==='string'&&name.fields.TEXT.value!==captureProof.scopeOf(value)?.params[0];
+                        }
+                        return Object.keys(value.inputs||{}).every(name=>pure(input(value,name),next,value));
                     };
-                    if(!pure(input(b,'VALUE')))return false;
+                    if(!pure(input(b,'VALUE'),new Set(),b))return false;
                     if(field&&literal(b,'FIELD')===field.name)assigned=true;
-                    b=read(b.next);
+                    previous=b;b=read(b.next);
                 }
             }
             return !field||assigned;

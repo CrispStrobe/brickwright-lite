@@ -68,8 +68,13 @@ export function closedClassPrimitiveSource(program,graph) {
   }
   if(!valid)continue;
   const ctorParameters=new Map(ctor.params.map((name,index)=>[name,index]));
+  // Constructor arithmetic uses every allocation's actual formal producers.
+  // Preserve the expression and its nonfinite intermediates; own-field reads
+  // cannot establish initialization and remain outside this constructor proof.
   const ctorNumber=node=>number(node)||node?.type==='Identifier'&&ctorParameters.has(node.name)&&
-   allocations.every(call=>number(call.args[ctorParameters.get(node.name)]));
+   allocations.every(call=>number(call.args[ctorParameters.get(node.name)]))||
+   node?.type==='Unary'&&['+','-'].includes(node.op)&&ctorNumber(node.argument)||
+   node?.type==='Binary'&&['+','-','*'].includes(node.op)&&ctorNumber(node.left)&&ctorNumber(node.right);
   const initialized=new Set();
   for(const field of cls.fields)if(field.init){if(!number(field.init))valid=false;else initialized.add(field.name);}
   // Only direct constructor writes establish a field. Branches, calls and reads

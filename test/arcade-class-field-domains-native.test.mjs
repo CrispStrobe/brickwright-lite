@@ -132,3 +132,42 @@ test('a raw field read before the sole allocation gains no completed-instance ev
  const f=fixture();f.blocks.decl.next='out';f.blocks.out.parent='decl';f.blocks.out.next='alloc';f.blocks.alloc.parent='out';f.blocks.alloc.next=null;
  assert.throws(()=>f.query(),/primitive domain evidence/);
 });
+
+test('constructor source arithmetic stays pure and retains actual operand domains',()=>{
+ const compound=(operation='+')=>{
+  const f=fixture(),expr=f.add('arithmetic','arrays_valueBinary','init',{LEFT:{block:'initvalue'},RIGHT:{block:'constant'}});
+  f.value(expr,'OP',operation);f.number('constant','arithmetic',2);
+  f.blocks.initvalue.parent='arithmetic';f.blocks.init.inputs.VALUE={block:'arithmetic'};
+  return f;
+ };
+ for(const operation of ['+','-','*']){
+  assert.deepEqual(compound(operation).query(),[['number']]);
+  const f=compound(operation);delete f.blocks.arithmetic.inputs.OP;f.blocks.arithmetic.fields={OP:{value:operation}};
+  assert.deepEqual(f.query(),[['number']]);
+ }
+ const text=compound();text.blocks.one.opcode='text';text.blocks.one.fields={TEXT:{value:'x'}};
+ assert.deepEqual(text.query(),[['string']]);
+ for(const change of [
+  f=>{f.blocks.arithmeticOP.fields.TEXT.value='/';},
+  f=>{delete f.blocks.arithmeticOP.fields.TEXT;},
+  f=>{f.blocks.arithmetic.inputs.EXTRA={block:'extraCall'};f.add('extraCall','arcade_callFunction','arithmetic');},
+  f=>{f.blocks.arithmetic.fields={OP:{value:'+'}};f.blocks.arithmeticOP.opcode='arcade_callFunction';},
+  f=>{f.blocks.arithmeticOP.inputs.EXTRA={block:'extraCall'};f.add('extraCall','arcade_callFunction','arithmeticOP');},
+  f=>{f.blocks.arithmeticOP.next='extraCall';f.add('extraCall','arcade_callFunction','arithmeticOP');},
+  f=>{f.blocks.arithmeticOP.shadow=false;},
+  f=>{f.blocks.initvalue.inputs.EXTRA={block:'extraCall'};f.add('extraCall','arcade_callFunction','initvalue');},
+  f=>{f.blocks.initvalueNAME.inputs.EXTRA={block:'extraCall'};f.add('extraCall','arcade_callFunction','initvalueNAME');},
+  f=>{f.blocks.initvalue.fields={NAME:{value:'n'}};f.blocks.initvalueNAME.opcode='arcade_callFunction';},
+  f=>{f.blocks.initvalue.parent='init';},
+  f=>{f.blocks.initvalueNAME.parent='init';},
+  f=>{f.blocks.init.inputs.EXTRA={block:'extraCall'};f.add('extraCall','arcade_callFunction','init');},
+  f=>{f.blocks.initFIELD.inputs.EXTRA={block:'extraCall'};f.add('extraCall','arcade_callFunction','initFIELD');},
+  f=>{f.blocks.initself.inputs.EXTRA={block:'extraCall'};f.add('extraCall','arcade_callFunction','initself');},
+  f=>{f.blocks.initselfNAME.inputs.EXTRA={block:'extraCall'};f.add('extraCall','arcade_callFunction','initselfNAME');},
+  f=>{f.blocks.init.parent='hat';},
+  f=>{f.blocks.init.fields={FIELD:{value:'n'}};f.blocks.initFIELD.opcode='arcade_callFunction';},
+  f=>{f.blocks.initvalue.opcode='arcade_callFunction';f.blocks.initvalue.inputs={};f.value(f.blocks.initvalue,'NAME','opaque');},
+  f=>{f.blocks.initvalue.opcode='arcade_objectField';f.blocks.initvalue.inputs={OBJECT:{block:'unfinished'}};f.value(f.blocks.initvalue,'FIELD','n');f.local('unfinished','initvalue','self');},
+  f=>{f.blocks.initvalue.inputs.NAME.block='selfName';f.text('selfName','initvalue','self');}
+ ]){const f=compound();change(f);assert.throws(()=>f.query(),/primitive domain evidence/);}
+});

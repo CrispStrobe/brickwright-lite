@@ -96,3 +96,26 @@ test('compound setters retain every actual formal producer and initialized field
  refused(compound.replace('this.n=(v+1)*this.n','v=<any>"x";this.n=v+1'));
  refused(compound.replace('this.n=(v+1)*this.n','this.n=this.n+trace'));
 });
+
+test('compound constructor writes require every allocation formal Number producer',()=>{
+ const source=`class Box{n:number;constructor(a:number,b:number){this.n=-(a*2)+b+1}
+ get value():number{return this.n}}
+ function take(n:number){return n}
+ let box=new Box(2,8);let first=take(box.value);`;
+ accepted(source);
+ accepted(source+'let other=new Box(4,9);let second=take(other.value);');
+ accepted(source.replace('-(a*2)+b+1','a*1e308-b*1e308'));
+ for(const extra of ['let other=new Box(<any>"x",8);','let other=new Box(2,<any>true);',
+  'let other=new Box(2,<any>undefined);','let alias=box;',
+  'box.n=<any>"x";','function captured(){box.n=<any>true}',
+  'let absent:number;let other=new Box(absent,8);'])refused(source+extra);
+ for(const expression of ['this.n+a','this.value+a','take(a)','a+<any>"x"','a+<any>true',
+  'a/0','a%2','a+1e999'])refused(source.replace('-(a*2)+b+1',expression));
+ refused(source.replace('constructor(a:number,b:number)','constructor(a:number,b:number=8)'));
+ refused(source.replace('constructor(a:number,b:number)','constructor(a:number,b?:number)'));
+ refused(source.replace('new Box(2,8)','new Box(2)'));
+ refused(source.replace('this.n=-(a*2)+b+1','a=<any>"x";this.n=-(a*2)+b+1'));
+ refused(source.replace('let box=new Box(2,8);','let before=take(box.value);let box=new Box(2,8);'));
+ refused(source.replace('let box=new Box(2,8);','var box=new Box(2,8);'));
+ refused(source.replace('let box=new Box(2,8);','let a:any=2;if(true){var a:any="x"}let box=new Box(a,8);'));
+});
