@@ -19,7 +19,14 @@ test('package.json declares the Node floor CI runs on, and .nvmrc agrees', () =>
     assert.equal(floorMajor(pkg.engines.node), 22, `engines.node is "${pkg.engines.node}"`);
     assert.equal(readFileSync(path.join(ROOT, '.nvmrc'), 'utf8').trim(), '22');
     const yml = readFileSync(path.join(ROOT, '.github', 'workflows', 'build.yml'), 'utf8');
-    for (const m of yml.matchAll(/node-version:\s*(\d+)/g)) assert.equal(Number(m[1]), 22, 'CI and engines must name the same major');
+    const jobs = new Map([...yml.matchAll(/^  ([a-z][\w-]*):\n([\s\S]*?)(?=^  [a-z][\w-]*:\n|(?![\s\S]))/gm)].map(m => [m[1], m[2]]));
+    assert.ok(jobs.has('build') && jobs.has('unit'), 'both runtime contracts must be checked');
+    for (const [name, job] of jobs) {
+        // Pages builds use Node 24; unit tests still exercise the supported Node 22 floor.
+        const versions = [...job.matchAll(/node-version:\s*(\d+)/g)].map(m => Number(m[1]));
+        if (name === 'build' || name === 'unit') assert.equal(versions.length, 1, `${name} must select one Node runtime`);
+        for (const version of versions) assert.equal(version, name === 'build' ? 24 : 22, `${name} Node runtime`);
+    }
 });
 
 test('every npm test script runs the preflight FIRST — and nothing else does', () => {

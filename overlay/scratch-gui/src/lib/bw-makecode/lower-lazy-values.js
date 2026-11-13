@@ -5,7 +5,7 @@ import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
  * Each result is a hygienic invocation cell. Snapshot earlier operands before
  * a later operand's statements run, preserving JavaScript's evaluation order.
  */
-export function lowerLazyValues(program) {
+export function lowerLazyValues(program, {unsupported = []} = {}) {
     const names=new Set();
     const scan=node=>{
         if(!node || typeof node!=='object')return;
@@ -34,6 +34,19 @@ export function lowerLazyValues(program) {
         }
         if(['Update','Assignment'].includes(node.type))return true;
         return Object.values(node).some(value=>Array.isArray(value)?value.some(hasEffects):hasEffects(value));
+    };
+    // Numeric calls may draw entropy even though they cannot rebind a cell.
+    // Character input order must preserve those calls as well as writes.
+    const orderedEffects=node=>{
+        if(!node || typeof node!=='object' || node.type==='FunctionExpression')return false;
+        if(['Call','Update','Assignment'].includes(node.type))return true;
+        return Object.values(node).some(value=>Array.isArray(value)?value.some(orderedEffects):orderedEffects(value));
+    };
+    const hasOrderedCharacter=node=>{
+        if(!node || typeof node!=='object')return false;
+        if(node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='charAt' &&
+            node.args.length===1 && node.args[0]?.type!=='Number' && [node.callee.object,...node.args].some(orderedEffects))return true;
+        return Object.values(node).some(value=>Array.isArray(value)?value.some(hasOrderedCharacter):hasOrderedCharacter(value));
     };
     const body=statements=>(statements||[]).flatMap(statement);
     // Expression lists (call arguments, array elements, binary operands, etc.)
@@ -105,6 +118,18 @@ export function lowerLazyValues(program) {
         if(node.type==='Call'){
             const method=node.callee?.type==='Member' && !namespace(node.callee.object);
             const result=sequence(method?[node.callee.object,...node.args]:node.args);
+            // Scratch's letter reporter evaluates LETTER before STRING. Keep
+            // charAt's source receiver before its index by consuming both here,
+            // at this expression's position (after PXT's own staging pass).
+            // Snapshot both so export/reimport sees only stable reads rather
+            // than introducing another receiver snapshot on every generation.
+            // A literal numeric index has no read/effect to reorder. Keep the
+            // original Call: text/domain/arity admission still owns it.
+            if(method && node.callee.name==='charAt' && node.args.length===1 && node.args[0]?.type!=='Number' &&
+                [node.callee.object,...node.args].some(orderedEffects)) {
+                changed=true;
+                result.values=result.values.map(value=>save(value,result.prefix));
+            }
             return {prefix:result.prefix,value:{...node,callee:method?{...node.callee,object:result.values[0]}:node.callee,args:method?result.values.slice(1):result.values}};
         }
         return {prefix:[],value:node};
@@ -130,6 +155,8 @@ export function lowerLazyValues(program) {
             const discriminant=expression(st.discriminant);
             const cases=st.cases.map(c=>{
                 const test=c.test?expression(c.test):null;
+                if(test?.prefix.length && hasOrderedCharacter(c.test))
+                    unsupported.push('charAt receiver/index order in a switch case label requires conditional staging');
                 return {...c,test:test && !test.prefix.length?test.value:c.test,body:body(c.body)};
             });
             return [...discriminant.prefix,{...st,discriminant:discriminant.value,cases}];

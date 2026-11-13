@@ -1,5 +1,5 @@
 // Browser KeyboardEvent.code -> IBM PC set-1 make byte. The 386 console sends
-// breaks by ORing 0x80; this deliberately matches VdpScreen's existing map.
+// breaks by ORing 0x80, with an E0 prefix for the enhanced-keyboard cluster.
 export const PC_SET1 = Object.freeze({
     Escape: 0x01, Digit1: 0x02, Digit2: 0x03, Digit3: 0x04, Digit4: 0x05,
     Digit5: 0x06, Digit6: 0x07, Digit7: 0x08, Digit8: 0x09, Digit9: 0x0a,
@@ -21,4 +21,30 @@ export const PC_SET1 = Object.freeze({
     Insert: 0x52, Delete: 0x53,
 });
 
+// Additional keys are enabled only for the enhanced AT keyboard. Preserve the
+// original XT lookup (including its unsupported-key refusals).
+const AT_SET1 = Object.freeze({
+    Numpad7: 0x47, Numpad8: 0x48, Numpad9: 0x49, NumpadSubtract: 0x4a,
+    Numpad4: 0x4b, Numpad5: 0x4c, Numpad6: 0x4d, NumpadAdd: 0x4e,
+    Numpad1: 0x4f, Numpad2: 0x50, Numpad3: 0x51, Numpad0: 0x52,
+    NumpadDecimal: 0x53, F11: 0x57, F12: 0x58,
+    ControlRight: 0x1d, AltRight: 0x38, NumpadEnter: 0x1c, NumpadDivide: 0x35,
+});
+
 export const pcSet1Make = code => PC_SET1[code] ?? null;
+
+// These share a trailing byte with a distinct non-extended key. Preserve the
+// prefix on both make and break so right Ctrl is not left Ctrl, and arrows
+// are not keypad digits when Num Lock is enabled.
+const EXTENDED = new Set([
+    'ControlRight', 'AltRight', 'NumpadEnter', 'NumpadDivide',
+    'Home', 'ArrowUp', 'PageUp', 'ArrowLeft', 'ArrowRight',
+    'End', 'ArrowDown', 'PageDown', 'Insert', 'Delete'
+]);
+
+export const pcSet1Bytes = (code, down = true, extended = true) => {
+    const make = pcSet1Make(code) ?? (extended ? AT_SET1[code] ?? null : null);
+    if (make == null) return null;
+    const byte = down ? make : make | 0x80;
+    return extended && EXTENDED.has(code) ? [0xe0, byte] : [byte];
+};
