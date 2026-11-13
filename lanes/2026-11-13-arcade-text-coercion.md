@@ -42,3 +42,27 @@ effects over three generations. This is a bounded initializer repair, not whole
 E18 closure. The distinct `text().charAt(index())` case still evaluates the index
 before the receiver in the imported VM, unlike original PXT; that existing
 order defect remains open and is excluded from the passing parity claim.
+
+
+## Character receiver/index order follow-up
+
+The imported `text().charAt(index())` now consumes its receiver before its
+index using the existing lazy-value statement lowering, after PXT staging.
+Both operands become invocation-local snapshots at the expression site;
+neighboring operands, selected branches and loop tests retain their staging.
+All calls, including entropy draws, count as ordered effects. A literal Number
+index keeps its existing shape. The original method call retains String/domain
+and arity admission. Effectful switch case labels requiring discarded prefixes
+are explicitly refused; literal-safe labels remain supported.
+
+Four focused source tests and adjacent E18/inference controls pass. Six private
+mutation cuts fail. Actual original PXT, imported VM and three generations of
+exported PXT, reimported VM and fresh saved SB3 preserve receiver/index order,
+nested operands, skipped branches, loop continue, PXT conditional-argument
+staging and receiver/index mutation. Omitted-index behavior is VM-only because
+PXT requires an index. The lowering unit also preserves throwing callback
+order; full source Throw-domain qualification is not claimed. Existing String
+formal-producer refusals remain; no new callable/Throw capability is admitted.
+
+No whole E18, cross-target/corpus, browser editor, entropy runtime parity or
+hosted exact-head CI qualification is claimed by this bounded continuation.
