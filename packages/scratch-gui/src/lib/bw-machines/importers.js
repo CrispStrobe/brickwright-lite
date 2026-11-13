@@ -60,11 +60,23 @@ export function fromDosboxConf(text, opts = {}) {
     let program = null, programDrive = null;
     let diskImage = null, diskGeometry = null;
     for (const cmd of autoexec) {
-        const img = cmd.match(/^imgmount\s+(?:c|2)\s+(?:"([^"]+)"|'([^']+)'|(\S+))/i);
+        const img = cmd.match(/^imgmount\s+(?:c|2)\s+(?:"([^"]+)"|'([^']+)'|(\S+))(.*)$/i);
         if (img) {
             diskImage = img[1] || img[2] || img[3];
-            const size = cmd.match(/-size\s+(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
-            if (size && Number(size[1]) === 512) {
+            // Geometry belongs to this mount, never a previous image. Parse
+            // only the options: a quoted filename may itself contain -size.
+            diskGeometry = null;
+            const options = img[4].trim();
+            const sizes = [...options.matchAll(/(?:^|\s)-size(?=\s|=|$)/ig)];
+            if (sizes.length) {
+                const value = options.slice(sizes[0].index + sizes[0][0].length).trim();
+                const size = value.match(/^(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?=\s+-|$)/);
+                if (sizes.length !== 1 || !size) {
+                    throw new Error('DOSBox imgmount -size requires bytes,sectors,heads,cylinders');
+                }
+                if (Number(size[1]) !== 512) {
+                    throw new Error('DOSBox imgmount -size supports only 512-byte sectors');
+                }
                 diskGeometry = {sectors: Number(size[2]), heads: Number(size[3]),
                     cylinders: Number(size[4])};
             }
