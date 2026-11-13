@@ -47,4 +47,10 @@ test('legacy XT navigation retains its original unprefixed make and break', () =
         assert.deepEqual(pcSet1Bytes(code, true, false), [pcSet1Make(code)]);
         assert.deepEqual(pcSet1Bytes(code, false, false), [pcSet1Make(code) | 0x80]);
     }
+    for (const code of ['ControlRight', 'AltRight', 'NumpadEnter', 'NumpadDivide',
+        'Numpad4', 'NumpadAdd', 'F11', 'F12']) {
+        assert.equal(pcSet1Make(code), null, 'legacy lookup remains unchanged');
+        assert.equal(pcSet1Bytes(code, true, false), null, code);
+        assert.equal(pcSet1Bytes(code, false, false), null, code);
+    }
 });

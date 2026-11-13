@@ -19,6 +19,11 @@ export const PC_SET1 = Object.freeze({
     Home: 0x47, ArrowUp: 0x48, PageUp: 0x49, ArrowLeft: 0x4b,
     ArrowRight: 0x4d, End: 0x4f, ArrowDown: 0x50, PageDown: 0x51,
     Insert: 0x52, Delete: 0x53,
+});
+
+// Additional keys are enabled only for the enhanced AT keyboard. Preserve the
+// original XT lookup (including its unsupported-key refusals).
+const AT_SET1 = Object.freeze({
     Numpad7: 0x47, Numpad8: 0x48, Numpad9: 0x49, NumpadSubtract: 0x4a,
     Numpad4: 0x4b, Numpad5: 0x4c, Numpad6: 0x4d, NumpadAdd: 0x4e,
     Numpad1: 0x4f, Numpad2: 0x50, Numpad3: 0x51, Numpad0: 0x52,
@@ -38,7 +43,7 @@ const EXTENDED = new Set([
 ]);
 
 export const pcSet1Bytes = (code, down = true, extended = true) => {
-    const make = pcSet1Make(code);
+    const make = pcSet1Make(code) ?? (extended ? AT_SET1[code] ?? null : null);
     if (make == null) return null;
     const byte = down ? make : make | 0x80;
     return extended && EXTENDED.has(code) ? [0xe0, byte] : [byte];
