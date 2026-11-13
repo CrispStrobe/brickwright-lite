@@ -9,6 +9,12 @@ const orderedSource=scalarAccessorSource.replace('let done=trace;',`function pai
  let combined=pair(box.value,box.value);
  let skipped=false&&take(box.value);
  let done=trace;`);
+const earlierReadSource=`let trace=0;
+ class Box{constructor(public n:number){}
+ get value():number{trace=trace+1;return this.n}}
+ function pair(a:number,b:number){return a*10+b}
+ let box=new Box(2);let combined=pair(trace,box.value);
+ let added=trace+box.value;let done=trace;`;
 const overflowSource=`let trace=0;
  class Box{constructor(public n:number){}
  get value():number{trace=1e308*1e308;return this.n}
@@ -17,6 +23,7 @@ const overflowSource=`let trace=0;
  let box=new Box(2);let first=take(box.value);let infinite=trace>1e308;
  box.value=3;let nan=trace!==trace;let done=nan;`;
 for(const [name,source,expected]of [
+ ['earlier read',earlierReadSource,{combined:2,added:3,trace:2,done:2}],
  ['ordered',orderedSource,{first:2,second:3,combined:33,skipped:false,trace:13213114,done:13213114}],
  ['nonfinite arithmetic',overflowSource,{first:2,infinite:true,nan:true,done:true}]
 ])test(name+' closed accessor effects retain original PXT results in VM, Code replay and fresh SB3',{timeout:120000},async()=>{
