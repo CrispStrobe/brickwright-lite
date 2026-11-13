@@ -5,9 +5,11 @@ import PropTypes from 'prop-types';
 import {loadModelLesson} from '../../lib/bw-sim/model/lesson-loader.js';
 const TEXT = {
     en: {title: 'Model lesson', close: 'Close lesson', loading: 'Loading lesson…', failed: 'The lesson could not be loaded.', retry: 'Try again',
+        openFailed: 'The example could not be opened.', retryOpen: 'Try opening again', openErrorFallback: 'No error details were provided.',
         what: 'What you see', try: 'Try this', why: 'What is going on', matters: 'Why it matters', further: 'Go further', predict: 'Predict first',
         answer: 'Show explanation', hide: 'Hide explanation', open: 'Open model + program', only: 'Open model', related: 'Explore next'},
     de: {title: 'Modell-Lektion', close: 'Lektion schließen', loading: 'Lektion wird geladen…', failed: 'Die Lektion konnte nicht geladen werden.', retry: 'Erneut versuchen',
+        openFailed: 'Das Beispiel konnte nicht geöffnet werden.', retryOpen: 'Erneut öffnen', openErrorFallback: 'Es wurden keine Fehlerdetails gemeldet.',
         what: 'Was du siehst', try: 'Probiere es aus', why: 'Was dahintersteckt', matters: 'Wozu das wichtig ist', further: 'Weiterforschen', predict: 'Erst vorhersagen',
         answer: 'Erklärung zeigen', hide: 'Erklärung ausblenden', open: 'Modell + Programm öffnen', only: 'Modell öffnen', related: 'Als Nächstes erkunden'}
 };
@@ -16,20 +18,27 @@ const SimLabLesson = ({entry, models, locale, overlay, onLoad, onRelated, onClos
     const lang = locale === 'de' ? 'de' : 'en', T = TEXT[lang];
     const [lesson, setLesson] = useState(null), [error, setError] = useState(''), [retry, setRetry] = useState(0);
     const [revealed, setRevealed] = useState(false), [opening, setOpening] = useState(false);
-    const close = useRef(null), mounted = useRef(true);
-    useEffect(() => { mounted.current = true; close.current?.focus(); return () => { mounted.current = false; }; }, []);
+    const [openError, setOpenError] = useState('');
+    const close = useRef(null), mounted = useRef(true), openRequest = useRef(null);
+    useEffect(() => { mounted.current = true; close.current?.focus(); return () => { mounted.current = false; openRequest.current = null; }; }, []);
     useEffect(() => {
         const controller = new AbortController(); let live = true;
-        setLesson(null); setError(''); setRevealed(false);
+        openRequest.current = null;
+        setLesson(null); setError(''); setOpenError(''); setOpening(false); setRevealed(false);
         loadModelLesson(entry, lang, {signal: controller.signal}).then(data => { if (live) setLesson(data); })
             .catch(e => { if (live && e.name !== 'AbortError') setError(e.message); });
         return () => { live = false; controller.abort(); };
     }, [entry, lang, retry]);
     const open = async () => {
-        setOpening(true); setError('');
+        if (openRequest.current) return;
+        const request = openRequest.current = {};
+        setOpening(true); setOpenError('');
         try { await onLoad(entry.id || entry.file, Boolean(entry.example)); }
-        catch (e) { if (mounted.current) setError(e.message); }
-        finally { if (mounted.current) setOpening(false); }
+        catch (e) { if (mounted.current && openRequest.current === request) {
+            const detail = typeof e?.message === 'string' ? e.message : typeof e === 'string' ? e : '';
+            setOpenError(detail.trim() || T.openErrorFallback);
+        } }
+        finally { if (mounted.current && openRequest.current === request) { openRequest.current = null; setOpening(false); } }
     };
     const heading = label => <h3 style={{fontSize: 14, margin: '20px 0 6px'}}>{label}</h3>;
     return (
@@ -44,10 +53,12 @@ const SimLabLesson = ({entry, models, locale, overlay, onLoad, onRelated, onClos
             </div>
             <div style={{overflowY: 'auto', overscrollBehavior: 'contain', padding: '0 14px 16px', fontSize: 13, lineHeight: 1.55}}>
                 {!lesson && !error && <p role="status">{T.loading}</p>}
-                {error && <div role="alert"><p>{T.failed} {error}</p><button type="button" style={button} onClick={() => setRetry(n => n + 1)}>{T.retry}</button></div>}
+                {error && <div role="alert"><p>{T.failed} {error}</p><button type="button" data-testid="bw-sim-lesson-retry" style={button} onClick={() => setRetry(n => n + 1)}>{T.retry}</button></div>}
                 {lesson && <>
                     {heading(T.what)}<p>{lesson.what}</p>
                     <button type="button" style={{...button, background: '#ede9fe'}} disabled={opening || entry.blocked} onClick={open}>{entry.example ? T.open : T.only}</button>
+                    {openError && <div role="alert" data-testid="bw-sim-lesson-open-error"><p>{T.openFailed} {openError}</p>
+                        <button type="button" data-testid="bw-sim-lesson-retry-open" style={button} disabled={opening || entry.blocked} onClick={open}>{T.retryOpen}</button></div>}
                     {heading(T.try)}<ol data-testid="bw-sim-lesson-steps" style={{paddingLeft: 20}}>{lesson.try.map(s => <li key={s} style={{marginBottom: 8}}>{s}</li>)}</ol>
                     {heading(T.why)}<p>{lesson.why}</p>
                     {lesson.formula && <p style={{fontFamily: 'monospace', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', background: '#f1f5f9', padding: 8}}>{lesson.formula}</p>}
