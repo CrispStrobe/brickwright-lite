@@ -1420,7 +1420,10 @@ execute. Preserve the failed event and its original evidence; it is spent.
 
 PR #1627 corrects the exact accessible-label lookup and adds a focused control
 against the actual GUI label. Refresh its head and all enabled checks before
-acting. Source controls do not prove the GUI journey: separately admit and
+acting. A clean source-bound current-head UI rehearsal passed all 11 phases, including
+Circuit to Code with the same target and all 90 returned register and cycle
+fields unchanged. It does not establish fresh HDD persistence or an official
+actual-event pass. Refresh the source/request bindings and separately admit and
 run the next appropriately authorized acceptance event, then independently
 join its original evidence. Require the Circuit-to-Code round trip to preserve
 the same target, paused state and complete register readback. Do not repeat the
