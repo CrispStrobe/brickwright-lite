@@ -68,6 +68,8 @@ export class PhysicsClient {
         };
         // A worker whose script failed to load, or that died, answers nothing: fail
         // every request instead of leaving it pending (the session then falls back).
+        // Unreadable replies likewise cannot be correlated to a request, so a
+        // messageerror must fail the whole connection rather than strand a batch.
         const onError = e => {
             const error = new Error(e?.message || 'the physics worker failed');
             for (const pending of this._pending.values()) pending.reject(error);
@@ -77,12 +79,15 @@ export class PhysicsClient {
         if (typeof port.addEventListener === 'function') {
             port.addEventListener('message', onMessage);
             port.addEventListener('error', onError);
+            port.addEventListener('messageerror', onError);
         } else if (typeof port.on === 'function') {
             port.on('message', onMessage);
             port.on('error', onError);
+            port.on('messageerror', onError);
         } else {
             port.onmessage = onMessage;
             port.onerror = onError;
+            port.onmessageerror = onError;
         }
         this.failed = null;
     }
