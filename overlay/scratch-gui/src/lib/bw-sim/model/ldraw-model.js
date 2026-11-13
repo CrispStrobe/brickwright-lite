@@ -745,6 +745,17 @@ export const parseModel = (text, {catalog} = {}) => {
                 message: 'ROTOR_INERTIA needs exactly one legacy or native setting in the main model'});
         } else model.rotor = value;
     }
+    // An authored linkage can explicitly request stronger light-link convergence.
+    // A named preset survives export without exposing arbitrary solver counts.
+    const solverLines = mainLines.filter(l => /^\s*0\s+!BW\s+SOLVER(?:\s|$)/i.test(l.text));
+    if (solverLines.length) {
+        const value = solverLines[0].text.trim().replace(/^0\s+!BW\s+SOLVER\s*/i, '').trim();
+        if (solverLines.length !== 1 || value !== 'light-links') {
+            model.solver = 'invalid';
+            refusals.push({line: solverLines[0].lineNo, severity: 'error', code: 'bad-solver-preset',
+                message: 'SOLVER needs exactly one light-links setting in the main model'});
+        } else model.solver = value;
+    }
     // Keep a supplied model's attribution when Build edits or exports a derivative.
     const header = mainLines.map(l => l.text);
     const author = header.map(l => /^0\s+Author:\s*(.+)$/i.exec(l)?.[1]?.trim()).find(Boolean);
@@ -826,6 +837,7 @@ export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright 
     if (model.rotor !== undefined && !['legacy', 'native'].includes(model.rotor)) {
         throw new RangeError('rotor must be legacy or native');
     }
+    if (model.solver !== undefined && model.solver !== 'light-links') throw new RangeError('solver must be light-links');
     if (![6, 12].includes(precision)) throw new RangeError('LDraw precision must be 6 or 12');
     const number = n => formatNumber(n, precision);
     const lines = [];
@@ -837,6 +849,7 @@ export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright 
     lines.push(`0 Author: ${author}`);
     if (model.motorDirection !== undefined) lines.push(`0 !BW MOTOR_DIRECTION ${model.motorDirection}`);
     if (model.rotor !== undefined) lines.push(`0 !BW ROTOR_INERTIA ${model.rotor}`);
+    if (model.solver !== undefined) lines.push(`0 !BW SOLVER ${model.solver}`);
     if (model.attribution?.license) lines.push(`0 !LICENSE ${model.attribution.license}`);
     for (const d of model.drawings || []) {
         lines.push(`0 !BW DRAW ${d.surface} ${d.pen} ${[...d.tip, ...d.center, d.radiusLdu].map(number).join(' ')}`);
