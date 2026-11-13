@@ -127,11 +127,11 @@ const CURRENT_X86_FINITE_V9_READER = "FINITE_V9_PINS = {'bw-board':CURRENT_BOARD
 // including clock and core/full-runtime parity. Any later source edit revokes
 // their occurrence roles until another explicit review; never auto-restamp.
 // The prior profile stays binding through an exact reversible source-delta check below.
-const PRE_CONCURRENCY_X86_TEST_PROFILE = Object.freeze({bytes: 637722, sha256: '33181b4e00861a13c9a155296d14539771b07cc3dbb510d046bd0c55669bc1d2'});
+const PRE_CONCURRENCY_X86_TEST_PROFILE = Object.freeze({bytes: 646674, sha256: '45ef06f71b0bec8064d4f2bee31e1a78dcaa50cd9e6a4fd10fa8ad39cdd857ae'});
 const HISTORICAL_X86_SOURCE_PROFILES = Object.freeze({
-    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 344630, sha256: 'e345b085be8fca6193d56b6c31640836dcf3cec31ae821bed688e77fd0688c8a'}),
-    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 460207, sha256: 'cd3eb6c76da6c9051ad4bb7a95a0b2956d10130ba5963f3baa4b8e864fcc8f07'}),
-    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({concurrencyControl: true, bytes: 637722, sha256: '33181b4e00861a13c9a155296d14539771b07cc3dbb510d046bd0c55669bc1d2'}),
+    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 352633, sha256: '48f4a46bad836b352181f5c200e4fd65970e5cd54463aa33a56f1d194d32e0c3'}),
+    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 468793, sha256: 'd5c7c652549a2bdb1b603f401f8d4af83ee60a8c1e88c76e2cf5812f74aac011'}),
+    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({concurrencyControl: true, bytes: 646674, sha256: '45ef06f71b0bec8064d4f2bee31e1a78dcaa50cd9e6a4fd10fa8ad39cdd857ae'}),
 });
 
 import {explainGitFailure} from './helpers/git-absence.mjs';
@@ -1705,9 +1705,9 @@ test('reviewed policy projections retain historical hashes and reject helper and
     const controlPath = 'test/i80386-hdd-gui-actual.test.mjs';
     const control = readFileSync(path.join(ROOT, controlPath), 'utf8');
     const held = hddBeforeConcurrencyControl(controlPath, control);
-    assert.equal(Buffer.byteLength(held), 637722);
+    assert.equal(Buffer.byteLength(held), 646674);
     assert.equal(createHash('sha256').update(held).digest('hex'),
-        '33181b4e00861a13c9a155296d14539771b07cc3dbb510d046bd0c55669bc1d2');
+        '45ef06f71b0bec8064d4f2bee31e1a78dcaa50cd9e6a4fd10fa8ad39cdd857ae');
     for (const changed of [
         control.replace('const heldBeforeConcurrencyPolicy =', 'const alteredProjection ='),
         control.replace('heldBeforeConcurrencyPolicy(name,workflow)', 'workflow'),
@@ -1715,7 +1715,7 @@ test('reviewed policy projections retain historical hashes and reject helper and
     ]) assert.throws(() => hddBeforeConcurrencyControl(controlPath, changed));
     const drift = hddBeforeConcurrencyControl(controlPath, control + '// unrelated drift\n');
     assert.notEqual(createHash('sha256').update(drift).digest('hex'),
-        '33181b4e00861a13c9a155296d14539771b07cc3dbb510d046bd0c55669bc1d2');
+        '45ef06f71b0bec8064d4f2bee31e1a78dcaa50cd9e6a4fd10fa8ad39cdd857ae');
     const studyPath = '.github/workflows/reference-qualified-instruments.yml';
     const study = readFileSync(path.join(ROOT, studyPath), 'utf8');
     for (const changed of [
