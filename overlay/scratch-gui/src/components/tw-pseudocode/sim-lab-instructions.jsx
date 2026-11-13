@@ -76,6 +76,8 @@ class SimLabInstructions extends React.Component {
 
     componentWillUnmount () {
         this.disposed = true;
+        if (this.printWindow) { try { this.printWindow.close(); } catch { /* the window may already be gone */ } }
+        this.printWindow = null;
         window.removeEventListener('keydown', this.onKey, true);
         window.removeEventListener('resize', this.onResize);
         if (this.view) { try { this.view.dispose(); } catch { /* a lost context may already be gone */ } }
@@ -129,38 +131,50 @@ class SimLabInstructions extends React.Component {
 
     /** Every step drawn to a picture, written into a new window, and printed. */
     async printAll () {
-        // Opened at once, inside the click: a window opened later is a pop-up the browser blocks.
-        const win = window.open('', '_blank');
-        if (!win) {
-            this.setState({message: this.text.printBlocked});
-            return;
-        }
-        this.setState({printing: true, message: ''});
-        const {lib, locale} = this.props;
-        const T = this.text;
-        const cell = row => ({thumb: row.thumb, count: row.count, length: row.length, name: row.label, part: row.part});
-        const steps = this.plan.steps.map((step, i) => ({
-            image: this.view.image(i, PRINT_W, PRINT_H),
-            parts: this.rows(step.parts, step.belts).map(cell),
-            attach: step.attach.map(id => this.groupName(id)),
-            subassembly: step.subassembly ? this.groupName(step.subassembly) : null,
-            pins: Boolean(step.pins),
-            belts: Boolean(step.belts?.length),
-            turned: turnedFrom(step, this.plan.steps[i - 1])
-        }));
-        const html = lib.instructionsPrintHtml({lang: locale === 'de' ? 'de' : 'en',
-            title: fill(T.documentTitle, {name: this.props.title || T.title}),
-            text: {step: T.step, partsNeeded: T.partsNeeded, partsList: T.partsList, total: T.total, attach: T.attach, subassembly: T.subassembly, pins: T.pins,
-                turned: T.turned, belts: T.belts},
-            steps, bom: this.rows().map(cell)});
-        win.document.open();
-        win.document.write(html);
-        win.document.close();
-        await Promise.all([...win.document.images].map(img => (img.decode ? img.decode().catch(() => null) : null)));
-        if (!this.disposed) this.setState({printing: false});
-        if (!win.closed) {
-            win.focus();
-            win.print();
+        if (this.disposed || this.printPending || this.state.status !== 'ready') return;
+        this.printPending = true;
+        let win;
+        try {
+            // Opened at once, inside the click: a window opened later is a pop-up the browser blocks.
+            win = window.open('', '_blank');
+            if (!win) {
+                this.setState({message: this.text.printBlocked});
+                return;
+            }
+            this.printWindow = win;
+            this.setState({printing: true, message: ''});
+            const {lib, locale} = this.props;
+            const T = this.text;
+            const cell = row => ({thumb: row.thumb, count: row.count, length: row.length, name: row.label, part: row.part});
+            const steps = this.plan.steps.map((step, i) => ({
+                image: this.view.image(i, PRINT_W, PRINT_H),
+                parts: this.rows(step.parts, step.belts).map(cell),
+                attach: step.attach.map(id => this.groupName(id)),
+                subassembly: step.subassembly ? this.groupName(step.subassembly) : null,
+                pins: Boolean(step.pins),
+                belts: Boolean(step.belts?.length),
+                turned: turnedFrom(step, this.plan.steps[i - 1])
+            }));
+            const html = lib.instructionsPrintHtml({lang: locale === 'de' ? 'de' : 'en',
+                title: fill(T.documentTitle, {name: this.props.title || T.title}),
+                text: {step: T.step, partsNeeded: T.partsNeeded, partsList: T.partsList, total: T.total, attach: T.attach, subassembly: T.subassembly, pins: T.pins,
+                    turned: T.turned, belts: T.belts},
+                steps, bom: this.rows().map(cell)});
+            win.document.open();
+            win.document.write(html);
+            win.document.close();
+            await Promise.all([...win.document.images].map(img => (img.decode ? img.decode().catch(() => null) : null)));
+            if (!this.disposed && !win.closed) {
+                win.focus();
+                win.print();
+            }
+        } catch {
+            if (win) { try { win.close(); } catch { /* the window may already be gone */ } }
+            if (!this.disposed) this.setState({message: this.text.printFailed});
+        } finally {
+            this.printPending = false;
+            this.printWindow = null;
+            if (!this.disposed) this.setState({printing: false});
         }
     }
 
