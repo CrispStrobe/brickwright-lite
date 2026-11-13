@@ -666,7 +666,7 @@ async function runForwardGui () {
             document.querySelector('[data-debug-panel]')?.getAttribute('data-debug-phase')==='running',two.cpuCycles,{timeout:30000});
         await snap('resume');await panel.getByRole('button',{name:/Pause|⏸/}).click();
         await page.locator('[data-debug-panel][data-debug-phase="paused"]').waitFor();const finalPause=await snap('pause-after-resume');
-        await page.getByRole('tab',{name:'Circuits',exact:true}).click();await snap('circuits');
+        await page.getByRole('tab',{name:'Circuit',exact:true}).click();await snap('circuits');
         await page.getByRole('tab',{name:'Code',exact:true}).click();const retained=await snap('code-retained');
         assert.deepEqual(retained.regs,finalPause.regs);assert.equal(retained.cpuCycles,finalPause.cpuCycles);
         save('forward-debug.png',await bounded(panel.screenshot()));
