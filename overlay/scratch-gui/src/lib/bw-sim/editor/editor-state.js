@@ -434,7 +434,7 @@ export const createEditor = ({model, catalog}) => {
                 if (poses) {
                     for (const po of poses) parts = withPart(parts, parts.findIndex(p => p.id === po.id), {position: po.position, rotation: po.rotation});
                 } else {
-                    for (const pid of ids) {
+                    for (const pid of new Set(ids)) {
                         const idx = parts.findIndex(p => p.id === pid);
                         const at = parts[idx].position;
                         parts = withPart(parts, idx, {position: [at[0] + delta[0], at[1] + delta[1], at[2] + delta[2]]});
