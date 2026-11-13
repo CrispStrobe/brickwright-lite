@@ -32,6 +32,7 @@
 // way in metres (velocity / position / coast / brake / hold), force limited.
 // Per-step JavaScript state is in the state registry (state-registry.js).
 
+import {internalEdgeRemovalPlan, requireInternalEdgeRemovalAPI, configureInternalEdgeRemovalPairs, disposeInternalEdgeRemovalSetup} from './internal-edge-pairs.js';
 import { validateCompiledMechanism, upgradeMechanismV1, colliderVolume } from '../contracts.js';
 import { BUILTIN_KINDS } from '../kinds/index.js';
 import {supportsWasmSimd} from './wasm-simd.js';
@@ -384,6 +385,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     const problems = validateCompiledMechanism(compiled, { kinds });
     if (problems.length) throw new Error(problems.join('\n'));
     const mechanism = upgradeMechanismV1(compiled);
+    const internalEdgePairs = internalEdgeRemovalPlan(mechanism, experiments);
+    requireInternalEdgeRemovalAPI(J, internalEdgePairs);
     /** `0 !BW ROTOR_INERTIA native` (#1494): the engine's relative hinge rotor instead of body inertia. */
     const nativeRotor = mechanism.rotor === 'native';
     /** joint id -> its actuator (CompiledMechanism v2): the motorised hinges */
@@ -694,6 +697,13 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         for (const o of releaseAfterBody) {
             if (typeof o === 'function') o(); else J.destroy(o);
         }
+    }
+
+    // Session configuration, unchanged across checkpoint/rollback. Body IDs and
+    // policies are recreated together when a model edit builds a new core.
+    try { configureInternalEdgeRemovalPairs(physicsSystem, bodyMap, internalEdgePairs); }
+    catch (error) {
+        disposeInternalEdgeRemovalSetup(error, joltInterface, object => J.destroy(object));
     }
 
     // This plan stores no evolving state. Qualities are restored within each
@@ -2391,6 +2401,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             return result;
         },
         /**
+         * Internal-edge pairs are immutable core configuration, like the shape filter;
+         * a changed policy/model requires a fresh core and fresh checkpoints.
          * Remember the whole simulation state (Jolt's bodies, contacts and constraints, and
          * this core's own clock, unwrapped hinge angles and motor commands). rollback()
          * returns to it, and stepping again with the same commands gives bit-identical

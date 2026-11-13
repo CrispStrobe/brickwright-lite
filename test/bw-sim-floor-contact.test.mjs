@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 import {test} from 'node:test';
+import {readEngineAdmission} from '../scripts/lib/sim-engine-admission.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
@@ -12,14 +13,15 @@ test('Floor contact: exact public served inputs and kernel identities',()=>{
     const source=readFileSync(new URL('../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js',import.meta.url),'utf8');
     const producer=readFileSync(new URL('../scripts/integrate.mjs',import.meta.url),'utf8');
     assert.equal(manifest.engine.pinSource,'scripts/integrate.mjs');
+    const admitted=readEngineAdmission();
     const pinURL=new URL(producer.match(/const JOLT_PHYSICS_URL = '([^']+)'/)[1]);
     assert.equal(pinURL.hostname,'github.com');
     // The release tag is the producer's own URL segment (bw.9 is published under
     // bw.9-qualified-20261029, not v<version>); the lockfile must resolve the same bytes.
-    assert.equal(pinURL.pathname,'/CrispStrobe/JoltPhysics.js/releases/download/'+manifest.engine.releaseTag+'/jolt-physics-'+manifest.engine.version+'.tgz');
+    assert.equal(pinURL.pathname,'/CrispStrobe/JoltPhysics.js/releases/download/'+admitted.releaseTag+'/jolt-physics-'+admitted.version+'.tgz');
     const lock=JSON.parse(readFileSync(new URL('../packages/scratch-gui/package-lock.json',import.meta.url),'utf8')).packages['node_modules/jolt-physics'];
-    assert.deepEqual({version:lock.version,resolved:lock.resolved,integrity:lock.integrity},{version:manifest.engine.version,resolved:pinURL.href,integrity:manifest.engine.integrity});
-    assert.equal(producer.match(/const JOLT_PHYSICS_INTEGRITY = '([^']+)'/)[1],manifest.engine.integrity);
+    assert.deepEqual({version:lock.version,resolved:lock.resolved,integrity:lock.integrity},{version:admitted.version,resolved:pinURL.href,integrity:admitted.integrity});
+    assert.equal(producer.match(/const JOLT_PHYSICS_INTEGRITY = '([^']+)'/)[1],admitted.integrity);
     assert.equal(kernelSource(source,'candidate',manifest),source);
     const baseline=readFileSync(new URL('baseline-jolt-core.js',root),'utf8');
     assert.equal(sha256(kernelSource(source,'baseline',manifest,baseline)),manifest.kernel.baselineSha256);
