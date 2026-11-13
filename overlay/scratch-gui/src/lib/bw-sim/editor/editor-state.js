@@ -78,7 +78,6 @@ const nextPartId = (parts, ids) => {
     while (ids.has(id)) {
         id = `p${parts.length + counter}`;
         counter++;
-        if (counter > 100) break;
     }
     return id;
 };
