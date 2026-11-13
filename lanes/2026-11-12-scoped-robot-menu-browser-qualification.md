@@ -9,7 +9,9 @@ its connected-instruction step-size assertion. Its
 oversized authored markers were removed without changing placements or the
 program; the full local browser journey then passed in 373 seconds using the
 renderer-fix JavaScript build with the two updated static model files. The
-integrated build also passed the held Solstice browser journey in 407 seconds,
+integrated build subsequently passed Tempest in 383 seconds, including its
+controls, save/reopen and lessons. The integrated build also passed the held
+Solstice browser journey in 407 seconds,
 including its existing physics bounds and disconnected control. Use bounded local
 or Kaggle compute;
 do not add `ci:full`. Keep experimental models at their recorded limits.
