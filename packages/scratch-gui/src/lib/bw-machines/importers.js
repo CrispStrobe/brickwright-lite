@@ -153,6 +153,10 @@ export function fromMediaManifest(manifest, opts = {}) {
         throw new Error('fromMediaManifest expects a parsed manifest object');
     }
     const base = opts.baseUrl ? String(opts.baseUrl).replace(/\/$/, '') + '/' : '';
+    // Prefix only relative references; absolute URLs and root-relative paths
+    // already select their own location. Apply the same rule to both shapes.
+    const resolveUrl = url => typeof url === 'string' && url.length &&
+        !/^(?:[a-z][a-z0-9+.-]*:|\/)/i.test(url) ? base + url : url;
 
     const slots = {};
     for (const [slotId, filename] of Object.entries(manifest.slots || {})) {
@@ -160,9 +164,11 @@ export function fromMediaManifest(manifest, opts = {}) {
         // filename (the media-lab shape). normalizeMachineConfig coerces either,
         // but resolve the url here so baseUrl and per-slot geometry are applied.
         if (filename && typeof filename === 'object') {
-            slots[slotId] = filename;
+            const url = typeof filename.url === 'string' && filename.url.length
+                ? filename.url : filename.href;
+            slots[slotId] = {...filename, url: resolveUrl(url)};
         } else {
-            slots[slotId] = {url: base + String(filename), sha256: null, geometry: null};
+            slots[slotId] = {url: resolveUrl(String(filename)), sha256: null, geometry: null};
         }
     }
     // Fold the sibling floppy block onto the floppy slot + config quirks.
