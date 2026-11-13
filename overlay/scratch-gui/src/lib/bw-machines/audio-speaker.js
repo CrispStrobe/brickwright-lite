@@ -79,7 +79,9 @@ export function createMachineAudioSpeaker(opts = {}) {
     function tick() {
         if (typeof audioFn !== 'function') return;
         let arr;
-        try { arr = audioFn(); } catch { return; }
+        // A runner can disappear/reset while its audio report is read. Treat
+        // that frame as silence rather than leaving the last PC speaker tone on.
+        try { arr = audioFn(); } catch { arr = []; }
         if (!Array.isArray(arr)) arr = arr ? [arr] : [];
         // Silence voices the machine no longer reports.
         for (let i = arr.length; i < voices.length; i++) {
