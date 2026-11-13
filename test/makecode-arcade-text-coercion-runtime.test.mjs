@@ -106,3 +106,36 @@ test('unchanged source Array addition retains original PXT object conversion thr
         clearStrayTimers();
     }
 });
+
+test('inferred member initializers retain separate receiver and index effects through PXT and SB3', {timeout:120000}, async()=>{
+    // Keep the effectful receiver and index in separate member expressions.
+    // text().charAt(index()) has an independent pre-existing VM order defect.
+    const source='let trace=0;function text():string { trace=trace*10+1;return "123"; } function index():number { trace=trace*10+2;return 1; } let receiver="123";let n=text().length;let c=receiver.charAt(index());';
+    const expected={trace:12,n:3,c:'2'};
+    let run;
+    try {
+        const original=await runPxtArcade(source,{fakeClock:true,waitForGlobals:expected});
+        assert.deepEqual(selected(original,expected),expected);
+        run=await runProgram(translate(source),{frames:20,storage:true,countExtensionCalls:false});
+        checkVM(run,expected);
+        let exported=projectToArcade(JSON.parse(run.vm.toJSON()));
+        assert.deepEqual(exported.unsupported,[]);
+        run.vm.quit();run=null;
+        for(let generation=0;generation<3;generation++) {
+            assert.match(exported.ts,/let n: number\nlet c: string/);
+            assert.equal((exported.ts.match(/\bn = /g)||[]).length,1);
+            assert.equal((exported.ts.match(/\bc = /g)||[]).length,1);
+            const actual=await runPxtArcade(exported.files,{fakeClock:true,waitForGlobals:expected});
+            assert.deepEqual(selected(actual,expected),expected);
+            run=await runProgram(translate(exported.files),{frames:20,storage:true,countExtensionCalls:false});
+            checkVM(run,expected);
+            exported=projectToArcade(JSON.parse(run.vm.toJSON()));
+            assert.deepEqual(exported.unsupported,[]);
+            const saved=Buffer.from(await (await run.vm.saveProjectSb3()).arrayBuffer());
+            run.vm.quit();run=null;
+            run=await runProgram('DEVICE ARCADE\nSPRITE Placeholder:\nWHEN flag clicked:\n  hide',{frames:0,storage:true,countExtensionCalls:false});
+            run.vm.stopAll();await run.vm.loadProject(saved);run.vm.greenFlag();await stepFrames(run.vm,20);
+            checkVM(run,expected);run.vm.quit();run=null;
+        }
+    } finally {run?.vm.quit();quitStrandedVMs();clearStrayTimers();}
+});

@@ -25,3 +25,20 @@ Limits: no whole E18, cross-target/corpus, browser editor, or exact-head CI
 qualification. Repeated initializers and procedure-name drift are separate
 work. No importer/runtime/pin/workflow changes; the closed Number-field
 importer work remains separate.
+
+## Inferred member initializer follow-up
+
+Actual String receiver flow now retains Number `.length` and String
+`.charAt(index)` results in source scalar declarations. Unknown, mixed,
+nullable, computed and argument-mutated receivers retain their refusals or
+unknown result flow. This avoids synthetic saved-default initializer growth
+without removing or moving an authored assignment or effect. Procedure naming
+policy is unchanged.
+
+The inferred scalar fixture reaches exact export byte identity over three
+reimports. Focused and adjacent source controls pass. An affected original PXT,
+actual VM, export/reimport and fresh SB3 test preserves separate receiver/index
+effects over three generations. This is a bounded initializer repair, not whole
+E18 closure. The distinct `text().charAt(index())` case still evaluates the index
+before the receiver in the imported VM, unlike original PXT; that existing
+order defect remains open and is excluded from the passing parity claim.

@@ -117,3 +117,24 @@ test('source Array text coercion keeps its helper without wrapper growth', () =>
         assert.doesNotMatch(current, /array\.join\(","\)/);
     }
 });
+
+test('inferred string member initializers do not add saved-default writes on reimport',()=>{
+    const first=roundtrip('let x=123;let n=(""+x).length;let c=(""+x).charAt(0);');
+    assert.match(first,/let n: number\nlet c: string/);
+    assert.equal((first.match(/\bn = /g)||[]).length,1);
+    assert.equal((first.match(/\bc = /g)||[]).length,1);
+    let current=first;
+    for(let generation=0;generation<3;generation++) {
+        current=roundtrip(current);
+        assert.equal(current,first);
+        assert.deepEqual(evaluate(current,'[n,c]'),[3,'1']);
+    }
+});
+
+test('member override and indexed-call spellings keep importer refusals',()=>{
+    for(const source of [
+        'let text="a";text.charAt=function(n:number){return 1};let c=text.charAt(0)',
+        'String.prototype.charAt=function(n:number){return 1};let c="a".charAt(0)',
+        'let c="a"["charAt"](0)'
+    ]) assert.ok(arcadeToPseudocode(source).unsupported.length>0);
+});
