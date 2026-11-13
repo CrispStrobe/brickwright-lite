@@ -727,6 +727,7 @@ export const validatePlacedModel = (model, catalog) => {
     if (model.rotor !== undefined && !['legacy', 'native'].includes(model.rotor)) {
         out.push('model.rotor: expected legacy or native');
     }
+    if (model.solver !== undefined && model.solver !== 'light-links') out.push('model.solver: expected light-links');
     if (!Array.isArray(model.parts)) return [...out, 'model.parts: not an array'];
     uniqueIds(model.parts, 'model.parts', out);
     if (model.drawings !== undefined) {
@@ -1165,6 +1166,7 @@ export const upgradeMechanismV1 = m => {
     const out = {version: 2, gravity: m.gravity, bodies: withBodyRoles(m.bodies), joints: m.joints, gears: m.gears, diagnostics: m.diagnostics};
     if (m.sensors !== undefined) out.sensors = m.sensors;
     if (m.rotor !== undefined) out.rotor = m.rotor;
+    if (m.solver !== undefined) out.solver = m.solver;
     return Object.assign(out, {hubs: [], actuators, couplings, devices, noCollide: noCollidePairs(m.joints, couplings)});
 };
 

@@ -6,6 +6,8 @@ import {parseModel,serializeModel} from '../overlay/scratch-gui/src/lib/bw-sim/m
 import {compile,AUTHORED_LIGHT_LINKS,FOREIGN_LIGHT_LINKS} from '../overlay/scratch-gui/src/lib/bw-sim/mech/compile.js';
 import {catalogFrom,prepareModel} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {EXPERIMENTAL_MODELS} from '../overlay/scratch-gui/src/lib/bw-sim/model/experimental-models.js';
+import {createEditor} from '../overlay/scratch-gui/src/lib/bw-sim/editor/editor-state.js';
+import {upgradeMechanismV1,validatePlacedModel} from '../overlay/scratch-gui/src/lib/bw-sim/contracts.js';
 import {observeAddon} from '../scripts/lib/sim-lab-addon-judge.mjs';
 import {compiledWalkingBeam,walkingBeamPose,judgeWalkingBeam,r4DisconnectionLoss,R4_LAWS} from '../scripts/lib/sim-lab-r4-judges.mjs';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
@@ -40,9 +42,27 @@ test('solver preset compile changes only explicit solver policy and retains expe
  const foreign=compile(original.runModel,catalog,{version:2,rescueLoose:true});
  assert.deepEqual(foreign.solver.lightLinks,FOREIGN_LIGHT_LINKS,'unannotated foreign models retain their policy');
  assert.deepEqual(compile(candidate.runModel,catalog).solver,{lightLinks:AUTHORED_LIGHT_LINKS},'version1 preserves explicit intent too');
+ assert.deepEqual(upgradeMechanismV1(compile(candidate.runModel,catalog)).solver,{lightLinks:AUTHORED_LIGHT_LINKS},'physics version upgrade retains the policy');
  const saved=prepare(serializeModel(candidate.model,{precision:12}));
  assert.deepEqual(saved.mechanism.solver,candidate.mechanism.solver);
  assert.equal(EXPERIMENTAL_MODELS.find(x=>x.file==='solstice-pumpjack.ldr').experimental,true);
+});
+
+test('Build import, edit, undo, redo and save/reopen retain the solver preset',()=>{
+ const prepared=prepare(source),editor=createEditor({model:prepared.model,catalog});
+ const part=editor.model.parts[0],originalColor=part.color,changedColor=originalColor===4?1:4;
+ assert.equal(editor.model.solver,'light-links','opening Build keeps the setting');
+ editor.apply({type:'recolor',id:part.id,color:changedColor});
+ assert.equal(editor.model.parts[0].color,changedColor,'the actual edit occurred');
+ assert.equal(editor.model.solver,'light-links');
+ editor.undo();assert.equal(editor.model.parts[0].color,originalColor);assert.equal(editor.model.solver,'light-links');
+ editor.redo();assert.equal(editor.model.parts[0].color,changedColor);assert.equal(editor.model.solver,'light-links');
+ const reopened=prepare(serializeModel(editor.model,{precision:12}));
+ assert.deepEqual(reopened.mechanism.solver,{lightLinks:AUTHORED_LIGHT_LINKS},'saved edited model still compiles with the preset');
+ const ordinary=createEditor({model:prepare(baseline).model,catalog});
+ ordinary.apply({type:'recolor',id:ordinary.model.parts[0].id,color:changedColor});
+ assert.equal(ordinary.model.solver,undefined,'editing ordinary models does not opt in');
+ assert.ok(validatePlacedModel({...prepared.model,solver:'typo'},catalog).some(problem=>problem.includes('model.solver')));
 });
 
 const residualReader=prepared=>{
