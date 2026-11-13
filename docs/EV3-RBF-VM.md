@@ -156,7 +156,7 @@ family, INPUT_DEVICE_LIST, INPUT_DEVICE (its subcommands), INPUT_READ/READSI/REA
 UI_DRAW, INFO.
 
 Not implemented — the program stops with **UNIMPLEMENTED_OPCODE** (or **UNIMPLEMENTED_SUBCOMMAND**) naming
-it: PROBE, DO, BP0–BP3, BP_SET, SYSTEM, PORT_CNV_OUTPUT, PORT_CNV_INPUT, NOTE_TO_FREQ, MEMORY_WRITE,
+it: PROBE, DO, BP0–BP3, BP_SET, SYSTEM, PORT_CNV_OUTPUT, PORT_CNV_INPUT, MEMORY_WRITE,
 MEMORY_READ, COM_* (READ, WRITE, READY, READDATA, WRITEDATA, GET, SET, TEST, REMOVE, WRITEFILE), MAILBOX_*
 (OPEN, WRITE, READ, TEST, READY, CLOSE), INPUT_SAMPLE, FILENAME, TST, and opFILE's remaining
 text/value, log, folder, seek and cache operations. A byte that is no opcode is **ERR_INSTR**;
@@ -273,3 +273,15 @@ milliseconds inside it.
 - A braked motor's 100 ms at a program's end; the instruction rate (above).
 - lmsasm's `ARRAY16` / `ARRAY32` / `ARRAYF` variables allocate one byte per element (ASM `:107–131`: the size
   is multiplied only on an error); the fixtures use `ARRAY8` and `DATAS`.
+
+### Note-to-frequency candidate
+
+The `NOTE_TO_FREQ` VM instruction converts an uppercase note name to a signed
+16-bit frequency in hertz. The firmware's 36 accepted names cover natural notes
+and C, D, F, G and A sharps in octaves 4–6; unmatched strings return 440 Hz.
+The candidate derives the published integer frequencies by rounding equal
+temperament to the nearest hertz. The instruction and operand widths are in the
+[EV3 Firmware Developer Kit](https://www.lego.com/cdn/cs/set/assets/blt77bd61c3ac436ea3/LEGO_MINDSTORMS_EV3_Firmware_Developer_Kit.pdf);
+the finite names, values and fallback are facts from
+[the lms2012 firmware source](https://github.com/mindboards/ev3sources/blob/master/lms2012/lms2012/source/lms2012.c).
+Compiled-program and clean virtual-brick qualification are pending.

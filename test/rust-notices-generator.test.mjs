@@ -40,6 +40,23 @@ const WATCHED_INPUTS = [
 // A later action, command or resource change requires explicit source review.
 const HELD_RUNTIME_SHA256 = '70f32835df8bc9a8fce512359a29796433a42e469549c96ab5c19b27a95d4ae4';
 
+// Reverse only policy 4be93d2bfd422acdc3f776a73b72d099813538e1 after
+// admitting its exact bytes. Every earlier runtime byte stays hash-held.
+const REVIEWED_CONCURRENCY = 'concurrency:\n' +
+    "  group: ${{ github.workflow }}${{ !(github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request')) && format('-isolated-{0}', github.run_id) || '' }}-${{ github.ref }}\n" +
+    "  cancel-in-progress: ${{ github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request') }}\n";
+const PREVIOUS_CONCURRENCY = 'concurrency:\n' +
+    '  group: rust-notices-${{ github.head_ref || github.ref_name }}\n' +
+    '  cancel-in-progress: true\n\n';
+const runtimeBeforeReviewedConcurrency = source => {
+    assert.equal((source.match(/^concurrency:/gm) || []).length, 1,
+        'exactly one workflow concurrency block');
+    assert.equal(source.split(REVIEWED_CONCURRENCY).length, 2,
+        'exact reviewed concurrency policy');
+    return source.slice(source.indexOf('permissions:'))
+        .replace(REVIEWED_CONCURRENCY, PREVIOUS_CONCURRENCY);
+};
+
 // Parse only this workflow's three-event, string-list header. Unknown or
 // ambiguous forms refuse; this is deliberately not a general YAML parser.
 const readNoticesTriggers = source => {
@@ -107,7 +124,7 @@ const assertNoticesContract = source => {
     assert.deepEqual(events.push.branches, ['main']);
     assert.deepEqual(events.push.paths, WATCHED_INPUTS);
     assert.deepEqual(events.pull_request, {paths: WATCHED_INPUTS});
-    const runtime = source.slice(source.indexOf('permissions:'));
+    const runtime = runtimeBeforeReviewedConcurrency(source);
     assert.equal(createHash('sha256').update(runtime).digest('hex'), HELD_RUNTIME_SHA256,
         'permissions, concurrency, jobs, action pins, commands and five-minute bound are byte-held');
     return events;
@@ -265,10 +282,8 @@ test('the dedicated workflow installs Rust and watches every notices input', () 
     assert.match(workflow, /workflow_dispatch:/,
         'the registered manual source check remains available');
     assertNoticesContract(workflow);
-    assert.match(workflow, /group: rust-notices-\$\{\{ github\.head_ref \|\| github\.ref_name \}\}/,
-        'branch-push and pull-request runs must share one cancellation group');
-    assert.match(workflow, /cancel-in-progress: true/,
-        'a superseded notices-only run must not consume another runner slot');
+    assert.ok(workflow.includes(REVIEWED_CONCURRENCY),
+        'reviewed workflow/ref group cancels superseded push and PR runs, preserving tag/manual runs');
     assert.match(workflow, /timeout-minutes: 5/,
         'the focused metadata check must retain its bounded five-minute ceiling');
     assert.match(workflow, /dtolnay\/rust-toolchain@[0-9a-f]{40}/,
@@ -317,4 +332,28 @@ test('canned event verdicts cannot satisfy the source-driven coverage and old-he
     const prOnly = (_events, event) => event.name === 'pull_request';
     assert.throws(() => assertNoticesDedup(workflow, oldSource, prOnly),
         /old source reproduces the duplicate automatic routes/);
+});
+
+
+test('notices concurrency projection refuses policy drift and preserves held runtime bytes', () => {
+    assertNoticesCoverage(workflow);
+    const mutations = [
+        workflow.replace(REVIEWED_CONCURRENCY, ''),
+        workflow + '\n' + REVIEWED_CONCURRENCY,
+        workflow.replace(REVIEWED_CONCURRENCY, PREVIOUS_CONCURRENCY),
+        workflow.replace('${{ github.workflow }}', 'other-workflow'),
+        workflow.replace('${{ github.ref }}', '${{ github.sha }}'),
+        workflow.replace("github.ref_type != 'tag'", "github.ref_type == 'tag'"),
+        workflow.replace("github.event_name == 'push'", "github.event_name == 'workflow_dispatch'"),
+        workflow.replace("github.event_name == 'pull_request'", "github.event_name == 'pull_request_target'"),
+        workflow.replace(REVIEWED_CONCURRENCY, REVIEWED_CONCURRENCY + '\n'),
+        workflow.replace('  contents: read', '  contents: write'),
+        workflow + '# unrelated runtime drift\n'
+    ];
+    for (const source of mutations) {
+        assert.notEqual(source, workflow);
+        assert.throws(() => assertNoticesCoverage(source));
+    }
+    assert.equal(runtimeBeforeReviewedConcurrency(workflow + '# unrelated runtime drift\n'),
+        runtimeBeforeReviewedConcurrency(workflow) + '# unrelated runtime drift\n');
 });
