@@ -27,6 +27,7 @@ import {localArrayDeclarationResetSource} from './local-array-declaration-reset-
 import {isRuntimeDispatchAddDeclaration} from './native-array-binary-helper-source.js';
 import {createStringCharCodeNumberSource} from './string-char-code-number-source.js';
 import {BUTTON_EVENTS,controllerButtonEventNumberLeaves} from './controller-button-event-number-source.js';
+import {closedClassPrimitiveSource} from './closed-class-primitive-source.js';
 
 const spriteEventNumber=Number;
 const spriteAyArrayPrototype=Array.prototype,spriteAyDescriptor=Object.getOwnPropertyDescriptor;
@@ -1825,7 +1826,9 @@ export function validateProcedureConstraintSource(program,{onlyFunctions=null,or
  return validatePrimitiveConstraintGraph(program,graph,onlyFunctions);
 }
 function validatePrimitiveConstraintGraph(program,graph,onlyFunctions) {
- const constraintTypes=graph.constraintTypesAt||graph.typesAt;
+ const originalConstraintTypes=graph.constraintTypesAt||graph.typesAt;
+ const classNumber=closedClassPrimitiveSource(program,graph);
+ const constraintTypes=node=>classNumber(node)?new Set(['Number']):originalConstraintTypes(node);
  const functions=new Map(),uses=[],calls=[],writes=[];
  const ordinary=new Set((program.body||[]).filter(node=>node.type==='FunctionDeclaration'&&(!onlyFunctions||onlyFunctions.has(node.name))));
  const walk=(node,parent=null,key=null)=>{
