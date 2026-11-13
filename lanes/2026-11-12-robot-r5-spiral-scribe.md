@@ -24,3 +24,34 @@ buildable layout, solid/connected checks and real source-bound VM/Jolt and
 browser control/save-reopen observations before promotion. Retain failures and
 existing originals, use no invented physical accuracy or hardware claims, and
 complete all enabled checks before a normal matched-head merge.
+
+Static candidate checkpoint: `scripts/audit-spiral-racks.mjs` screens the
+catalogued rack-tooth connectors against the four existing attachment points,
+using all axis-aligned proper rotations and a rigid translation. The fixed-mount
+screen permits an axial tooth-centre shift when the candidate fully covers the
+reference span; the redesign-distance screen searches those axial shifts for
+the smallest maximum displacement of distinct compatible mounts.
+In the current
+catalogue only the existing 64781 satisfies all fixed attachments and the
+reference tooth-contact geometry. When mount positions may change, 32132,
+32185 and 18942 retain the reference tooth span/contact in this screen but lack
+one or more compatible existing mount types or locations. Nearest connector
+distances are independent per mount and do not establish a jointly buildable
+assembly. This is not a tooth-pitch, real-geometry, collision, travel or
+physical-build result; promotion remains pending.
+
+A separate source-geometry check reads the repository's LDraw part files. The
+repeated tooth subpart placements in 64781, 32132, 32185 and 18942 each have
+8 LDU spacing; the source files are identified by SHA-256 in the check output.
+These are modeled placements, not calibrated physical measurements or proof of
+contact. A simple change to one of those rack parts therefore does not by
+itself establish a correction for the existing feed discrepancy. The model stays
+experimental while a buildable, independently justified design is sought.
+
+The redesign screen also searches one-to-one assignments of the four existing
+mount types and axes to candidate connectors, minimizing the largest movement
+for each allowed tooth alignment. In the present catalogue, 64781 has a zero
+displacement assignment; none of the other screened racks has an assignment
+covering all four mounts. This rules out reusing those four mount types in the
+screened orientations, not a redesign using different mounts. Even a positive
+assignment would not establish shared support, clearance or buildability.

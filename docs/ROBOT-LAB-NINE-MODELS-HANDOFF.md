@@ -154,3 +154,33 @@ Those results are not mechanical qualification; preserve their source hashes.
 Known limit: removing one LoopRelay chain link alone still leaves an inferred
 coupling. Its current causal control removes the driving sprocket. The harness
 cannot be advertised as catching every possible construction defect.
+
+## Current qualification follow-through (2026-11-12)
+
+PR #1731 combines the pending R3 and R4 model work with a tile-menu focus
+repair; refresh its head and checks before acting. The menu repair has focused
+controls, but the actual tilemap journey and the Apex and Tempest browser
+journeys still need source-bound qualification. Do not promote models or merge
+on those controls alone.
+
+Solstice remains experimental. The corrected authored-frame judge reports a
+browser maximum of 0.115890 degrees and 0.171740 mm against the unchanged
+0.1-degree and 0.1-mm limits. Retained native cold-start frames also exceed
+those bounds before the native program observation window; at 100 ms the two
+recordings nearly agree. Initial anchors close and the joint gaps emerge during
+stepping, consistent with a shared constraint-relaxation transient, not proof
+of browser-only drift. Next, test the full startup interval in both recorders,
+then isolate the constraint/solver cause with bounded comparisons. Preserve the
+original recordings and limits; a post-settling result does not qualify startup.
+
+PR #1731 also has an opt-in startup telemetry candidate spanning the worker,
+accepted session batches and the explicitly selected held-Solstice recorder.
+The normal and disconnected-control paths keep their existing options. A
+failure can retain partial startup packets in private evidence when the page
+remains accessible; collection has structural count limits, not a hard byte
+limit. Focused source controls cover the routing and failure handling, but do
+not establish engine or browser behavior. Next, bind the exact source and built
+runtime, run a separately admitted native/browser observation with all startup
+samples, and independently inspect the resulting packet before deciding whether
+solver changes are justified. If the page is inaccessible, preserve that
+capture failure rather than inventing missing observations.

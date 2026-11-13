@@ -60,6 +60,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: ${{ github.workflow }}${{ !(github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request')) && format('-isolated-{0}', github.run_id) || '' }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request') }}
+
 jobs:
   ios-audit-preflight:
     if: github.event_name == 'workflow_dispatch' && inputs.ios_audit_preflight_only && !inputs.ios_audit_directory_only && !inputs.ios_audit_interface_only && !inputs.ios_audit_interface_diagnostic && !inputs.ios_audit_interface_manual_only && !inputs.ios_audit_interface_inventory_only && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'

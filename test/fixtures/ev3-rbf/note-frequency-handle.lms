@@ -1,0 +1,19 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026 Brickwright contributors
+// Note strings stored in an array handle, using the assembler's @ operator.
+DATA16 Frequency
+DATA32 Output
+vmthread MAIN
+{
+  HANDLE NameArray
+  ARRAY(CREATE8, 8, NameArray)
+  STRINGS(ADD, 'D#', '5', @NameArray)
+  NOTE_TO_FREQ(@NameArray, Frequency)
+  MOVE16_32(Frequency, Output)
+  UI_WRITE(VALUE32, Output)
+  STRINGS(ADD, 'B#', '4', @NameArray)
+  NOTE_TO_FREQ(@NameArray, Frequency)
+  MOVE16_32(Frequency, Output)
+  UI_WRITE(VALUE32, Output)
+  ARRAY(DELETE, NameArray)
+}

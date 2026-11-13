@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {assertHeldLegacyConcurrency} from './helpers/held-legacy-concurrency.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
@@ -6,6 +7,7 @@ const read = name => readFileSync(new URL(`../.github/workflows/${name}`, import
 
 test('cycle qualification gives a cheap verdict before heavy candidate and browser work', () => {
     const workflow = read('cycle-core-qualification.yml');
+    assertHeldLegacyConcurrency(workflow);
     const contracts = workflow.indexOf('  contracts:');
     const qualify = workflow.indexOf('  qualify:');
     assert.ok(contracts >= 0 && contracts < qualify);
@@ -13,7 +15,8 @@ test('cycle qualification gives a cheap verdict before heavy candidate and brows
     assert.equal((workflow.match(/name: Static qualification contracts/g) || []).length, 1,
         'static policy tests must not be repeated after heavy qualification');
     assert.match(workflow, /timeout-minutes: 3/);
-    assert.match(workflow, /cancel-in-progress: true/);
+    assert.match(workflow, /^  group: \$\{\{ github\.workflow \}\}-\$\{\{ github\.ref \}\}$/m);
+    assert.match(workflow, /^  cancel-in-progress: \$\{\{ github\.ref_type != 'tag' && \(github\.event_name == 'push' \|\| github\.event_name == 'pull_request'\) \}\}$/m);
     const browser = workflow.slice(workflow.indexOf('- name: Install the qualification browser'),
         workflow.indexOf('- uses: actions/upload-artifact'));
     assert.doesNotMatch(browser, /if: always\(\)/,

@@ -25,9 +25,8 @@ on:
       - '.github/workflows/pascal-ack-image.yml'
 
 concurrency:
-  group: pascal-ack-image-${{ github.ref }}
-  cancel-in-progress: true
-
+  group: ${{ github.workflow }}${{ !(github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request')) && format('-isolated-{0}', github.run_id) || '' }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request') }}
 env:
   IMAGE: ghcr.io/crispstrobe/pascal-ack-compiler
 
