@@ -5721,7 +5721,7 @@ export function arcadeToPseudocode (files, opts = {}) {
         diagnostics.push(...objectClasses.unsupported);
         const callbacks = lowerStaticCallbackHelpers(objectClasses.program, {registrationSpec:callbackRegistrationSpec});
         diagnostics.push(...callbacks.unsupported);
-        const ast = lowerLazyValues(callbacks.program);
+        const ast = lowerLazyValues(callbacks.program, {unsupported:diagnostics});
         return {ast:transport ? projectSharedImageArrayTransport(ast,transport.plan) : ast,diagnostics,stagedThrow,physicalUpdateLowering:objectClasses.physicalUpdateLowering};
     };
     let built = buildCurrentAst(sharedPreparation?.program || fontSource,sharedPreparation);
