@@ -1,118 +1,90 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Synthetic identity boundary controls. No test bytes represent an engine package.
+// Synthetic release-pin controls. No test bytes represent an engine package.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
-import {bindEngineArchive, resolveEngineAdmission, readEngineAdmission, currentJoltFetchPin} from '../scripts/lib/sim-engine-admission.mjs';
+import {engineArchiveHashes, resolveEngineAdmission, readEngineAdmission, currentEngineIdentity, currentJoltFetchPin} from '../scripts/lib/sim-engine-admission.mjs';
 const repo = new URL('../', import.meta.url), read = file => readFileSync(new URL(file, repo));
-const currentAdmission = JSON.parse(read('test/fixtures/bw-sim/engine-admissions/bw10.json'));
-const clone = value => structuredClone(value);
-// Synthetic lifecycle fixtures never inherit the production admission decision.
-const pending = {...clone(currentAdmission), status: 'pending', archive: {sha256: null, integrity: null},
-    sources: {nativeCanonicalCommit: null, bindingsCanonicalCommit: null},
-    qualification: {summarySha256: null, scalarModuleSha256: null, simdModuleSha256: null}};
-const retained = currentAdmission.retainedPackage;
-const legacyProducer = `const JOLT_PHYSICS_URL = '${retained.url}';\nconst JOLT_PHYSICS_INTEGRITY = '${retained.integrity}';\n`;
-const legacyLock = {packages: {'': {dependencies: {'jolt-physics': retained.url}},
-    'node_modules/jolt-physics': {version: retained.version, resolved: retained.url, integrity: retained.integrity}}};
-const bytes = Buffer.from('SYNTHETIC ADMISSION TEST INPUT: NOT AN ENGINE OR A RELEASE');
-const admittedFixture = () => ({...bindEngineArchive(clone(pending), bytes), status: 'admitted',
-    sources: {nativeCanonicalCommit: '1'.repeat(40), bindingsCanonicalCommit: '2'.repeat(40)},
-    qualification: {summarySha256: '3'.repeat(64), scalarModuleSha256: '4'.repeat(64), simdModuleSha256: '5'.repeat(64)}});
-const inputFor = admission => {
-    const producer = `const JOLT_PHYSICS_URL = '${admission.expectedPackage.url}';\nconst JOLT_PHYSICS_INTEGRITY = '${admission.archive.integrity}';\n`;
-    const lock = {packages: {'': {dependencies: {'jolt-physics': admission.expectedPackage.url}},
-        'node_modules/jolt-physics': {version: admission.expectedPackage.version, resolved: admission.expectedPackage.url, integrity: admission.archive.integrity}}};
-    return {admission, producer, lock, archiveBytes: bytes};
+const bytes = Buffer.from('SYNTHETIC PIN TEST INPUT: NOT AN ENGINE OR A RELEASE');
+const inputFor = (version = '1.1.0-bw.10', releaseTag = 'bw.10-test') => {
+    // Assemble the synthetic URL so the fetch census sees only actual fetch pins.
+    const resolved = 'https://' + 'github.com/' + `CrispStrobe/JoltPhysics.js/releases/download/${releaseTag}/jolt-physics-${version}.tgz`;
+    const {integrity} = engineArchiveHashes(bytes);
+    const producer = `const JOLT_PHYSICS_URL = '${resolved}';\nconst JOLT_PHYSICS_INTEGRITY = '${integrity}';\n`;
+    const lock = {packages: {'': {dependencies: {'jolt-physics': resolved}},
+        'node_modules/jolt-physics': {version, resolved, integrity}}};
+    return {producer, lock, archiveBytes: bytes};
 };
 
-test('explicit pending fixture binds injected bytes without admitting them', () => {
-    assert.equal(pending.status, 'pending');
-    assert.deepEqual(pending.archive, {sha256: null, integrity: null});
-    assert(Object.values(pending.sources).every(value => value === null));
-    assert(Object.values(pending.qualification).every(value => value === null));
-    const bound = bindEngineArchive(pending, bytes);
-    assert.equal(bound.status, 'pending');assert.notEqual(bound.archive.sha256, null);
-    assert.equal(pending.archive.sha256, null, 'original record remains pending and unchanged');
-    assert.throws(() => bindEngineArchive(admittedFixture(), bytes), /only pending engine records/);
-    assert.throws(() => bindEngineArchive(pending, 'not bytes'), /actual archive bytes required/);
-    assert.throws(() => resolveEngineAdmission(inputFor(bound)), /admission is pending/);
-});
-
-test('exact retained current pin remains valid while future package is pending', () => {
-    const result = resolveEngineAdmission({admission: pending, producer: legacyProducer, lock: legacyLock});
-    assert.equal(result.retained, true);assert.equal(result.version, pending.retainedPackage.version);
-    // The retained protocol stays valid even after the production record is admitted.
-    assert.equal(resolveEngineAdmission({admission: admittedFixture(), producer: legacyProducer, lock: legacyLock}).retained, true);
-});
-
-test('actual current producer and lock satisfy their declared production admission', () => {
-    assert(['pending', 'admitted'].includes(currentAdmission.status));
-    const actual = readEngineAdmission();
-    const expected = actual.retained ? currentAdmission.retainedPackage : currentAdmission.expectedPackage;
-    assert.equal(actual.version, expected.version);assert.equal(actual.resolved, expected.url);
-    assert.equal(actual.integrity, actual.retained ? expected.integrity : currentAdmission.archive.integrity);
-    assert.equal(currentJoltFetchPin().text, actual.resolved.replace('https://', ''));
-    if (currentAdmission.status === 'admitted') {
-        // Validate the real record's complete declared identities without claiming
-        // synthetic test bytes are the actual production archive.
-        const {archiveBytes, ...declared} = inputFor(currentAdmission);
-        assert.equal(resolveEngineAdmission(declared).retained, false);
+test('matching release pins select new versions without an admission record', () => {
+    for (const [version, tag] of [['1.1.0-bw.10', 'bw.10-test'], ['1.1.0-bw.11', 'bw.11-test']]) {
+        const input = inputFor(version, tag), result = resolveEngineAdmission(input);
+        assert.equal(result.version, version);assert.equal(result.releaseTag, tag);
+        assert.equal(result.resolved, input.lock.packages['node_modules/jolt-physics'].resolved);
+        assert.equal(result.integrity, engineArchiveHashes(bytes).integrity);
+        assert.equal(result.archiveSha256, createHash('sha256').update(bytes).digest('hex'));
     }
 });
 
-test('explicit admitted fixture binds both digests of injected bytes and exact producer/lock/source identities', () => {
-    const admission = admittedFixture(), result = resolveEngineAdmission(inputFor(admission));
-    assert.equal(result.retained, false);assert.equal(result.version, '1.1.0-bw.10');
-    assert.equal(result.archiveSha256, createHash('sha256').update(bytes).digest('hex'));
-    const bad = {...inputFor(admission), archiveBytes: Buffer.from('different synthetic bytes')};
-    assert.throws(() => resolveEngineAdmission(bad), /actual eventual archive bytes/);
+test('actual producer and lock agree on one content-bound engine release', () => {
+    const actual = readEngineAdmission(), lock = JSON.parse(read('packages/scratch-gui/package-lock.json'));
+    assert.deepEqual(currentEngineIdentity(), {version: actual.version, resolved: actual.resolved, integrity: actual.integrity});
+    const installed = lock.packages['node_modules/jolt-physics'];
+    assert.deepEqual({version: installed.version, resolved: installed.resolved, integrity: installed.integrity}, currentEngineIdentity());
+    assert.equal(currentJoltFetchPin().text, actual.resolved.replace('https://', ''));
 });
 
-test('missing fields, wrong source identities, unknown pins and lock divergence cannot select the new engine', () => {
+test('actual archive bytes must match SHA512 even when producer and lock agree', () => {
+    assert.throws(() => resolveEngineAdmission({...inputFor(), archiveBytes: Buffer.from('changed bytes')}), /actual archive bytes/);
+    assert.throws(() => resolveEngineAdmission({...inputFor(), archiveBytes: 'not bytes'}), /actual archive bytes required/);
+    const {archiveBytes, ...pins} = inputFor();
+    assert.equal(resolveEngineAdmission(pins).integrity, engineArchiveHashes(bytes).integrity);
+    assert.equal(resolveEngineAdmission(pins).archiveSha256, undefined, 'no unobserved archive SHA256 is reported');
+});
+
+test('missing or duplicate pins, wrong versions, and lock divergence refuse selection', () => {
     const cuts = [
-        x => {x.admission.status = 'pending';}, x => {x.admission.archive.sha256 = null;},
-        x => {x.admission.archive.integrity = null;}, x => {x.admission.sources.nativeCanonicalCommit = null;},
-        x => {x.admission.sources.bindingsCanonicalCommit = 'short';}, x => {x.admission.qualification.summarySha256 = null;},
-        x => {x.admission.qualification.scalarModuleSha256 = null;}, x => {x.admission.qualification.simdModuleSha256 = null;},
-        x => {x.producer = x.producer.replace('bw.10-qualified', 'unknown-qualified');},
-        x => {x.producer += x.producer;}, x => {delete x.lock.packages['node_modules/jolt-physics'];},
+        x => {x.producer = '';}, x => {x.producer += x.producer;},
+        x => {x.producer += x.producer.split('\n')[1];},
+        x => {x.producer = x.producer.split('\n')[0];},
+        x => {delete x.lock.packages['node_modules/jolt-physics'];},
+        x => {delete x.lock.packages[''];},
         x => {x.lock.packages[''].dependencies['jolt-physics'] = 'different';},
         x => {x.lock.packages['node_modules/jolt-physics'].version = '1.1.0-bw.9';},
         x => {x.lock.packages['node_modules/jolt-physics'].integrity = 'sha512-invalid';},
         x => {x.lock.packages['node_modules/jolt-physics'].resolved = 'different';}
     ];
-    for (const cut of cuts) {const input = inputFor(admittedFixture());cut(input);assert.throws(() => resolveEngineAdmission(input));}
+    for (const cut of cuts) {const input = inputFor();cut(input);assert.throws(() => resolveEngineAdmission(input));}
 });
 
-test('retained provenance census and every original reader/input byte remain mandatory', () => {
+test('malformed SHA512 and unversioned release locations fail even when both pins match', () => {
+    for (const integrity of ['sha512-invalid', 'sha256-' + 'a'.repeat(64), 'sha512-' + Buffer.alloc(64).toString('base64') + '!']) {
+        const input = inputFor(), locked = input.lock.packages['node_modules/jolt-physics'];
+        input.producer = input.producer.replace(locked.integrity, integrity);locked.integrity = integrity;
+        assert.throws(() => resolveEngineAdmission(input), /exact SHA512 integrity/);
+    }
+    for (const resolved of ['https://example.invalid/engine.tgz', 'https://' + 'github.com/' + 'CrispStrobe/JoltPhysics.js/releases/latest/download/engine.tgz']) {
+        const input = inputFor(), locked = input.lock.packages['node_modules/jolt-physics'];
+        input.producer = input.producer.replace(locked.resolved, resolved);
+        locked.resolved = resolved;input.lock.packages[''].dependencies['jolt-physics'] = resolved;
+        assert.throws(() => resolveEngineAdmission(input), /versioned engine release/);
+    }
+});
+
+test('identity lookup needs only producer and lock, independent of historical fixture files', () => {
     mkdirSync(new URL('../test-results/', import.meta.url), {recursive: true});
-    const temporary = mkdtempSync(new URL('../test-results/engine-admission-', import.meta.url)), root = pathToFileURL(temporary + path.sep);
+    const temporary = mkdtempSync(new URL('../test-results/engine-pin-', import.meta.url)), root = pathToFileURL(temporary + path.sep);
     try {
-        for (const file of Object.keys(pending.retainedFiles)) {
-            const destination = new URL(file, root);mkdirSync(new URL('./', destination), {recursive: true});writeFileSync(destination, read(file));
-        }
-        for (const [file, data] of [['scripts/integrate.mjs', legacyProducer], ['packages/scratch-gui/package-lock.json', JSON.stringify(legacyLock)]]) {
+        const input = inputFor();
+        for (const [file, data] of [['scripts/integrate.mjs', input.producer], ['packages/scratch-gui/package-lock.json', JSON.stringify(input.lock)]]) {
             const destination = new URL(file, root);mkdirSync(new URL('./', destination), {recursive: true});writeFileSync(destination, data);
         }
-        assert.equal(readEngineAdmission({root, admission: pending}).retained, true);
-        assert.equal(readEngineAdmission({root, admission: admittedFixture()}).retained, true);
-        // Exercise a future production-style store using explicitly synthetic
-        // admitted data; never change the actual record, producer or lock.
-        const future = admittedFixture(), futureInput = inputFor(future);
-        writeFileSync(new URL('scripts/integrate.mjs', root), futureInput.producer);
-        writeFileSync(new URL('packages/scratch-gui/package-lock.json', root), JSON.stringify(futureInput.lock));
-        assert.throws(() => readEngineAdmission({root, admission: {...future, status: 'pending'}}), /admission is pending/);
-        assert.equal(readEngineAdmission({root, admission: future}).retained, false);
-        writeFileSync(new URL('scripts/integrate.mjs', root), legacyProducer);
-        writeFileSync(new URL('packages/scratch-gui/package-lock.json', root), JSON.stringify(legacyLock));
-        const changed = new URL('scripts/verify-sim-resting-creep.mjs', root);writeFileSync(changed, Buffer.concat([read('scripts/verify-sim-resting-creep.mjs'), Buffer.from('\n')]));
-        assert.throws(() => readEngineAdmission({root, admission: pending}), /retained original changed/);
-        const removed = clone(pending);delete removed.retainedFiles['scripts/verify-sim-resting-creep.mjs'];
-        assert.throws(() => readEngineAdmission({root, admission: removed}), /exact retained provenance census/);
+        assert.equal(readEngineAdmission({root, archiveBytes: bytes}).version, '1.1.0-bw.10');
+        writeFileSync(new URL('scripts/verify-sim-resting-creep.mjs', root), '// independently editable reader\n');
+        assert.deepEqual(readEngineAdmission({root}), resolveEngineAdmission({producer: input.producer, lock: input.lock}));
     } finally {rmSync(temporary, {recursive: true, force: true});}
 });
 
