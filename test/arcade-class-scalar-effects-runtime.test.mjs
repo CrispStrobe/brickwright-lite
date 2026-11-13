@@ -69,6 +69,8 @@ const bitwiseGetterSource=`let trace=0;
  function pair(a:number,b:number){return a*10+b}
  function take(n:number){return n}
  let box=new Box(2.75);let first=take(box.value);let ordered=pair(trace,box.value);
+ box.n=1073741823.5;let signedMinimum=take(box.value);
+ box.n=1073741824;let signedMaximum=take(box.value);
  box.n=2147483648;let wrapped=take(box.value);
  box.n=1e308;let infinite=take(box.value);
  box.n=-2.75;let negative=take(box.value);let done=trace;`;
@@ -78,7 +80,7 @@ const bitwiseNaNGetterSource=`class Box{constructor(public n:number){}
  let box=new Box(1e308);let nanOperand=take(box.value);
  box.n=0;let recovered=take(box.value);let done=recovered;`;
 for(const [name,source,expected]of [
- ['bitwise getter',bitwiseGetterSource,{first:-6,ordered:4,wrapped:-1,infinite:-1,negative:4,trace:5,done:5}],
+ ['bitwise getter',bitwiseGetterSource,{first:-6,ordered:4,signedMinimum:-2147483648,signedMaximum:2147483647,wrapped:-1,infinite:-1,negative:4,trace:7,done:7}],
  ['bitwise NaN getter',bitwiseNaNGetterSource,{nanOperand:-1,recovered:-1,done:-1}],
  ['compound constructor',compoundConstructorSource,{first:25,earlier:46,second:28,trace:2111,done:2111}],
  ['compound constructor nonfinite',compoundConstructorNonfiniteSource,{infinite:true,nan:true,recovered:0,done:true}],
