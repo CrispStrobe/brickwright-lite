@@ -196,7 +196,9 @@
   "scratch-vm/src/util/bw-procedure-constraint-model.js": {
     "tests": [
       "test/makecode-arcade-charat-order.test.mjs",
+      "test/makecode-arcade-charat-order-runtime.test.mjs",
       "test/makecode-arcade-text-coercion-fixed-point.test.mjs",
+      "test/makecode-arcade-text-coercion-runtime.test.mjs",
       "test/arcade-absent-asset-literals.test.mjs",
       "test/arcade-truthy-guard-array-authority.test.mjs",
       "test/arcade-animation-lookup-id-literal.test.mjs",
