@@ -318,9 +318,8 @@ fn valid_flash_checkpoint(lifecycle: &serde_json::Value) -> bool {
     // LOAD and ordinary program packets may follow a durable SAVE. A current
     // SAVE, however, must refer to exactly this checkpoint generation and ID.
     let metadata = &lifecycle["nuttxProgramStorage"];
-    if metadata["operation"] == 8 && (metadata["requestSeq"] != data["requestSeq"]
-        || metadata["programId"] != data["programId"]) { return false; }
-    true
+    !(metadata["operation"] == 8 && (metadata["requestSeq"] != data["requestSeq"]
+        || metadata["programId"] != data["programId"]))
 }
 
 pub(crate) struct BrickStateFeed {

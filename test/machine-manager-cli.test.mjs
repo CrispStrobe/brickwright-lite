@@ -106,3 +106,12 @@ test('cli: an unknown command prints usage and exits 2', async () => {
     assert.equal(await run(['frobnicate'], io), 2);
     assert.match(io.err, /usage:/);
 });
+
+
+test('cli import-dosbox reports unsupported sector sizes without emitting a config', async () => {
+    const conf = '[cpu]\ncputype=386\n[autoexec]\nimgmount c disk.img -size 1024,17,4,1';
+    const io = harness({'disk.conf': conf});
+    assert.equal(await run(['import-dosbox', 'disk.conf'], io), 1);
+    assert.equal(io.out, '');
+    assert.match(io.err, /DOSBox imgmount -size supports only 512-byte sectors/);
+});

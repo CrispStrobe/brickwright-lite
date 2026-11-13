@@ -17,7 +17,7 @@ For runnable Node commands, see the [board user paths](https://github.com/CrispS
 ## Open a local disk
 
 1. In **Code**, open **Manage machines…** from the machine/device controls.
-2. For an arbitrary supported raw HDD, use **Boot a local DOSBox HDD**. Select the disk and optionally its `.conf`, then **Boot disk**. This always selects the functional 386 AT. The selected filename and explicit `imgmount -size` geometry must agree; automatic geometry only covers the documented 4-head/17-sector case.
+2. For an arbitrary supported raw HDD, use **Boot a local DOSBox HDD**. Select the disk and optionally its `.conf`, then **Boot disk**. This always selects the functional 386 AT. The selected filename and explicit `imgmount -size` geometry must agree. Explicit geometry requires four values and 512-byte sectors; malformed, repeated or unsupported `-size` declarations are rejected. Automatic geometry applies only when `-size` is omitted and only covers the documented 4-head/17-sector case.
 3. For the named route, use **FreeDOS VGA (named 386 profile)**, choose supported floppy/HDD files and optionally BIOS/VGA ROM files, then **Boot FreeDOS VGA**. This applies media, resets and starts the machine. The preset's fixed HDD geometry is not an arbitrary-disk geometry detector.
 4. Leave **Native blocks (experimental)** unchecked for ordinary execution. That option is not the separately reviewed Bochs native addon.
 5. Open **Controller** / Widgets and focus the **AT VGA** screen for keyboard input. **Play** enables widget interaction; **Edit** changes widget layout. These controls do not reset the CPU.

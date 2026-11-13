@@ -514,8 +514,8 @@ impl RenodeDebugger {
             .map_err(|_| "Renode debugger unavailable".to_owned())?
             .registers()?;
         let mut result = serde_json::Map::new();
-        for index in 0..13 {
-            result.insert(format!("r{index}"), json!(registers.r[index]));
+        for (index, value) in registers.r.iter().enumerate().take(13) {
+            result.insert(format!("r{index}"), json!(value));
         }
         result.insert("sp".into(), json!(registers.r[13]));
         result.insert("lr".into(), json!(registers.r[14]));
