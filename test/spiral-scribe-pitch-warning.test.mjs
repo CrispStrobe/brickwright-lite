@@ -9,7 +9,14 @@ import {loadModelLesson} from '../overlay/scratch-gui/src/lib/bw-sim/model/lesso
 import {repeatedToothPitch,compareRackAdvance} from '../scripts/lib/spiral-tooth-pitch.mjs';
 const source=path=>readFileSync(new URL('../overlay/scratch-gui/'+path,import.meta.url),'utf8');
 const model=source('static/sim-lab/models/spiral-scribe.ldr');
-const selected=id=>new RegExp('^0 !BW ID '+id+'\\r?\\n([^\\r\\n]+)$','m').exec(model)[1].trim().split(/\s+/).at(-1);
+const selected=(id,text=model)=>{
+ const rows=[...text.matchAll(new RegExp('^0 !BW ID '+id+'\\r?\\n([^\\r\\n]+)$','gm'))];
+ assert.equal(rows.length,1,'one selected model part: '+id);
+ const fields=rows[0][1].trim().split(/\s+/);
+ assert.equal(fields.length,15,'complete Type 1 record');assert.equal(fields[0],'1');
+ assert.ok(fields.slice(2,14).every(v=>Number.isFinite(Number(v))),'finite Type 1 transform');
+ return fields[14];
+};
 const rackPart=selected('radial_rack'),pinionPart=selected('feed_pinion');
 const catalog=JSON.parse(source('src/lib/bw-sim/part-meta/parts.json')).parts;
 const teeth=catalog.find(p=>p.part===pinionPart).gear.teeth;
@@ -19,6 +26,15 @@ const comparison=compareRackAdvance(groups[0].pitchLdu,teeth,1,0.4);
 const entry=EXPERIMENTAL_MODELS.find(e=>e.file==='spiral-scribe.ldr');
 const details=EXPERIMENTAL_MODEL_DETAILS['spiral-scribe.ldr'];
 const number=(v,lang)=>v.toFixed(1).replace('.',lang==='de'?',':'.');
+
+test('selected part extraction rejects ambiguous or malformed Type 1 records',()=>{
+ const record=/^0 !BW ID radial_rack\r?\n([^\r\n]+)$/m.exec(model)[1];
+ const fields=record.trim().split(/\s+/),missing=fields.slice(),nonfinite=fields.slice();
+ missing.splice(2,1);nonfinite[2]='NaN';
+ for(const row of [record.replace(/^1 /,'0 '),record+' extra.dat',missing.join(' '),nonfinite.join(' ')])
+  assert.throws(()=>selected('radial_rack','0 !BW ID radial_rack\n'+row+'\n'));
+ assert.throws(()=>selected('radial_rack',model+'\n0 !BW ID radial_rack\n'+record+'\n'));
+});
 
 test('warning numbers follow the selected stock rack source and feed pinion',()=>{
  assert.equal(rackPart,'18942.dat');assert.equal(teeth,12);
