@@ -4,7 +4,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 import {assertReviewedConcurrency} from './helpers/reviewed-concurrency-projections.mjs';
-const names = ['ack-z80-cpm','arcade-controls','basic-oracle','build','cycle-core-qualification','debugger','i80386-freedos-circuits-direct-actual','i80386-hdd-gui-actual','i80386-native-font-selection','i8086-execution','makecode-arcade-bases','mobile','model-measurements','native-installed-qualification','pascal-ack-image','reference-qualified-instruments','robot-lab-own-firmware','robot-model-webkit-comparison','rust-notices','spike-linux-package','target-performance','tauri','vendor-freshness'];
+const names = ["ack-z80-cpm", "arcade-controls", "basic-oracle", "build", "cycle-core-qualification", "debugger", "i80386-freedos-circuits-direct-actual", "i80386-hdd-gui-actual", "i80386-native-font-selection", "i8086-execution", "makecode-arcade-bases", "mobile", "model-measurements", "native-installed-qualification", "pascal-ack-image", "reference-qualified-instruments", "robot-lab-own-firmware", "robot-model-webkit-comparison", "rust-notices", "spike-linux-package", "target-performance", "tauri", "vendor-freshness"];
 const labeled = new Set(['build','i80386-freedos-circuits-direct-actual','i80386-hdd-gui-actual','i80386-native-font-selection']);
 const labelSuffix = "-${{ (github.event.action == 'labeled' || github.event.action == 'unlabeled') && format('label-{0}', github.event.label.name) || 'code' }}";
 const expand = (text, github) => text.replace(/\$\{\{(.*?)\}\}/g, (_, expression) => String(vm.runInNewContext(expression, {github, format: (pattern, ...args) => pattern.replace(/\{(\d+)\}/g, (_, index) => String(args[index]))})));

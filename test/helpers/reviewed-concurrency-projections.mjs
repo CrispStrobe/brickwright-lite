@@ -3,9 +3,13 @@ import assert from 'node:assert/strict';
 // Exact policy from the reviewed workflow/ref cancellation change. A projection
 // changes only this block; historical hashes still bind every other byte.
 export const reviewedPolicy = "concurrency:\n  group: ${{ github.workflow }}${{ !(github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request')) && format('-isolated-{0}', github.run_id) || '' }}-${{ github.ref }}\n  cancel-in-progress: ${{ github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request') }}\n";
+// Model and cycle still use the exact earlier policy until their separate
+// isolation change lands. This is an explicit consumer selection, never fallback.
+export const automaticOnlyPolicy = "concurrency:\n  group: ${{ github.workflow }}-${{ github.ref }}\n  cancel-in-progress: ${{ github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request') }}\n";
 const labelSuffix = "-${{ (github.event.action == 'labeled' || github.event.action == 'unlabeled') && format('label-{0}', github.event.label.name) || 'code' }}";
-export const assertReviewedConcurrency = (text, {labels = false} = {}) => {
-    const policy = labels ? reviewedPolicy.replace('${{ github.ref }}', '${{ github.ref }}' + labelSuffix) : reviewedPolicy;
+export const assertReviewedConcurrency = (text, {labels = false, automaticOnly = false} = {}) => {
+    const selected = automaticOnly ? automaticOnlyPolicy : reviewedPolicy;
+    const policy = labels ? selected.replace('${{ github.ref }}', '${{ github.ref }}' + labelSuffix) : selected;
     assert.equal((text.match(/^concurrency:/gm) || []).length, 1, 'one workflow concurrency block');
     const heading = /^concurrency:\n/m.exec(text);
     assert.ok(heading, 'workflow concurrency mapping exists');
@@ -54,7 +58,7 @@ export const hddHistoricalHashBody = (file, text) => {
 };
 
 export const modelWorkflowBeforeConcurrencyPolicy = text => {
-    assertReviewedConcurrency(text);
-    assert.equal(text.split(reviewedPolicy + '\n').length, 2, 'exact inserted model policy extent');
-    return text.replace(reviewedPolicy + '\n', '');
+    assertReviewedConcurrency(text, {automaticOnly: true});
+    assert.equal(text.split(automaticOnlyPolicy + '\n').length, 2, 'exact inserted model policy extent');
+    return text.replace(automaticOnlyPolicy + '\n', '');
 };

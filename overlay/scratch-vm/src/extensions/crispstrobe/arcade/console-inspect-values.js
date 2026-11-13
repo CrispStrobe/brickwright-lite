@@ -399,6 +399,96 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
             input:(node,name,owner)=>owner.blocks.getBlock(node?.inputs?.[name]?.block),
             literal:(node,name,owner)=>node?.fields?.[name]?.value??(owner.blocks.getBlock(node?.inputs?.[name]?.block)?.opcode==='text'?owner.blocks.getBlock(node.inputs[name].block).fields?.TEXT?.value:null)});
         const owners = new Map(), seen = new Map([[false,new Set()],[true,new Set()]]);
+        const localPositionalElement=node=>{
+            const index=input(node,'INDEX'),receiver=input(node,'ARRAY');
+            const k=index?.opcode==='math_number'&&index.shadow===true?Number(index.fields?.NUM?.value):NaN;
+            if(!Number.isSafeInteger(k)||k<0||String(index.fields?.NUM?.value).trim()===''||receiver?.opcode!=='arcade_getLocal'||
+                index.parent!==node.id||receiver.parent!==node.id||Object.keys(index.inputs||{}).length||index.next!=null||receiver.next!=null)return null;
+            const closedInputs=(b,names)=>Object.keys(b?.inputs||{}).sort().join(',')===names.slice().sort().join(',');
+            const primitiveLiteral=b=>{
+                if(!b||b.next!=null)return false;
+                const fields=b.fields||{},keys=Object.keys(fields);
+                // The importer wraps an ordinary Number literal as 0 + N.
+                // Admit only its exact closed two-shadow numeric shape.
+                if(b.opcode==='operator_add'){
+                    if(keys.length||!closedInputs(b,['NUM1','NUM2']))return false;
+                    const left=input(b,'NUM1'),right=input(b,'NUM2');
+                    const numeric=n=>n?.opcode==='math_number'&&n.shadow===true&&n.parent===b.id&&n.next==null&&
+                        !Object.keys(n.inputs||{}).length&&Object.keys(n.fields||{}).join(',')==='NUM'&&
+                        ['string','number'].includes(typeof n.fields.NUM?.value)&&String(n.fields.NUM.value).trim()!==''&&Number.isFinite(Number(n.fields.NUM.value));
+                    return numeric(left)&&numeric(right)&&Number(left.fields.NUM.value)===0;
+                }
+                if(Object.keys(b.inputs||{}).length)return false;
+                if(b.opcode==='text')return keys.length===1&&keys[0]==='TEXT'&&typeof fields.TEXT?.value==='string';
+                if(b.opcode==='math_number'){
+                    const raw=fields.NUM?.value;
+                    return keys.length===1&&keys[0]==='NUM'&&['string','number'].includes(typeof raw)&&
+                        String(raw).trim()!==''&&Number.isFinite(Number(raw));
+                }
+                return b.opcode==='arrays_specialValue'&&keys.length===1&&keys[0]==='KIND'&&
+                    ['null','undefined','NaN','Infinity','-Infinity','-0'].includes(fields.KIND?.value);
+            };
+            const localName=b=>closedInputs(b,['NAME'])&&input(b,'NAME')?.opcode==='text'&&input(b,'NAME').parent===b.id&&input(b,'NAME').next==null&&Object.keys(input(b,'NAME').inputs||{}).length===0?literal(b,'NAME'):null;
+            const name=localName(receiver),scope=captureProof.scopeOf(receiver);
+            if(typeof name!=='string'||!scope||scope.target!==target||captureProof.scopeOf(node)!==scope||
+                !['arcade_whenSourceStarts','procedures_definition'].includes(scope.root.opcode))return null;
+            const cell=captureProof.local(scope,name),proof=captureProof.proof(cell);
+            if(!proof||proof.escaped||proof.index!==-1)return null;
+            const chain=[],visited=new Set();let previous=scope.root;
+            for(let b=read(previous.next);b;b=read(b.next)){
+                if(visited.has(b)||b.parent!==previous.id)return null;
+                visited.add(b);chain.push(b);previous=b;
+            }
+            let statement=node;const climbed=new Set();
+            while(statement&&!chain.includes(statement)&&!climbed.has(statement)){climbed.add(statement);statement=read(statement.parent);}
+            const end=chain.indexOf(statement);if(end<0)return null;
+            // The endpoint's inputs execute too. Closing only the preceding
+            // statements would let an earlier sibling call run before this read.
+            // Admit a closed primitive expression tree, not an unknown effect.
+            const endpointSeen=new Set();
+            const endpoint=b=>{
+                if(!b||endpointSeen.has(b))return false;endpointSeen.add(b);
+                if(b===node)return closedInputs(b,['ARRAY','INDEX']);
+                if(['math_number','text','arrays_specialValue','operator_add'].includes(b.opcode))return primitiveLiteral(b);
+                let valid=b.opcode==='arcade_inspectValue'&&closedInputs(b,['VALUE','LIMIT'])||
+                    b.opcode==='arcade_functionArgument'&&closedInputs(b,['VALUE','REST']);
+                if(b===statement)valid=b.opcode==='data_setvariableto'&&closedInputs(b,['VALUE'])||
+                    b.opcode==='arcade_setLocal'&&closedInputs(b,['NAME','VALUE'])||b.opcode==='procedures_call';
+                return !!valid&&Object.values(b.inputs||{}).every(edge=>{const child=read(edge.block);return child?.parent===b.id&&endpoint(child);});
+            };
+            if(!endpoint(statement))return null;
+            let allocation=-1;const resets=[];
+            for(const {node:writer,scope:writerScope}of proof.writers){
+                if(writerScope!==scope||writer.opcode!=='arcade_setLocal')return null;
+                const at=chain.indexOf(writer),value=input(writer,'VALUE');if(at<0||at>=end||!closedInputs(writer,['NAME','VALUE'])||input(writer,'NAME')?.opcode!=='text'||input(writer,'NAME').parent!==writer.id||Object.keys(input(writer,'NAME').inputs||{}).length)return null;
+                if(fixedReset(value)){resets.push(at);continue;}
+                if(allocation>=0||value?.opcode!=='arrays_createReference'||value.parent!==writer.id||value.next!=null||!closedInputs(value,['VALUES'])||text(input(value,'VALUES'))!=='[]'||Object.keys(input(value,'VALUES').inputs||{}).length||input(value,'VALUES').parent!==value.id)return null;
+                allocation=at;
+            }
+            if(allocation<0||resets.some(at=>at>=allocation))return null;
+            const pushes=[];
+            for(const b of Object.values(all)){
+                if(['arcade_getCaptured','arcade_setCaptured'].includes(b.opcode)&&(typeof literal(b,'NAME')!=='string'||literal(b,'NAME')===name))return null;
+                if(captureProof.scopeOf(b)!==scope||b.opcode!=='arcade_getLocal')continue;
+                const found=localName(b);if(typeof found!=='string')return null;if(found!==name)continue;
+                if(b===receiver)continue;
+                const parent=read(b.parent),at=chain.indexOf(parent);
+                const ignoredIndex=input(parent,'INDEX'),indexValue=ignoredIndex?.fields?.NUM?.value;
+                if(parent?.opcode!=='arrays_mutateReference'||!closedInputs(parent,['ARRAY','OP','INDEX','VALUE'])||parent.inputs?.ARRAY?.block!==b.id||literal(parent,'OP')!=='push'||input(parent,'OP')?.opcode!=='text'||Object.keys(input(parent,'OP').inputs||{}).length||input(parent,'OP').parent!==parent.id||
+                    ignoredIndex?.opcode!=='math_number'||ignoredIndex.shadow!==true||ignoredIndex.parent!==parent.id||ignoredIndex.next!=null||
+                    Object.keys(ignoredIndex.inputs||{}).length||Object.keys(ignoredIndex.fields||{}).join(',')!=='NUM'||
+                    !['string','number'].includes(typeof indexValue)||String(indexValue).trim()===''||!Number.isFinite(Number(indexValue))||
+                    at<=allocation||at>=end)return null;
+                pushes.push(parent);
+            }
+            // No call, branch, yield or unrelated effect can occur between the
+            // fresh allocation and the read. Every element is a plain literal;
+            // calls returning primitives do not gain side-effect authority.
+            for(let at=allocation+1;at<end;at++)if(!pushes.includes(chain[at]))return null;
+            pushes.sort((a,b)=>chain.indexOf(a)-chain.indexOf(b));
+            if(pushes.some(push=>{const value=input(push,'VALUE');return !primitiveLiteral(value)||value.parent!==push.id;}))return null;
+            return k<pushes.length?input(pushes[k],'VALUE'):null;
+        };
         const positionalElement=node=>{
             const index=input(node,'INDEX'),receiver=input(node,'ARRAY');
             const k=index?.opcode==='math_number'&&index.shadow===true?Number(index.fields?.NUM?.value):NaN;
@@ -633,17 +723,243 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
             if(!facts||!statementIn(node,facts.body)||localCellOf(index)!==facts.counter||!facts.receiver.has(localCellOf(array)))return null;
             return values;
         };
+        const constantLogicalOverwrite=(writer,cell,at)=>{
+            const proof=captureProof.proof(cell),scope=cell?.scope;
+            if(!at||!proof||proof.escaped||proof.index!==-1||scope?.target!==target||scope.root.opcode!=='arcade_whenSourceStarts'||captureProof.scopeOf(at)!==scope)return false;
+            const closed=(b,names)=>Object.keys(b?.inputs||{}).sort().join(',')===names.slice().sort().join(',');
+            const literalText=(b,parent)=>b?.opcode==='text'&&b.shadow===true&&b.parent===parent.id&&b.next==null&&!Object.keys(b.inputs||{}).length&&Object.keys(b.fields||{}).join(',')==='TEXT'&&typeof b.fields.TEXT?.value==='string';
+            const localRead=b=>b?.opcode==='arcade_getLocal'&&closed(b,['NAME'])&&literalText(input(b,'NAME'),b);
+            const number=(b,path=new Set())=>{
+                if(!b||path.has(b)||b.next!=null)return null;const next=new Set([...path,b]);
+                if(b.opcode==='math_number'){if(b.shadow!==true||Object.keys(b.inputs||{}).length||Object.keys(b.fields||{}).join(',')!=='NUM'||!['string','number'].includes(typeof b.fields.NUM?.value))return null;const value=Number(b.fields?.NUM?.value);return String(b.fields?.NUM?.value).trim()!==''&&Number.isFinite(value)?value:null;}
+                if(!['operator_add','operator_subtract','operator_multiply'].includes(b.opcode)||!closed(b,['NUM1','NUM2']))return null;
+                const left=input(b,'NUM1'),right=input(b,'NUM2');if(left?.parent!==b.id||right?.parent!==b.id)return null;
+                const x=number(left,next),y=number(right,next);if(x===null||y===null)return null;
+                const value=b.opcode==='operator_add'?x+y:b.opcode==='operator_subtract'?x-y:x*y;return Number.isFinite(value)?value:null;
+            };
+            const chain=[];let previous=scope.root;const walked=new Set();
+            for(let b=read(previous.next);b;b=read(b.next)){if(walked.has(b)||b.parent!==previous.id)return false;walked.add(b);chain.push(b);previous=b;}
+            if(!closed(scope.root,[])||!closed(writer,['NAME','VALUE'])||!literalText(input(writer,'NAME'),writer)||input(writer,'VALUE')?.parent!==writer.id||!localRead(at))return false;
+            const begin=chain.indexOf(writer),readStatement=read(at.parent),end=chain.indexOf(readStatement);
+            if(begin<0||end!==begin+2||readStatement?.opcode!=='data_setvariableto'||!closed(readStatement,['VALUE'])||readStatement.inputs.VALUE.block!==at.id)return false;
+            const branch=chain[begin+1],overwrite=input(branch,'SUBSTACK');
+            if(branch?.opcode!=='control_if'||!closed(branch,['CONDITION','SUBSTACK'])||overwrite?.parent!==branch.id||overwrite.next!=null||
+                overwrite.opcode!=='arcade_setLocal'||localCellOf(overwrite)!==cell||!closed(overwrite,['NAME','VALUE'])||!literalText(input(overwrite,'NAME'),overwrite)||number(input(overwrite,'VALUE'))===null)return false;
+            if(proof.writers.length!==2||!proof.writers.every(row=>row.scope===scope&&(row.node===writer||row.node===overwrite)))return false;
+            const literalBoolean=b=>{
+                if(!b)return null;
+                if(b.opcode==='arrays_valueCompare'){
+                    const opInput=input(b,'OP'),fields=Object.keys(b.fields||{});
+                    if(opInput?fields.length||!closed(b,['LEFT','OP','RIGHT'])||!literalText(opInput,b):fields.join(',')!=='OP'||!closed(b,['LEFT','RIGHT'])||typeof b.fields.OP?.value!=='string')return null;
+                    const op=literal(b,'OP'),leftInput=input(b,'LEFT'),rightInput=input(b,'RIGHT');
+                    if(leftInput?.parent!==b.id||rightInput?.parent!==b.id)return null;
+                    const left=number(leftInput),right=number(rightInput);if(left===null||right===null)return null;
+                    return op==='<'?left<right:op==='>'?left>right:op==='==='?left===right:op==='!=='?left!==right:null;
+                }
+                // Even ordinary globals can change through monitor/host paths.
+                // Block-writer enumeration is not closed-world authority here.
+                return null;
+            };
+            const initial=literalBoolean(input(writer,'VALUE'));if(typeof initial!=='boolean')return false;
+            let condition=input(branch,'CONDITION'),negated=false;
+            if(condition?.parent!==branch.id)return false;
+            if(condition?.opcode==='operator_not'&&closed(condition,['OPERAND'])){negated=true;const nested=input(condition,'OPERAND');if(nested?.parent!==condition.id)return false;condition=nested;}
+            if(condition?.opcode!=='arrays_valueTruthy'||!closed(condition,['VALUE']))return false;
+            const guard=input(condition,'VALUE');if(!localRead(guard)||guard.parent!==condition.id||localCellOf(guard)!==cell)return false;
+            if((negated?!initial:initial)!==true)return false;
+            for(const b of Object.values(all)){
+                if(['arcade_getCaptured','arcade_setCaptured'].includes(b.opcode)&&(typeof literal(b,'NAME')!=='string'||literal(b,'NAME')===cell.name))return false;
+                if(captureProof.scopeOf(b)===scope&&b.opcode==='arcade_getLocal'&&
+                    (typeof literal(b,'NAME')!=='string'||localCellOf(b)===cell&&b!==guard&&b!==at))return false;
+            }
+            return true;
+        };
+        // Class metadata identifies dispatch edges, never a primitive domain.
+        // Keep this boundary to non-inherited classes and closed straight-line
+        // construction. Every backing writer and every dispatched argument is
+        // still checked below against its actual producer.
+        let classFieldDepth=0;
+        const classRows=()=>{
+            if(runtime.targets.some(t=>t.isOriginal!==false&&t!==target&&Object.values(t.blocks._blocks).some(b=>/ObjectField|declareClass|declareSubclass/.test(b.opcode))))return null;
+            const rows=[];
+            try{for(const b of Object.values(all)){
+                if(b.opcode==='arcade_declareSubclass')return null;
+                if(b.opcode!=='arcade_declareClass')continue;
+                const name=literal(b,'NAME'),fields=JSON.parse(literal(b,'FIELDS')),parameters=JSON.parse(literal(b,'PARAMETERS')),methods=JSON.parse(literal(b,'METHODS'));
+                if(typeof name!=='string'||!name||rows.some(r=>r.name===name)||!Array.isArray(fields)||!Array.isArray(parameters)||!Array.isArray(methods)||
+                    fields.some(f=>!f||typeof f.name!=='string')||new Set(fields.map(f=>f.name)).size!==fields.length)return null;
+                rows.push({declaration:b,name,fields,parameters,methods,initializer:literal(b,'INITIALIZER'),constructor:literal(b,'CONSTRUCTOR')});
+            }}catch{return null;}
+            // A conservative subset of object-heap.register's declaration
+            // schema. Do not construct a heap during proof (even a detached
+            // heap advances its identity counter). Native/reference/callable
+            // descriptors require their separate services and stay refused.
+            const identifier=name=>typeof name==='string'&&/^[A-Za-z_]\w*$/.test(name);
+            const type=value=>['number','boolean','string','any','void'].includes(value);
+            const keys=(value,allowed)=>value&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).every(key=>allowed.includes(key));
+            const visibility=value=>value===undefined||['public','private','protected'].includes(value);
+            const parameters=list=>Array.isArray(list)&&new Set(list.map(p=>p?.name)).size===list.length&&list.every(p=>
+                keys(p,['name','type','optional','default'])&&identifier(p.name)&&type(p.type)&&typeof p.optional==='boolean'&&
+                (!Object.hasOwn(p,'default')||p.optional&&(p.default===null||typeof p.default==='boolean'||typeof p.default==='number'&&Number.isFinite(p.default))));
+            for(const row of rows){
+                if(!identifier(row.name)||['BaseSprite','Sprite','ExtendableSprite','BaseDialog','SplashDialog','Font'].includes(row.name)||(row.name.startsWith('__bwSDK_')||row.name.startsWith('__bwOwned'))||
+                    !parameters(row.parameters)||typeof row.initializer!=='string'||typeof row.constructor!=='string')return null;
+                for(const field of row.fields){
+                    if(!keys(field,['name','type','readonly','visibility','initializer','parameterProperty','getter','setter'])||!identifier(field.name)||!type(field.type)||
+                        typeof field.readonly!=='boolean'||!visibility(field.visibility)||field.initializer!==undefined&&typeof field.initializer!=='string'||
+                        field.parameterProperty!==undefined&&typeof field.parameterProperty!=='boolean'||
+                        field.getter!==undefined&&(typeof field.getter!=='string'||!field.getter))return null;
+                    if(field.setter!==undefined&&(!keys(field.setter,['procedure','parameters'])||typeof field.setter.procedure!=='string'||!field.setter.procedure||
+                        !parameters(field.setter.parameters)||field.setter.parameters.length!==1||field.setter.parameters[0].optional||Object.hasOwn(field.setter.parameters[0],'default')))return null;
+                    if((field.getter||field.setter)&&(field.initializer!==undefined||field.parameterProperty||field.readonly!==!!(field.getter&&!field.setter)))return null;
+                }
+                if(new Set(row.methods.map(m=>m?.name)).size!==row.methods.length||row.methods.some(m=>
+                    !keys(m,['name','procedure','parameters','returnType','visibility'])||!identifier(m.name)||row.fields.some(f=>f.name===m.name)||
+                    typeof m.procedure!=='string'||!parameters(m.parameters)||!type(m.returnType)||!visibility(m.visibility)))return null;
+            }
+            const roles=new Map();
+            for(const cls of rows)for(const role of [
+                {procedure:cls.initializer,kind:'initializer',parameters:[]},{procedure:cls.constructor,kind:'constructor',parameters:cls.parameters},
+                ...cls.methods.map(m=>({...m,kind:'method'})),...cls.fields.flatMap(f=>[
+                    ...(f.getter?[{procedure:f.getter,kind:'getter',parameters:[],field:f}]:[]),
+                    ...(f.setter?[{...f.setter,kind:'setter',field:f}]:[])])]){
+                if(!role.procedure)continue;
+                if(role.procedure.startsWith('__bwOwned')||/^__bwClass_(?:__bwSDK_|(?:BaseSprite|Sprite|ExtendableSprite|BaseDialog|SplashDialog|Font)_)/.test(role.procedure))return null;
+                const scopes=captureProof.scopes.filter(s=>s.target===target&&s.procedure===role.procedure&&!s.invalid);
+                if(roles.has(role.procedure)||scopes.length!==1||!Array.isArray(role.parameters)||scopes[0].params.length!==role.parameters.length+1||
+                    role.parameters.some((p,i)=>!p||p.name!==scopes[0].params[i+1]))return null;
+                roles.set(role.procedure,{...role,cls,scope:scopes[0]});
+            }
+            const reachable=new Set(captureProof.scopes.filter(s=>!s.procedure));
+            for(const role of roles.values())reachable.add(role.scope);
+            let grew=true;while(grew){grew=false;for(const b of Object.values(all)){
+                if(!reachable.has(captureProof.scopeOf(b)))continue;
+                if(b.opcode==='arcade_createCallable'||b.opcode==='arcade_callCallable')return null;
+                if(!['arcade_callFunction','procedures_call'].includes(b.opcode))continue;
+                const name=b.opcode==='procedures_call'?b.mutation?.proccode:literal(b,'NAME');if(typeof name!=='string')return null;
+                for(const scope of captureProof.scopes)if(scope.procedure===name&&!reachable.has(scope)){reachable.add(scope);grew=true;}
+            }}
+            return {rows,roles,reachable};
+        };
+        const sourceBefore=(left,right)=>{
+            const scope=captureProof.scopeOf(left);if(!scope||captureProof.scopeOf(right)!==scope)return false;
+            const chain=[],seen=new Set();let b=read(scope.root.next);
+            while(b){if(seen.has(b))return false;seen.add(b);chain.push(b);b=read(b.next);}
+            const statement=node=>{const path=new Set();while(node&&!path.has(node)){if(chain.includes(node))return chain.indexOf(node);path.add(node);const parent=read(node.parent);if(!Object.values(parent?.inputs||{}).some(slot=>slot.block===node.id))return -1;node=parent;}return -1;};
+            const l=statement(left),r=statement(right);return l>=0&&r>l;
+        };
+        const receiverClass=(node,model,path=new Set())=>{
+            if(!node||path.has(node))return null;const next=new Set([...path,node]);
+            if(node.opcode==='arcade_createObject'){
+                const cls=model.rows.find(r=>r.name===literal(node,'CLASS'));if(!cls||!sourceBefore(cls.declaration,node))return null;
+                let arg=input(node,'ARGS'),count=0;const visited=new Set();
+                while(text(arg)!=='[]'){
+                    if(!arg||visited.has(arg)||arg.opcode!=='arcade_functionArgument'||!input(arg,'VALUE')||++count>cls.parameters.length)return null;
+                    visited.add(arg);arg=input(arg,'REST');
+                }
+                return cls;
+            }
+            const scope=captureProof.scopeOf(node),role=model.roles.get(scope?.procedure);
+            if(node.opcode==='arcade_getLocal'&&role&&literal(node,'NAME')===scope.params[0]){
+                const proof=captureProof.proof(captureProof.local(scope,scope.params[0]));
+                if(!proof||proof.index!==0||proof.writers.length||proof.escaped)return null;
+                for(const call of Object.values(all))if(model.reachable.has(captureProof.scopeOf(call))&&
+                    (call.opcode==='arcade_callFunction'&&literal(call,'NAME')===role.procedure||call.opcode==='procedures_call'&&call.mutation?.proccode===role.procedure))return null;
+                return role.cls;
+            }
+            let writers;
+            if(node.opcode==='data_variable'){
+                const variable=target.lookupVariableById(node.fields?.VARIABLE?.id);if(!variable||variable.isCloud)return null;
+                writers=runtime.targets.filter(t=>t.isOriginal!==false).flatMap(t=>Object.values(t.blocks._blocks).filter(b=>
+                    b.fields?.VARIABLE?.id&&t.lookupVariableById(b.fields.VARIABLE.id)===variable).map(b=>({b,t}))).filter(({b})=>b.opcode!=='data_variable');
+                if(writers.some(({b,t})=>t!==target||b.opcode!=='data_setvariableto'))return null;writers=writers.map(({b})=>b);
+            }else if(node.opcode==='arcade_getLocal'){
+                const proof=captureProof.proof(captureProof.local(scope,literal(node,'NAME')));if(!proof||proof.index>=0||proof.escaped)return null;writers=proof.writers.map(w=>w.node);
+            }else return null;
+            // Null/undefined resets cannot produce an object; successful field
+            // access still requires an allocation. No arbitrary reference alias.
+            const live=writers.filter(w=>!fixedReset(input(w,'VALUE')));
+            if(!live.length)return null;
+            const classes=live.map(w=>receiverClass(input(w,'VALUE'),model,next));
+            return classes[0]&&classes.every(c=>c===classes[0])?classes[0]:null;
+        };
+        const readyReceiver=(node,at,model,path=new Set())=>{
+            if(!node||path.has(node))return false;const next=new Set([...path,node]);
+            const scope=captureProof.scopeOf(node),role=model.roles.get(scope?.procedure);
+            if(node.opcode==='arcade_getLocal'&&role&&literal(node,'NAME')===scope.params[0])return !!receiverClass(node,model)&&!['initializer','constructor'].includes(role.kind);
+            if(node.opcode==='arcade_createObject')return true;
+            let writers;
+            if(node.opcode==='arcade_getLocal'){
+                const proof=captureProof.proof(captureProof.local(scope,literal(node,'NAME')));if(!proof||proof.index>=0||proof.escaped)return false;writers=proof.writers.map(w=>w.node);
+            }else if(node.opcode==='data_variable'){
+                const variable=target.lookupVariableById(node.fields?.VARIABLE?.id);if(!variable)return false;
+                writers=Object.values(all).filter(b=>b.opcode==='data_setvariableto'&&target.lookupVariableById(b.fields?.VARIABLE?.id)===variable);
+            }else return false;
+            const live=writers.filter(w=>!fixedReset(input(w,'VALUE')));if(live.length!==1)return false;
+            const writer=live[0],owner=captureProof.scopeOf(at);if(!owner||captureProof.scopeOf(writer)!==owner)return false;
+            const chain=[],seen=new Set();let b=read(owner.root.next);
+            while(b){if(seen.has(b))return false;seen.add(b);chain.push(b);b=read(b.next);}
+            const position=value=>{const seen=new Set();while(value&&!seen.has(value)){if(chain.includes(value))return chain.indexOf(value);seen.add(value);const parent=read(value.parent);if(parent?.inputs&&Object.values(parent.inputs).some(slot=>slot.block===value.id))value=parent;else return -1;}return -1;};
+            const w=position(writer),r=position(at);
+            return w>=0&&r>w&&writers.every(value=>position(value)>=0&&position(value)<=w)&&readyReceiver(input(writer,'VALUE'),writer,model,next);
+        };
+        const classDefinition=procedure=>Object.values(all).find(b=>b.opcode==='procedures_definition'&&input(b,'custom_block')?.mutation?.proccode===procedure);
+        const constructedField=(cls,field,model)=>{
+            let assigned=false;
+            for(const procedure of [cls.initializer,cls.constructor]){
+                if(!procedure)continue;const definition=classDefinition(procedure);if(!definition)return false;
+                let b=read(definition.next);const visited=new Set();
+                while(b){
+                    if(visited.has(b))return false;visited.add(b);
+                    if(b.opcode!=='arcade_setObjectField'||receiverClass(input(b,'OBJECT'),model)!==cls||typeof literal(b,'FIELD')!=='string')return false;
+                    const written=cls.fields.find(f=>f.name===literal(b,'FIELD'));if(!written||written.getter||written.setter)return false;
+                    // Construction cannot publish the unfinished receiver or
+                    // call a reader before its backing field is initialized.
+                    const pure=(value,path=new Set())=>{
+                        if(!value||path.has(value))return false;const next=new Set([...path,value]);
+                        if(!['text','math_number','bw_numberLiteral','arrays_specialValue','arcade_getLocal','operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_not','operator_equals','operator_lt','operator_gt'].includes(value.opcode))return false;
+                        if(value.opcode==='arcade_getLocal')return literal(value,'NAME')!==captureProof.scopeOf(value)?.params[0];
+                        return Object.keys(value.inputs||{}).every(name=>pure(input(value,name),next));
+                    };
+                    if(!pure(input(b,'VALUE')))return false;
+                    if(field&&literal(b,'FIELD')===field.name)assigned=true;
+                    b=read(b.next);
+                }
+            }
+            return !field||assigned;
+        };
         const safeCell = (cell,player=false,origins=null,domains=null,at=null) => {
             const proof=captureProof.proof(cell);
             if(!proof||cell.scope.target!==target)return false;
             const evidence=new Set();
-            if(!proof.writers.filter(({node:writer})=>!deadReset(writer,cell,at)).every(({node:writer})=>safe(input(writer,'VALUE'),player,evidence,domains)))return false;
+            if(!proof.writers.filter(({node:writer})=>!deadReset(writer,cell,at)&&!constantLogicalOverwrite(writer,cell,at)).every(({node:writer})=>safe(input(writer,'VALUE'),player,evidence,domains)))return false;
             let valid=proof.writers.length>0;
             if(proof.index>=0){
                 const procedure=cell.scope.procedure;if(typeof procedure!=='string')return false;
-                const calls=Object.values(all).filter(value=>value.opcode==='arcade_callFunction'&&literal(value,'NAME')===procedure||value.opcode==='procedures_call'&&value.mutation?.proccode===procedure);
+                let calls=Object.values(all).filter(value=>value.opcode==='arcade_callFunction'&&literal(value,'NAME')===procedure||value.opcode==='procedures_call'&&value.mutation?.proccode===procedure);
                 if(Object.values(all).some(value=>value.opcode==='arcade_callFunction'&&typeof literal(value,'NAME')!=='string'))return false;
-                valid=calls.length>0&&calls.every(call=>{
+                const model=player?null:classRows(),role=model?.roles.get(procedure);
+                let dispatched=false;
+                if(role&&proof.index>0){
+                    calls=calls.filter(call=>model.reachable.has(captureProof.scopeOf(call)));
+                    const index=proof.index-1,dispatch=[];
+                    if(role.kind==='constructor'&&classFieldDepth>0)for(const node of Object.values(all))if(node.opcode==='arcade_createObject'&&literal(node,'CLASS')===role.cls.name){if(receiverClass(node,model)!==role.cls)return false;dispatch.push({node,index});}
+                    if(role.kind==='setter'&&index===0)for(const node of Object.values(all))if(node.opcode==='arcade_setObjectField'){
+                        const receiver=receiverClass(input(node,'OBJECT'),model),field=literal(node,'FIELD');
+                        if(!receiver||typeof field!=='string')return false;
+                        if(receiver===role.cls&&field===role.field.name){if(!readyReceiver(input(node,'OBJECT'),node,model))return false;dispatch.push({node,index:null});}
+                    }
+                    // Explicit ordinary calls remain obligations too. Dispatch
+                    // metadata cannot hide a contradictory direct caller.
+                    if(dispatch.length){valid=dispatch.every(({node,index})=>{
+                        const arg=index===null?input(node,'VALUE'):argumentsFor(node,index);
+                        if(arg===null){const param=role.parameters[index];if(Object.hasOwn(param,'default')){const value=param.default;if(value!==null&&!['number','string','boolean'].includes(typeof value))return false;domains?.add(value===null?'null':typeof value);}else domains?.add('undefined');evidence.add(node);return true;}
+                        return arg!==false&&safe(arg,false,evidence,domains);
+                    });if(!valid)return false;dispatched=true;}
+                    else if(!calls.length)return false;
+                    valid=valid||dispatch.length>0;
+                }
+                valid=(calls.length>0||dispatched)&&calls.every(call=>{
                     if(call.opcode==='procedures_call'){let ids;try{ids=JSON.parse(call.mutation?.argumentids||'[]');}catch{return false;}if(!Array.isArray(ids)||ids.length!==cell.scope.params.length||ids.some(id=>typeof id!=='string')||new Set(ids).size!==ids.length)return false;if(domains){let expected;try{expected=JSON.parse(input(cell.scope.root,'custom_block')?.mutation?.argumentids||'[]');}catch{return false;}if(JSON.stringify(ids)!==JSON.stringify(expected))return false;}return safe(input(call,ids[proof.index]),player,evidence,domains);}
                     const arg=argumentsFor(call,proof.index);if(arg===null&&!player){evidence.add(call);domains?.add('undefined');return true;}return arg!==false&&safe(arg,player,evidence,domains);});
             }
@@ -674,6 +990,29 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
             visited.add(node);
             try {
                 const op=node.opcode;
+                if(!player&&op==='arcade_objectField'){
+                    classFieldDepth++;try{
+                    const model=classRows();if(!model)return false;
+                    const cls=receiverClass(input(node,'OBJECT'),model),name=literal(node,'FIELD');
+                    const field=cls?.fields.find(f=>f.name===name);if(!field||field.valueKind||!readyReceiver(input(node,'OBJECT'),node,model))return false;
+                    const ownRole=model.roles.get(captureProof.scopeOf(node)?.procedure);
+                    if(ownRole&&['constructor','initializer'].includes(ownRole.kind))return false;
+                    if(field.getter){
+                        if(!constructedField(cls,null,model))return false;
+                        const definition=classDefinition(field.getter);if(!definition)return false;
+                        const completion=normalReturns(definition);if(completion.fallthrough||!completion.results.length)return false;
+                        return completion.results.every(ret=>safe(input(ret,'VALUE'),false,origins,domains));
+                    }
+                    if(field.setter||!constructedField(cls,field,model))return false;
+                    let writers=0;
+                    for(const writer of Object.values(all))if(writer.opcode==='arcade_setObjectField'){
+                        const receiver=receiverClass(input(writer,'OBJECT'),model),property=literal(writer,'FIELD');
+                        if(!receiver||typeof property!=='string')return false;
+                        if(receiver===cls&&property===name){writers++;if(!safe(input(writer,'VALUE'),false,origins,domains))return false;}
+                    }
+                    if(writers)origins?.add(node);return writers>0;
+                    }finally{classFieldDepth--;}
+                }
                 if(!player&&op==='arcade_sceneMillis'){
                     // A dormant call is only a structural obligation of another
                     // ordinary caller. It is never a completed supplied value.
@@ -705,11 +1044,10 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
                     origins?.add(node);domains.add('number');return true;
                 }
                 if(!player&&op==='arrays_referenceItem'){
-                    // A literal-index read of a global that holds a start-script
-                    // Array built as empty + primitive pushes and is otherwise
-                    // only read: the element is the k-th pushed value (PXT and
-                    // Lite agree). Its own domain is then proved as usual.
-                    const slot=positionalElement(node);
+                    // Literal-index reads use the separately closed local prefix
+                    // or the existing global publication proof. The selected
+                    // pushed element still needs its own primitive domain proof.
+                    const slot=localPositionalElement(node)||positionalElement(node);
                     if(slot){const valid=safe(slot,false,origins,domains);if(valid)origins?.add(node);return valid;}
                     const elements=familyElement(node);
                     if(elements){const valid=elements.every(value=>safe(value,false,origins,domains));if(valid)origins?.add(node);return valid;}
