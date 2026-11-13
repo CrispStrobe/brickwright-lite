@@ -5,10 +5,10 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 import path from 'node:path';
-import {decide, loadContext, needlesOf, mentions, entriesOf, outputLines} from '../scripts/ci-browser-scope.mjs';
+import {decide, loadContext, needlesOf, mentions, entriesOf, outputLines, closureOf} from '../scripts/ci-browser-scope.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const ctx = loadContext(ROOT);
@@ -52,6 +52,58 @@ test('a gate script maps to the shard whose step runs it', () => {
     assert.ok(fpga.includes('fpga') && !fpga.includes('robotlab'), fpga.join());
     const robot = run(['scripts/verify-sim-lab-browser.mjs']);
     assert.deepEqual(robot, ROBOT);
+});
+
+test('documentation back-edges do not expand the executable closure; code and fixture mentions do', () => {
+    // Keep scratch within the owned checkout; no external packages or JS parser.
+    const root = mkdtempSync(path.join(ROOT, '.ci-browser-scope-'));
+    const sources = {
+        'scripts/light.mjs': "import './shared.mjs'; import './literal-start.mjs';",
+        'scripts/shared.mjs': `#!/usr/bin/env node
+// https://example.invalid/scripts/robot.mjs
+/* Browser counterpart: scripts/robot.mjs and '../scripts/robot.mjs'.
+ * Fixture documentation: test/fixtures/shared/reading.json
+ */ import './actual.mjs';
+spawnSync(process.execPath, ['scripts/spawned.mjs']);
+readFileSync('test/fixtures/shared/live.json');
+// scripts/in-body.mjs is deliberately still a conservative edge.
+const dynamic = \`./dynamic/\${name}.mjs\`;
+const url = 'https://example.invalid/documentation';
+const urlReader = 'scripts/url-reader.mjs';
+const commentLike = '/* scripts/literal-reader.mjs */';
+const template = \`// scripts/template-reader.mjs\`;
+`,
+        'scripts/robot.mjs': "import './robot-helper.mjs';",
+        'scripts/robot-helper.mjs': "/* See scripts/shared.mjs. */ export const robot = true;",
+        'scripts/actual.mjs': "export const actual = true;",
+        'scripts/literal-start.mjs': "'// scripts/first-literal.mjs';",
+        'scripts/first-literal.mjs': "export const first = true;",
+        'scripts/in-body.mjs': "export const body = true;",
+        'scripts/spawned.mjs': "export const spawned = true;",
+        'scripts/url-reader.mjs': "export const url = true;",
+        'scripts/literal-reader.mjs': "export const literal = true;",
+        'scripts/template-reader.mjs': "export const template = true;",
+    };
+    try {
+        for (const [file, text] of Object.entries(sources)) {
+            mkdirSync(path.dirname(path.join(root, file)), {recursive: true});
+            writeFileSync(path.join(root, file), text);
+        }
+        const closure = closureOf(root, [
+            {labels: ['light'], files: new Set(['scripts/light.mjs'])},
+            {labels: ['robotlab'], files: new Set(['scripts/robot.mjs'])},
+        ]);
+        const synthetic = {shards: ALL, browserShards: ctx.browserShards, ...closure};
+        assert.deepEqual(decide(['scripts/robot.mjs'], synthetic).needed, ['robotlab'], 'a multi-hop header mention cannot make light execute the robot gate');
+        assert.deepEqual([...closure.reach.get('scripts/robot-helper.mjs')], ['robotlab']);
+        for (const file of ['actual', 'spawned', 'url-reader', 'literal-reader', 'template-reader', 'first-literal', 'in-body']) {
+            assert.deepEqual([...closure.reach.get(`scripts/${file}.mjs`)], ['light'], `${file}: preserve relative imports, spawns and conservative literal paths`);
+        }
+        assert.ok(closure.texts.get('scripts/shared.mjs').includes('./dynamic/${name}.mjs'), 'dynamic module text stays available');
+        assert.ok(closure.texts.get('scripts/shared.mjs').includes('https://example.invalid/documentation'), 'URLs are preserved');
+        assert.deepEqual(decide(['test/fixtures/shared/live.json'], synthetic).needed, ['light'], 'a real read dependency selects the fixture consumer');
+        assert.deepEqual(decide(['test/fixtures/shared/reading.json'], synthetic).needed, ['light'], 'header fixture mentions still select their gate');
+    } finally { rmSync(root, {recursive: true, force: true}); }
 });
 
 test('the pure decision, over a synthetic closure', () => {
