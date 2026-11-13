@@ -339,7 +339,7 @@ test('held model input ignores another working directory and checks exact git by
         mkdirSync(join(dir, 'overlay/scratch-gui/static/sim-lab/models'), {recursive: true});
         writeFileSync(join(dir, 'overlay/scratch-gui/static/sim-lab/models/solstice-pumpjack.ldr'), 'wrong checkout model');
         process.chdir(dir);
-        assert.equal(createHash('sha256').update(heldModelSource(id)).digest('hex'), 'dcf4dad8503d5da2663ea6af9c7e3e1257365d049b0c7a45daa2e5aaffd4638c');
+        assert.equal(createHash('sha256').update(heldModelSource(id)).digest('hex'), '27727397256050ebba3ae7093490335344e1a1e4457b410f074d0c7ce8ccb0fe');
         assert.throws(() => assertHeldSourceBytes(Buffer.from('modified despite clean status'), Buffer.from('committed blob')), /exact git blob/);
     } finally { process.chdir(cwd); rmSync(dir, {recursive: true, force: true}); }
 });

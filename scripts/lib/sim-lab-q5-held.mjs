@@ -161,7 +161,7 @@ export function heldDiagnosticIdentity(buildDir) {
         assertHeldSourceBytes(bytes, execFileSync('git', ['show', `HEAD:${p}`], {cwd: sourceRoot}));
         return [p, hash(bytes)];
     }));
-    assert.equal(source[heldSourceFiles.at(-2)], 'dcf4dad8503d5da2663ea6af9c7e3e1257365d049b0c7a45daa2e5aaffd4638c', 'reviewed held model bytes');
+    assert.equal(source[heldSourceFiles.at(-2)], '27727397256050ebba3ae7093490335344e1a1e4457b410f074d0c7ce8ccb0fe', 'reviewed held model bytes');
     assert.equal(source[heldSourceFiles.at(-1)], '77ebf25fd16693953e719959294c28d9bfe23690a06f3d31f2c4e0686c513a41', 'reviewed held program bytes');
     return {schema: 1, qualification: 'not-admitted-observation-only', producerSourceBinding: false, commit, tree: git(['rev-parse', 'HEAD^{tree}']), source, build: heldBuildInventory(buildDir, commit)};
 }
@@ -228,7 +228,7 @@ export function heldModelSource(id) {
     const path = `overlay/scratch-gui/static/sim-lab/models/${id}.ldr`;
     const bytes = readFileSync(resolve(sourceRoot, path));
     assertHeldSourceBytes(bytes, execFileSync('git', ['show', `HEAD:${path}`], {cwd: sourceRoot}));
-    assert.equal(hash(bytes), 'dcf4dad8503d5da2663ea6af9c7e3e1257365d049b0c7a45daa2e5aaffd4638c', 'reviewed held model bytes');
+    assert.equal(hash(bytes), '27727397256050ebba3ae7093490335344e1a1e4457b410f074d0c7ce8ccb0fe', 'reviewed held model bytes');
     return bytes.toString('utf8');
 }
 

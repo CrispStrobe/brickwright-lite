@@ -8,6 +8,8 @@ import {catalogFrom,prepareModel} from '../overlay/scratch-gui/src/lib/bw-sim/si
 import {EXPERIMENTAL_MODELS} from '../overlay/scratch-gui/src/lib/bw-sim/model/experimental-models.js';
 import {createEditor} from '../overlay/scratch-gui/src/lib/bw-sim/editor/editor-state.js';
 import {upgradeMechanismV1,validatePlacedModel} from '../overlay/scratch-gui/src/lib/bw-sim/contracts.js';
+import {buildSteps} from '../overlay/scratch-gui/src/lib/bw-sim/instructions/steps.js';
+import {buildGraph} from '../overlay/scratch-gui/src/lib/bw-sim/mech/graph.js';
 import {observeAddon} from '../scripts/lib/sim-lab-addon-judge.mjs';
 import {compiledWalkingBeam,walkingBeamPose,judgeWalkingBeam,r4DisconnectionLoss,R4_LAWS} from '../scripts/lib/sim-lab-r4-judges.mjs';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
@@ -16,6 +18,23 @@ const source=read(lab+'models/solstice-pumpjack.ldr'),program=read(lab+'programs
 const baseline=source.replace(/^0 !BW SOLVER light-links\r?\n/m,'');
 const catalog=catalogFrom(JSON.parse(read('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json')));
 const prepare=text=>prepareModel(text,catalog,{mat:'plain',autoPorts:false});
+
+test('Solstice instructions use connected pages of at most six placements',()=>{
+ const {model,refusals}=parseModel(source,{catalog});assert.deepEqual(refusals,[]);
+ assert.deepEqual(parseModel(read(lab+'models/solstice-pumpjack.mpd'),{catalog}).model,model,'both formats retain the same ordered placements and preset');
+ const plan=buildSteps(model,catalog);assert.equal(plan.source,'auto');
+ const {nodes,edges}=buildGraph(model,catalog,[]),adjacency=new Map(model.parts.map(p=>[p.id,new Set()]));
+ for(const edge of edges){const a=nodes.get(edge.a.part).partId,b=nodes.get(edge.b.part).partId;if(a!==b){adjacency.get(a).add(b);adjacency.get(b).add(a);}}
+ const built=new Set();
+ for(const [index,step] of plan.steps.entries()){
+  assert.equal(step.loose,false,`page ${index+1} is connected`);assert.ok(step.parts.length>=1&&step.parts.length<=6,`page ${index+1}: ${step.parts.length} placements`);
+  const fresh=new Set(step.parts),reached=new Set(built.size?step.parts.filter(id=>[...adjacency.get(id)].some(other=>built.has(other))):[step.parts[0]]),queue=[...reached];
+  while(queue.length)for(const next of adjacency.get(queue.shift()))if(fresh.has(next)&&!reached.has(next)){reached.add(next);queue.push(next);}
+  assert.equal(reached.size,fresh.size,`page ${index+1}: every placement connects to the assembly`);
+  for(const id of step.parts){assert.ok(!built.has(id),'each placement occurs once');built.add(id);}
+ }
+ assert.equal(built.size,93);assert.deepEqual([...built].sort(),model.parts.map(p=>p.id).sort());
+});
 
 test('solver preset parses strictly and roundtrips through LDR and MPD',()=>{
  for(const extension of ['ldr','mpd']){
