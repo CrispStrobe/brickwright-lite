@@ -9,6 +9,14 @@ import {createHash} from 'node:crypto';
 import {engineArchiveHashes, resolveEngineAdmission, readEngineAdmission, currentEngineIdentity, currentJoltFetchPin} from '../scripts/lib/sim-engine-admission.mjs';
 const repo = new URL('../', import.meta.url), read = file => readFileSync(new URL(file, repo));
 const bytes = Buffer.from('SYNTHETIC PIN TEST INPUT: NOT AN ENGINE OR A RELEASE');
+
+test('committed GUI manifest matches the engine pin and lockfile', () => {
+    const manifest = JSON.parse(read('packages/scratch-gui/package.json'));
+    const lock = JSON.parse(read('packages/scratch-gui/package-lock.json'));
+    const engine = readEngineAdmission();
+    assert.equal(manifest.dependencies['jolt-physics'], engine.resolved);
+    assert.equal(manifest.dependencies['jolt-physics'], lock.packages[''].dependencies['jolt-physics']);
+});
 const inputFor = (version = '1.1.0-bw.10', releaseTag = 'bw.10-test') => {
     // Assemble the synthetic URL so the fetch census sees only actual fetch pins.
     const resolved = 'https://' + 'github.com/' + `CrispStrobe/JoltPhysics.js/releases/download/${releaseTag}/jolt-physics-${version}.tgz`;
