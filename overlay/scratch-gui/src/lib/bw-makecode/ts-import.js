@@ -515,7 +515,7 @@ class Parser {
             // is what its object literals are).
             return this.parseInterface();
         }
-        if (this.at('type') && this.isIdentifier(this.peek(1)) &&
+        if (this.at('type') && this.peek(1).line === this.peek().line && this.isIdentifier(this.peek(1)) &&
             this.peek(2).type === 'punct' && ['=','<'].includes(this.peek(2).value)) {
             // A type alias: no runtime behaviour.
             this.next();

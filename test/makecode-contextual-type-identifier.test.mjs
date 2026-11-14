@@ -82,6 +82,21 @@ test('type accessor names and destructuring targets keep their binding grammar',
     assert.equal(array.declarations[0].pattern.elements[0].name, 'type');
 });
 
+test('a line break after type preserves a following comparison and its effects', () => {
+    const body = parseMakeCodeTs('type\nfoo < sideEffect(); let after=1;').body;
+    assert.deepEqual(body.map(node => node.type), ['ExpressionStatement','ExpressionStatement','Declaration']);
+    assert.deepEqual(body[0].expr, {type:'Identifier',name:'type'});
+    assert.equal(body[1].expr.op, '<');
+    assert.equal(body[1].expr.left.name, 'foo');
+    assert.equal(body[1].expr.right.type, 'Call');
+    assert.equal(body[1].expr.right.callee.name, 'sideEffect');
+    assert.equal(body[2].decls[0].name, 'after');
+    const alias = parseMakeCodeTs('type Count\n=number;let after:Count=1;').body;
+    assert.equal(alias.length, 1);
+    assert.equal(alias[0].decls[0].name, 'after');
+    assert.equal(alias[0].decls[0].typeName, 'Count');
+});
+
 test('reserved control keywords do not become parameter identifiers', () => {
     for (const keyword of ['if','return','class','function'])
         assert.throws(() => parseMakeCodeTs(`function invalid(${keyword}:number){return 1}`), /expected ident/);
