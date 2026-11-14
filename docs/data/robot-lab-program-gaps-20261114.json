@@ -1,0 +1,1904 @@
+{
+  "schema": 1,
+  "source_commit": "7862588dceae329ba0ef09cc1fe521129304283a",
+  "inventory": "docs/data/robot-lab-experimental-checkpoint.json",
+  "scope": "Program completion gaps. Earlier bounded functional smoke is evidence of partial execution only; no model is working until terminal success, primary mechanism motion and valid output are verified. No physical accuracy is implied.",
+  "summary": {
+    "total": 82,
+    "working": 0,
+    "partial": 82,
+    "blocked": 0
+  },
+  "models": [
+    {
+      "id": "cross-ratio",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/cross-ratio.ldr",
+      "modelSha256": "c3a22ff07aefbb8e35ae8e98ca6af71a2132c5dea68b5e4310ce0e10ee43ffee",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/cross-ratio.bw",
+      "programSha256": "c553bf618c6487eb5c6745e07e76184196b1605222bb6743e5bf418d7095a413",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 19464,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "bend-ripple",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/bend-ripple.ldr",
+      "modelSha256": "ff9fee60b1c13bb31f31b86c22d54747beaceec530f2617eec7497c31f5249df",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/bend-ripple.bw",
+      "programSha256": "0569e19e533cfd193cd955597b1d4172ef9a77fb315ac22349809208d9eff91a",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "bfccf698c7ad8ac4cf436cba44b2621051de3250",
+        "execution": "COMPLETED",
+        "simulatedMs": 110299.9999999954,
+        "primitiveCalls": 158202,
+        "motorCount": 2,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 180000,
+        "runnerSha256": "a3989ddb1033fcaf11f1a6a24e100a7104c8418b223fb17ee7aa714671718005"
+      },
+      "gaps": [
+        "Program threads ended in the earlier smoke run; meaningful success and output are not yet reviewed.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "apex",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/apex.ldr",
+      "modelSha256": "5172c27b1828dd068b7b0ea9130e44009ee4eee0e9ade33874d1ae19d2e2cb18",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/apex.bw",
+      "programSha256": "4db8b69cfc7bde6e39b58309b143a5bfa357b6384534052ada3f1a98643c10c3",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 4150,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "bloom",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/bloom.ldr",
+      "modelSha256": "6136a05cd5eedbbc822513471ec6fb394afb2e17af929502d5010d07df07ee6e",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/bloom.bw",
+      "programSha256": "d050c34a652675c3cc3a277d2faf76b9ccc163d8a0216ff77d100abd478b7a78",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 4585,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "vector-delta",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/vector-delta.ldr",
+      "modelSha256": "09bffd73e7ba2259bb02018a9444c42457eb5f2d01bf0209469c6e8209704137",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/vector-delta.bw",
+      "programSha256": "69fe5e225b3cb74f314929e737dbdcd06f6f9298a244aa7da16ae820dfb903ff",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 6908,
+        "motorCount": 3,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "cadence-geneva",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/cadence-geneva.ldr",
+      "modelSha256": "966e1d8c7c1341f8700994f30445f7fc39c806097e963519c3c9b7d848c3d4c8",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/cadence-geneva.bw",
+      "programSha256": "6ed053800f78526054be5732bebfd876f3cde711a5494889e964f8742a84546c",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 17287,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "equinox-differential",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/equinox-differential.ldr",
+      "modelSha256": "c750c1235c5058752cfa5da7eb31cbab3261cf0e0ef1b9a5fbe67780582ff2c5",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/equinox-differential.bw",
+      "programSha256": "a94693e9807f3046cf5b20057f59bc5fcdd45fcd8eb0666fdf3efc2d14bb8884",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "bfccf698c7ad8ac4cf436cba44b2621051de3250",
+        "execution": "COMPLETED",
+        "simulatedMs": 53400.000000001026,
+        "primitiveCalls": 57278,
+        "motorCount": 3,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 180000,
+        "runnerSha256": "a3989ddb1033fcaf11f1a6a24e100a7104c8418b223fb17ee7aa714671718005"
+      },
+      "gaps": [
+        "Program threads ended in the earlier smoke run; meaningful success and output are not yet reviewed.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "kestrel-flapper",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/kestrel-flapper.ldr",
+      "modelSha256": "767c84e57bbd91ee5f7c9f55e6b7467a6dde7e5266e259b0a0dd3499b05fed32",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/kestrel-flapper.bw",
+      "programSha256": "0912ffaa0c3a62f672b719214b76a0f0afd451d848297d89b19df0e9ab24d421",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 14251,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "lumen-iris",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/lumen-iris.ldr",
+      "modelSha256": "7153ebc0689e537f64a932c52781383ad978c5e0ec10a7c243b626e020719d01",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/lumen-iris.bw",
+      "programSha256": "ea74d96cba8a8a01cd727d307fd9149e2cede38224768798535ba3dfa9e8d9ff",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 15738,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "helios-transmission",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/helios-transmission.ldr",
+      "modelSha256": "092cf674775eaf332b0809fe75548cd306f59964191521959cedee46d85ef23d",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/helios-transmission.bw",
+      "programSha256": "db14980328bd7438d906eb06d4fb1def93a19325ed83e584cd8a4a68651e787c",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 19830,
+        "motorCount": 2,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "aster-governor",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/aster-governor.ldr",
+      "modelSha256": "cb459d98ecff3f6b9f1b6706b06cea3cf5e21c3434886989a6241ba063f020d9",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/aster-governor.bw",
+      "programSha256": "3f6fc4aff0e58e3d1e825c1a6bb2dfafe88400379ac700f9abdf90c7dbdc6c06",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 16002,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "orion-cardan",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/orion-cardan.ldr",
+      "modelSha256": "2793c7d43f6949705d0b430181e0571f97b5268d4e600cd14069769a9e0236a8",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/orion-cardan.bw",
+      "programSha256": "9023ebdc4a02a7f1002628cb825bd3fb95c5ef1814f103138415a31b606e41c0",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 19008,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "meridian-linkage",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/meridian-linkage.ldr",
+      "modelSha256": "c807b8f9e3e11112026671ce37dc0e001c6603b703b8c0265befa99af2476cc7",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/meridian-linkage.bw",
+      "programSha256": "c86070968f4e5a095d78d186f4472926adeba8eab330519d128714bca3d17b48",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 17449,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "solstice-pumpjack",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/solstice-pumpjack.ldr",
+      "modelSha256": "27727397256050ebba3ae7093490335344e1a1e4457b410f074d0c7ce8ccb0fe",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/solstice-pumpjack.bw",
+      "programSha256": "77ebf25fd16693953e719959294c28d9bfe23690a06f3d31f2c4e0686c513a41",
+      "currentAssetChangesSinceSmoke": [
+        "modelPath"
+      ],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 18229,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Current asset differs from the earlier smoke run; rerun current source.",
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "inertia-loop",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/inertia-loop.ldr",
+      "modelSha256": "62de372b6541e8b4f4d5c9541991cc69377f188ab8b734cc0a5b6c56e2acfb6f",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/inertia-loop.bw",
+      "programSha256": "98225083c8198e591a914388710377cbe0e6e5647096a1a4921e6f7a79326626",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "bfccf698c7ad8ac4cf436cba44b2621051de3250",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 180000.0000000066,
+        "primitiveCalls": 204263,
+        "motorCount": 2,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 180000,
+        "runnerSha256": "a3989ddb1033fcaf11f1a6a24e100a7104c8418b223fb17ee7aa714671718005"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "offset-relay",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/offset-relay.ldr",
+      "modelSha256": "eb99c7f77b20edff60edfa13b43aed627285325d5fbe13fcb525e0a7c27aea2c",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/offset-relay.bw",
+      "programSha256": "e618e90134f78a395db299b82aa405759a445a1d0a6d8977777fd790335abc8b",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "bfccf698c7ad8ac4cf436cba44b2621051de3250",
+        "execution": "COMPLETED",
+        "simulatedMs": 93066.66666666458,
+        "primitiveCalls": 117117,
+        "motorCount": 2,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 180000,
+        "runnerSha256": "a3989ddb1033fcaf11f1a6a24e100a7104c8418b223fb17ee7aa714671718005"
+      },
+      "gaps": [
+        "Program threads ended in the earlier smoke run; meaningful success and output are not yet reviewed.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "rack-decoder",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/rack-decoder.ldr",
+      "modelSha256": "482d814c67ef84c8084db07b5d781926b6f5493330b4e7d655f01332488c9fa4",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/rack-decoder.bw",
+      "programSha256": "b6247884f620858ed872f88414aaeec924357312f0f47fe964e91d28a933e53f",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 20259,
+        "motorCount": 2,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "tangent-table",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/tangent-table.ldr",
+      "modelSha256": "857c6d4c61c12c8860b0baac23375fd11ce0dc68b99ea5fb0d7c22f59adf1f05",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/tangent-table.bw",
+      "programSha256": "ffa877576b230c01deb66af6c8d5f173a5e57107129626161d31e907b1c6d1ed",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 20627,
+        "motorCount": 2,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "pan-shift",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/pan-shift.ldr",
+      "modelSha256": "d4a21d566ae36e6b16515255e79764c95ceb102ac39d6474c1aaba300630ef55",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/pan-shift.bw",
+      "programSha256": "d91097cc55f4bbdfceedc3a843c8ebd3820f296dd288cddd06e037ff8b6412e8",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "bfccf698c7ad8ac4cf436cba44b2621051de3250",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 180000.0000000066,
+        "primitiveCalls": 268328,
+        "motorCount": 2,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 180000,
+        "runnerSha256": "a3989ddb1033fcaf11f1a6a24e100a7104c8418b223fb17ee7aa714671718005"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "remote-pivot",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/remote-pivot.ldr",
+      "modelSha256": "5ae709b12107c6759420ba74c8e4554e1ec337deb7bff37ca0e5150dbd0f43a4",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/remote-pivot.bw",
+      "programSha256": "26565cd4225d3b40f60a17bfb3430a089977fcd77d80c8d856228949e0d8607e",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 19197,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "vesper-quickreturn",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/vesper-quickreturn.ldr",
+      "modelSha256": "791e9b8843359153bde34aa803c7cf39228643819be45c562f79f27dbaa3c5a3",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/vesper-quickreturn.bw",
+      "programSha256": "1d0aa655c223bbf4511967202ea56dd376e4dcea053943442cce87fda6643bfd",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 16006,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "tempest-pendulum",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/tempest-pendulum.ldr",
+      "modelSha256": "83b3e27b932f8356b5d2fff557f524f1ef589d871cf8f3aa64bd5647d86a3902",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/tempest-pendulum.bw",
+      "programSha256": "6b4bd9bf40610de86dbd773622592b65127d72fd52d0b795a8b9ba3cc4786fd8",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 20170,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "schmidt-shift",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/schmidt-shift.ldr",
+      "modelSha256": "2fd6d4c2746cd59be306dac049b446e6d3913293071d76165344c878998e63c5",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/schmidt-shift.bw",
+      "programSha256": "bb757ed3b4c19f10d1f18e7927d583aaa5bccfb3dede27a768dc08c3499c6dab",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 9011,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "poise",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/poise.ldr",
+      "modelSha256": "b1d42ec1761bd45408de23c502dda2069ebc7f755ef14e877aa4dfa5e2fdfe63",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/poise.bw",
+      "programSha256": "1d1578098fb79b7fcf6c47ce8199c53c8676151d147c9d5b72e62cbe3b95f084",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 12318,
+        "motorCount": 2,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "poise-mass-control",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/poise-mass-control.ldr",
+      "modelSha256": "cb4692688b413eeb1bec77ec6638f2f63ff8d584f31dccae589bb80db4f088a9",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/poise.bw",
+      "programSha256": "1d1578098fb79b7fcf6c47ce8199c53c8676151d147c9d5b72e62cbe3b95f084",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 12318,
+        "motorCount": 2,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "equal-share",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/equal-share.ldr",
+      "modelSha256": "dab7916b2d6cb95c8073596a529b2e80afd67bc33c3ae560e015ff9c32bcb778",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/equal-share.bw",
+      "programSha256": "86e288aeb92541e241c3a729ff20002d1f652a6d2f39369f20f33a24746db260",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 14763,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "equal-share-even-springs",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/equal-share-even-springs.ldr",
+      "modelSha256": "903eb6f8503a05d3eb2a018bc5057d94594f9066d9a5afdb4480bfdce6f1312c",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/equal-share.bw",
+      "programSha256": "86e288aeb92541e241c3a729ff20002d1f652a6d2f39369f20f33a24746db260",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 14710,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "spiral-scribe",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/spiral-scribe.ldr",
+      "modelSha256": "0959e0e8061d218bbb0af933e0d2625b18d381da1e6f1f5ce1ff1de0ed353a3c",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/spiral-scribe.bw",
+      "programSha256": "73bc601d534d57c1eff08b5d902acc55dac0a7931858009cf174ef302410a6d1",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 9454,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "stroke-shift",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/stroke-shift.ldr",
+      "modelSha256": "bc3857651b1d588517c61fd81ce2ea08c0df7227c35dedc9b1a8e992c2367ec0",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/stroke-shift.bw",
+      "programSha256": "5d4fc358feb5ac8a33bf2f70149a78a9fecab475c442c5574fe7810be7203077",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 9462,
+        "motorCount": 2,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "triad-table",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/triad-table.ldr",
+      "modelSha256": "c15ac7cf3c3bb9bab2ccf19d930094f89ec3c4c330a291bd7f6316da07a015fd",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/triad-table.bw",
+      "programSha256": "d76ead5a6ea5daab919192374938987585c0ee6c3a01e81ff35a9e1601c9997c",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 9864,
+        "motorCount": 3,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "paired-door-sync",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/paired-door-sync.ldr",
+      "modelSha256": "00a31ccd7b3d4ed31452ef3e1821106bb12fb963e9d8e30db5b40ea9b0e47ae5",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/paired-door-sync.bw",
+      "programSha256": "483ebd35317bbc9840a4a2dd285ee90d2cdd3fb3a124568a8221c3c0d9bab101",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 9234,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "toggle-lever",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/toggle-lever.ldr",
+      "modelSha256": "2cb075275272ba0e6606a62ba0e52a6d8ae95ca914b96591d849a905525fa1a8",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/toggle-lever.bw",
+      "programSha256": "07fc06ef8b85d2081d0fe83816857cede4f6eea92bbdf262ba924ae9e24fcd55",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "COMPLETED",
+        "simulatedMs": 9266.666666666657,
+        "primitiveCalls": 7078,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program threads ended in the earlier smoke run; meaningful success and output are not yet reviewed.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "impulse-line",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/impulse-line.ldr",
+      "modelSha256": "0961df70c48adc6e943c98ad7edf251c5e00f656a3f83151c1da2814dd025787",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/impulse-line.bw",
+      "programSha256": "41889ab24b76913132c43c927d85f1b19e0596bfb8370d97774ad04a91f5281d",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "COMPLETED",
+        "simulatedMs": 4866.666666666667,
+        "primitiveCalls": 3922,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program threads ended in the earlier smoke run; meaningful success and output are not yet reviewed.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "impulse-line-missing-middle",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/impulse-line-missing-middle.ldr",
+      "modelSha256": "3fead9ef4c096baf3cd877317e267a63038a5b5c79964f2a07183b2906bccfb0",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/impulse-line.bw",
+      "programSha256": "41889ab24b76913132c43c927d85f1b19e0596bfb8370d97774ad04a91f5281d",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "COMPLETED",
+        "simulatedMs": 4866.666666666667,
+        "primitiveCalls": 3922,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program threads ended in the earlier smoke run; meaningful success and output are not yet reviewed.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "final-squeeze",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/final-squeeze.ldr",
+      "modelSha256": "37c71dfa2fbb846400fd65968bac3926b8e2242f1fa837868324d3dc729a1abc",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/final-squeeze.bw",
+      "programSha256": "252f4517af930e1e9f8a640b4b1dfc0e158f58215fa3712b4d94d9146fedb377",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "bfccf698c7ad8ac4cf436cba44b2621051de3250",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 14364,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "a3989ddb1033fcaf11f1a6a24e100a7104c8418b223fb17ee7aa714671718005"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "travel-dial",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/travel-dial.ldr",
+      "modelSha256": "38481e12e7b60651db8b999534ba27c93dee2f0edf7c8d2b52f281119845609b",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/travel-dial.bw",
+      "programSha256": "a98bd80798535e23ef7ca90d1683ff4e5062e184223835b0843e6957a2158ad6",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 10320,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "travel-dial-wheel-raised",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/travel-dial-wheel-raised.ldr",
+      "modelSha256": "339ad6cd746481ea942bdc96bb7faef7f59cf879cfe780adedc7429317159e96",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/travel-dial.bw",
+      "programSha256": "a98bd80798535e23ef7ca90d1683ff4e5062e184223835b0843e6957a2158ad6",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 10327,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "ghost-pivot",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/ghost-pivot.ldr",
+      "modelSha256": "dd959adb32beac4abe48199b0f3c5ea665af8ed6f143afa9d59a6a95396062ce",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/ghost-pivot.bw",
+      "programSha256": "60ad764da8580cb3bcdb5c82a0255ac4cb6ed8822437ea022885bce67699a2b2",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 10419,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "ghost-pivot-unequal-link",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/ghost-pivot-unequal-link.ldr",
+      "modelSha256": "9612a1e175849e9b48fa965babe664bc44727035f54a7f54fca90a3c5cffab17",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/ghost-pivot.bw",
+      "programSha256": "60ad764da8580cb3bcdb5c82a0255ac4cb6ed8822437ea022885bce67699a2b2",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 10419,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "afterturn",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/afterturn.ldr",
+      "modelSha256": "376c1879a8a0de34459cef654755ae1b0e5bd7f2ef236766431d34c3bdf3ced4",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/afterturn.bw",
+      "programSha256": "c057262bda6aef8ee3e8b89e395ff031b426206abb899e5e36b70e60e7bbcc6a",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 11511,
+        "motorCount": 2,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "afterturn-fixed-masses",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/afterturn-fixed-masses.ldr",
+      "modelSha256": "32d17dc7529126fb9ee584ebacc4b6418d7be9f9ff83e2e8400ce225204f1a9a",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/afterturn.bw",
+      "programSha256": "c057262bda6aef8ee3e8b89e395ff031b426206abb899e5e36b70e60e7bbcc6a",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 11511,
+        "motorCount": 2,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "quiet-partner",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/quiet-partner.ldr",
+      "modelSha256": "0d751869fc66909bd2df565c3aea25b632abcc15d7491d220ef55861d4ebbb69",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/quiet-partner.bw",
+      "programSha256": "3293584cc64197eb69d6f3da02c4a8ff3d527c11653d3a774c184a8b84af104e",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "bfccf698c7ad8ac4cf436cba44b2621051de3250",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 11185,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "a3989ddb1033fcaf11f1a6a24e100a7104c8418b223fb17ee7aa714671718005"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "quiet-partner-control",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/quiet-partner-control.ldr",
+      "modelSha256": "1be7a07e81ab8f0f52c5d129f2ffc714f39ee1598c2978ffd68224f9266017fd",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/quiet-partner.bw",
+      "programSha256": "3293584cc64197eb69d6f3da02c4a8ff3d527c11653d3a774c184a8b84af104e",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "bfccf698c7ad8ac4cf436cba44b2621051de3250",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 11226,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "a3989ddb1033fcaf11f1a6a24e100a7104c8418b223fb17ee7aa714671718005"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "high-select",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/high-select.ldr",
+      "modelSha256": "46374404f02195b1c101389b11d69e703375f9bd34c7aac23588a9d383f72b96",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/high-select.bw",
+      "programSha256": "cda2ae410c9e5ae15f2b52aca38895acb3dabc13e09a1937f106f5c1e1ca2dc3",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "bfccf698c7ad8ac4cf436cba44b2621051de3250",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 12282,
+        "motorCount": 2,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "a3989ddb1033fcaf11f1a6a24e100a7104c8418b223fb17ee7aa714671718005"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "high-select-mirror",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/high-select-mirror.ldr",
+      "modelSha256": "707ea12d89f529fda1a754c3357f2f2aeac2fda8a7ffa698bf41a0a2ce7d8d8c",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/high-select-mirror.bw",
+      "programSha256": "7c5af628837ea4588145e8864120af30aa1b84194468a493d5eb1e4e028d05f2",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "bfccf698c7ad8ac4cf436cba44b2621051de3250",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 12238,
+        "motorCount": 2,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "a3989ddb1033fcaf11f1a6a24e100a7104c8418b223fb17ee7aa714671718005"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "obliquity-orrery",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/obliquity-orrery.ldr",
+      "modelSha256": "5e15d0dcbd6e6780893838cc6512a68847fc2ef7cca0245eb973085d6e52c831",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/obliquity-orrery.bw",
+      "programSha256": "b49a1380c5b294a39379307c2e6435a8942845b382eee1fa7a18006a0aef3ba5",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 14630,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "obliquity-orrery-turned-axis",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/obliquity-orrery-turned-axis.ldr",
+      "modelSha256": "baf56227e9a3b520ac349199604bdcc8c7cb4f464eb3fc6d6f786a66c738a4b9",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/obliquity-orrery-turned-axis.bw",
+      "programSha256": "a6c9edc6df1a28cfb8a295405c4ca1aae380ad356767ed73e6337b49c3ac79af",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 14630,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "pivot-exchange",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/pivot-exchange.ldr",
+      "modelSha256": "dac8d0d5003ae68f90d8c3b4f1233d4e20aa3c2f50fc6fc2ff884e32b1d990fd",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/pivot-exchange.bw",
+      "programSha256": "e74aa7a5931429073e0a147db06ed07a916019245f6f3256c3222d7288c58118",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "bfccf698c7ad8ac4cf436cba44b2621051de3250",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 10761,
+        "motorCount": 0,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "a3989ddb1033fcaf11f1a6a24e100a7104c8418b223fb17ee7aa714671718005"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "pivot-exchange-wide",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/pivot-exchange-wide.ldr",
+      "modelSha256": "9f4bec6518514f90810c3dd00f7e6d815ed6d27904af3bdfcaa8ec9584c77ff8",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/pivot-exchange.bw",
+      "programSha256": "e74aa7a5931429073e0a147db06ed07a916019245f6f3256c3222d7288c58118",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "bfccf698c7ad8ac4cf436cba44b2621051de3250",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 10761,
+        "motorCount": 0,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "a3989ddb1033fcaf11f1a6a24e100a7104c8418b223fb17ee7aa714671718005"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "air-budget",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/air-budget.ldr",
+      "modelSha256": "5f8924b1e71e20da5d5d344d7c2846a29b7d8aa09cb739de586c5dbb80b22ca2",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/air-budget.bw",
+      "programSha256": "305c8ae0a946087377f56e5e5e4d57f8b3e09c60650f1f6a151585aaaa59b91c",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "bfccf698c7ad8ac4cf436cba44b2621051de3250",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 9887,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "a3989ddb1033fcaf11f1a6a24e100a7104c8418b223fb17ee7aa714671718005"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "air-budget-two-tanks",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/air-budget-two-tanks.ldr",
+      "modelSha256": "17b185efa7a3995f3c3943df0f80f9c99b829c8e0a707aeebd4ebbdb6e61779f",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/air-budget.bw",
+      "programSha256": "305c8ae0a946087377f56e5e5e4d57f8b3e09c60650f1f6a151585aaaa59b91c",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "bfccf698c7ad8ac4cf436cba44b2621051de3250",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 9887,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "a3989ddb1033fcaf11f1a6a24e100a7104c8418b223fb17ee7aa714671718005"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "foldback",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/foldback.ldr",
+      "modelSha256": "257d722c48485b12bd5dc4d78c109301e079a53eea0f7cf10801714e9afd8ec4",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/foldback.bw",
+      "programSha256": "5e18bc5dfa3f2c881f5a3d5574133e2af33a8b6a30008b188f6f18bce8a6be2d",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 4744,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "foldback-open",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/foldback-open.ldr",
+      "modelSha256": "96661f9f5794b33111c0f25034d7b6b0939e9a7b7aee335d143ad601c324d256",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/foldback.bw",
+      "programSha256": "5e18bc5dfa3f2c881f5a3d5574133e2af33a8b6a30008b188f6f18bce8a6be2d",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 4744,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "thirdline",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/thirdline.ldr",
+      "modelSha256": "3c3b709d22b97448827f352bc10827c5e0df6b1a9ab08756036efdef63b1761d",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/thirdline.bw",
+      "programSha256": "74c707d41c7f79106a640c60b31d505f30792068a60c09d77aa2d103f999d71e",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 4744,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "thirdline-control",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/thirdline-control.ldr",
+      "modelSha256": "ff42e529eeffd246f9ab51364bf94b9843deb9ffccb6c455dbc150d3f5b83d1b",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/thirdline.bw",
+      "programSha256": "74c707d41c7f79106a640c60b31d505f30792068a60c09d77aa2d103f999d71e",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 4744,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "samebeat",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/samebeat.ldr",
+      "modelSha256": "381f187394622c58d14e450c5b4ff786072637404a21dc0981848ffd99b9652f",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/samebeat.bw",
+      "programSha256": "1cb584c493d25cff006a8f4f1f79c295b200c8ab2af53eed8a5929cda4c39457",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 14966.66666666676,
+        "primitiveCalls": 6148,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "samebeat-conjugate",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/samebeat-conjugate.ldr",
+      "modelSha256": "9516c0f9fc51287896010a78f5d321fcb3d6a918d2bfefe3fb749aece79c66f5",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/samebeat.bw",
+      "programSha256": "1cb584c493d25cff006a8f4f1f79c295b200c8ab2af53eed8a5929cda4c39457",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 14966.66666666676,
+        "primitiveCalls": 6148,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "samebeat-control",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/samebeat-control.ldr",
+      "modelSha256": "b2df2fd9914048ae1965aa725063749faaebf69b77cd65a6daa19e6aa7beedc1",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/samebeat.bw",
+      "programSha256": "1cb584c493d25cff006a8f4f1f79c295b200c8ab2af53eed8a5929cda4c39457",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 14966.66666666676,
+        "primitiveCalls": 6148,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "carry-ratio",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/carry-ratio.ldr",
+      "modelSha256": "9a8330c393d5ade3a244d86abb28cde9b88007494efdc7d70b73b5da35ae0be2",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/carry-ratio.bw",
+      "programSha256": "0a0d2d1a7019cd937a92fe5267865422e5df05c0e4c6e0066dc2b02f97c02c6a",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 10436,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "carry-ratio-control",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/carry-ratio-control.ldr",
+      "modelSha256": "f6bc7bb6e338f766aa16f00f45df8eb62c82da53edd359ae83c11e3e52a0519d",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/carry-ratio.bw",
+      "programSha256": "0a0d2d1a7019cd937a92fe5267865422e5df05c0e4c6e0066dc2b02f97c02c6a",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 10436,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "sarrus-lift-single-chain",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/sarrus-lift-single-chain.ldr",
+      "modelSha256": "602698633267bcd2823bb8f6063042caae415a47b0fac33ae82c70eff4f75f97",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/sarrus-lift-single-chain.bw",
+      "programSha256": "4a9c6ee290cd6905c782a4dce5bc3264237cb69c7ddf99887e03326005d0d8b6",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "COMPLETED",
+        "simulatedMs": 8066.666666666638,
+        "primitiveCalls": 5741,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program threads ended in the earlier smoke run; meaningful success and output are not yet reviewed.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "phasor-twin",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/phasor-twin.ldr",
+      "modelSha256": "ecb34df83cf8b62560136b0e2b8c1553413a281e1ad89f802613e49408d3b4b4",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/phasor-twin.bw",
+      "programSha256": "749ee91516c0b8aa8e0710c01ec175195dc74982afc0f7a28e1d2f92aa838ec0",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 8853,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "phasor-twin-control",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/phasor-twin-control.ldr",
+      "modelSha256": "955d2548612775ee5424ce343e9aa523c4c34776d7c550df5bed1196d743c44a",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/phasor-twin.bw",
+      "programSha256": "749ee91516c0b8aa8e0710c01ec175195dc74982afc0f7a28e1d2f92aa838ec0",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 8853,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "rimrun",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/rimrun.ldr",
+      "modelSha256": "ad5e908db04a5fe326d81c5861d77b8f43f5985080ca9ffcee6263d81e8d9100",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/rimrun.bw",
+      "programSha256": "e260b0f1619ef8c5e352edf6d621d94e23386e73afa49a3615e0809f1af96532",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "COMPLETED",
+        "simulatedMs": 6766.66666666665,
+        "primitiveCalls": 3149,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program threads ended in the earlier smoke run; meaningful success and output are not yet reviewed.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "rimrun-swapped",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/rimrun-swapped.ldr",
+      "modelSha256": "6b5f6933da166b05f0d6349bebb207930b5477ab4727b6dc8ee551664c5c1ec3",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/rimrun.bw",
+      "programSha256": "e260b0f1619ef8c5e352edf6d621d94e23386e73afa49a3615e0809f1af96532",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "COMPLETED",
+        "simulatedMs": 6766.66666666665,
+        "primitiveCalls": 3149,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program threads ended in the earlier smoke run; meaningful success and output are not yet reviewed.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "swayshift",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/swayshift.ldr",
+      "modelSha256": "f5198199c280fc362ed09dd29bb82d68c2c5a6ef1e5baee4ce4d27be87037bf7",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/swayshift.bw",
+      "programSha256": "6a540c8116e07e613e7ee051d31394de81f0dc8183d1ac2472deb3bbb66c78d2",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "COMPLETED",
+        "simulatedMs": 11500.000000000031,
+        "primitiveCalls": 7308,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program threads ended in the earlier smoke run; meaningful success and output are not yet reviewed.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "swayshift-in-phase",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/swayshift.ldr",
+      "modelSha256": "f5198199c280fc362ed09dd29bb82d68c2c5a6ef1e5baee4ce4d27be87037bf7",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/swayshift-in-phase.bw",
+      "programSha256": "44086418ddc02bda88c9b9707f836151f7ef5e300ad7ed50c47de64689a784c4",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "COMPLETED",
+        "simulatedMs": 11500.000000000031,
+        "primitiveCalls": 7286,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program threads ended in the earlier smoke run; meaningful success and output are not yet reviewed.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "tipline",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/tipline.ldr",
+      "modelSha256": "890b7a6da4b3db341d25a4637214e3b06f49d7f8bd97bcd17b7bbc98bdfaa3ef",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/tipline.bw",
+      "programSha256": "50513368569cb159fc7a24e6efc7f6444e8d6a00477b3eb8ff3560ff48b605d4",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 7954,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "tipline-swapped",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/tipline-swapped.ldr",
+      "modelSha256": "2b8dd2bc031861c78c518fddd64657f59505b52d2b0e8a9528e9de8a6d408736",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/tipline.bw",
+      "programSha256": "50513368569cb159fc7a24e6efc7f6444e8d6a00477b3eb8ff3560ff48b605d4",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 7954,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "twistspan",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/twistspan.ldr",
+      "modelSha256": "e29a245634f3b264b316d567a7b305798f46b142ca924ec11d25ad2cbb349d8d",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/twistspan.bw",
+      "programSha256": "7fe17625040c1b47b2c1f9fe4476082a5fc5734733eed1472586e508884f8fb0",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 12873,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "twistspan-inner",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/twistspan-inner.ldr",
+      "modelSha256": "899f49e9732299229e224b15850bf23d3fef80425c1b7fd79eb104f9f7af5fc0",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/twistspan.bw",
+      "programSha256": "7fe17625040c1b47b2c1f9fe4476082a5fc5734733eed1472586e508884f8fb0",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 12873,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "evenhand",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/evenhand.ldr",
+      "modelSha256": "73b23359937976e2e3e1af7136ad9536d9e6b48837eb22eab83b1645e95f7f82",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/evenhand.bw",
+      "programSha256": "e48a31ec36709f504012d5f5ecb8db22f994ff9450908483dfd5d3c52a268413",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 14933.333333333427,
+        "primitiveCalls": 8577,
+        "motorCount": 2,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "evenhand-control",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/evenhand-control.ldr",
+      "modelSha256": "564966b5b9da4213abe194a2794c9eb4d3ef26ef21d6c9fd7ea103b1b46bf8ac",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/evenhand.bw",
+      "programSha256": "e48a31ec36709f504012d5f5ecb8db22f994ff9450908483dfd5d3c52a268413",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 14933.333333333427,
+        "primitiveCalls": 8577,
+        "motorCount": 2,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "helixgate",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/helixgate.ldr",
+      "modelSha256": "6208f9ee96f1da2d1947f0f2b92ea69706624bdfa0fa09a1aa812210b942a796",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/helixgate.bw",
+      "programSha256": "0fe7b0ef26bc214dd3f48ec0a11ab06bf345f1ff8b052ce47ccea42b0192871a",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 1776,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "looprelay",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/looprelay.ldr",
+      "modelSha256": "ed9903b56947b382ab32a548b2e4610c3cc075df7a8f35e702967a8ebeea799d",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/looprelay.bw",
+      "programSha256": "a9c9c22cf021850821d59ccbd4e21f0edd3a9c37c1a8b7630a1ba0d5d81a9a62",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 348,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "paritydial",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/paritydial.ldr",
+      "modelSha256": "01846312ba820eb1b21dd14dade9753b12e19e2dc29e643923237e437b1fc26e",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/paritydial.bw",
+      "programSha256": "a3e7b9830967ad98b466f111553475ad34f651969ac42f01665163f4559968a7",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 911,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "counterslide",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/counterslide.ldr",
+      "modelSha256": "2c2ac7a69e35d524e76f45e8b5e4b83f1aac0eafbeb9ec15ea3b85a744ea158a",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/counterslide.bw",
+      "programSha256": "6c5ff11909d9e02ad2f805ccd983422ceee3485072011c59e6906c43a86f6d71",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "34c70fdd48d675382f0b3c410621e61f58f0bd24",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 1060,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "toggle-press",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/toggle-press.ldr",
+      "modelSha256": "699e150095dee717794502548fc64e5301ffb9acd331f1a8585ba207f3611a11",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/toggle-press.bw",
+      "programSha256": "92548b0b73121faa085b867e4bcbe7af31425f915762595a53d68af9d6e56282",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "bfccf698c7ad8ac4cf436cba44b2621051de3250",
+        "execution": "COMPLETED",
+        "simulatedMs": 12800.000000000055,
+        "primitiveCalls": 7067,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "a3989ddb1033fcaf11f1a6a24e100a7104c8418b223fb17ee7aa714671718005"
+      },
+      "gaps": [
+        "Program threads ended in the earlier smoke run; meaningful success and output are not yet reviewed.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "footfall",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/footfall.ldr",
+      "modelSha256": "8a3946abd172c5c912819ecd46b83582469ab2994f026a9cc7c63d44b688ad9f",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/footfall.bw",
+      "programSha256": "6bcd7c554a8e184987aeab059381c99e41e5f6887d918c556d060e18335fd24a",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "bfccf698c7ad8ac4cf436cba44b2621051de3250",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 8075,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "a3989ddb1033fcaf11f1a6a24e100a7104c8418b223fb17ee7aa714671718005"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "phasekeeper",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/phasekeeper.ldr",
+      "modelSha256": "644e6911c49bdf2852c5b228e0a15fb651749ff6955b46895e0920f580d689bf",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/phasekeeper.bw",
+      "programSha256": "30febab7bfa69f81bbd5fd9166fbc0b32a97ed04732a9caea521ae487c35b2b1",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "bfccf698c7ad8ac4cf436cba44b2621051de3250",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 8306,
+        "motorCount": 1,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "a3989ddb1033fcaf11f1a6a24e100a7104c8418b223fb17ee7aa714671718005"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "vectorsum",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/vectorsum.ldr",
+      "modelSha256": "414de29e0d2e34849d511a2f406c3d0b0db5ece48fd3f413b0b63635ebea1166",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/vectorsum.bw",
+      "programSha256": "a08a1462f1f85dcf554a23d3326455b33f920c293aa2698a41d05508613101dc",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "bfccf698c7ad8ac4cf436cba44b2621051de3250",
+        "execution": "BOUNDED_PARTIAL",
+        "simulatedMs": 15000.000000000095,
+        "primitiveCalls": 8185,
+        "motorCount": 2,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "a3989ddb1033fcaf11f1a6a24e100a7104c8418b223fb17ee7aa714671718005"
+      },
+      "gaps": [
+        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    },
+    {
+      "id": "pointweaver",
+      "status": "PARTIAL",
+      "modelPath": "overlay/scratch-gui/static/sim-lab/models/pointweaver.ldr",
+      "modelSha256": "9efb06f459cdfac0596023c71f9fd4481d6847dcc7784d95a47acc2112e9fd8b",
+      "programPath": "overlay/scratch-gui/static/sim-lab/programs/pointweaver.bw",
+      "programSha256": "0a0f5638a16950c3221c13e1b71ee1db36dfc346563f7b94f16b26921a0a93bc",
+      "currentAssetChangesSinceSmoke": [],
+      "earlierSmoke": {
+        "sourceHead": "bfccf698c7ad8ac4cf436cba44b2621051de3250",
+        "execution": "COMPLETED",
+        "simulatedMs": 10100.000000000005,
+        "primitiveCalls": 5046,
+        "motorCount": 2,
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 15000,
+        "runnerSha256": "a3989ddb1033fcaf11f1a6a24e100a7104c8418b223fb17ee7aa714671718005"
+      },
+      "gaps": [
+        "Program threads ended in the earlier smoke run; meaningful success and output are not yet reviewed.",
+        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
+      ]
+    }
+  ],
+  "configuration": "Earlier observations used headless Scratch VM and bundled Robot Lab API with Jolt; per-model engine, simulation time limit and source are recorded below. No rendered GUI or physical device is implied."
+}
