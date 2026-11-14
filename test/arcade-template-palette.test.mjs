@@ -80,11 +80,12 @@ test('runtime-only palette import uses indexed templates without a static pxt.js
  try{
   assert.deepEqual(run.errors,[]);assert.deepEqual(run.vm.runtime.bwArcadeDeviceState.palette,colors);
   assert.deepEqual([...Object.values(run.vm.runtime.bwArcadeDeviceState.sprites)[0].image.pixels],[1,2]);
-  // Both originals wait for the same point; without it the first one races the first frame.
+  // Global completion precedes presentation; each original must publish a new frame after ready.
   // A global assigned only once is not published by the simulator, so assign it again.
-  const expected=await runPxtArcade(source+'\nready=true',{inspectDisplay:true,waitForGlobals:{ready:true}});const exported=projectToArcade(run.creator.project,{costumeSvg:(target,costume)=>run.creator.assets.get(costume.assetId)?.data});
+  const expected=await runPxtArcade(source+'\nready=true',{inspectDisplay:true,waitForDisplay:true,waitForGlobals:{ready:true}});const exported=projectToArcade(run.creator.project,{costumeSvg:(target,costume)=>run.creator.assets.get(costume.assetId)?.data});
   assert.deepEqual(exported.unsupported,[]);
-  const actual=await runPxtArcade(exported.files,{inspectDisplay:true,waitForGlobals:{ready:true}});
+  const actual=await runPxtArcade(exported.files,{inspectDisplay:true,waitForDisplay:true,waitForGlobals:{ready:true}});
+  assert.ok(expected.$display.updatesAfterReady>0);assert.ok(actual.$display.updatesAfterReady>0);
   assert.deepEqual(actual.$display.palette,expected.$display.palette);assert.deepEqual(actual.$display.screen,expected.$display.screen);
  }finally{clearStrayTimers();}
 });

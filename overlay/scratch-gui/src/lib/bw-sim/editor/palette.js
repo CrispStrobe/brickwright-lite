@@ -121,7 +121,7 @@ export const searchCatalogue = (list, query, limit = CATALOGUE_LIMIT) => {
     for (const p of list) {
         if (/^[~=_|]/.test(p.title)) continue;
         const number = foldSearch(p.part.replace(/\.dat$/i, ''));
-        const text = foldSearch(`${p.title} ${p.keywords}`);
+        const text = foldSearch(`${p.title} ${p.keywords ?? ''}`);
         let score = 0;
         let ok = true;
         for (const w of words) {
