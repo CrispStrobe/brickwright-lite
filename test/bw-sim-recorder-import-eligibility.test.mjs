@@ -65,7 +65,7 @@ test('pending imports cannot cross blocked import permissions, including a retur
 });
 test('unchanged permissions allow asynchronous import and preserve real recorder data',async()=>{
  const v=await mount(),read=deferred();
- try{await v.select(()=>read.promise);await v.render({locale:'de'});await flush(()=>read.resolve(csv()));
+ try{await v.select(()=>read.promise);await v.render({locale:'de',definitions:[{...definition}],selected:[],paused:false,sampleTime:100,rows:[{id:'mass',unit:'g',value:4,source:'configured-mass',available:true}]});await flush(()=>read.resolve(csv()));
   const run=v.recorder.snapshot().runs[0];assert.equal(run.origin,'csv');assert.equal(run.samples[0].readings[0].value,3);
   assert.deepEqual(v.events,[['mass'],'history']);assert.match(v.byId('bw-sim-measurement-record-import-status').textContent,/CSV-Messreihen importiert/);
  }finally{await v.close();}
@@ -95,4 +95,35 @@ test('a file chooser delivering during replay cannot begin a read that revives a
   assert.equal(reads,0);assert.equal(v.recorder.snapshot().runs.length,0);assert.deepEqual(v.events,[]);
   await v.select(async()=>csv());assert.equal(v.recorder.snapshot().runs.length,1);
  }finally{await v.close();}
+});
+
+test('pending file results cannot revive after session or model identity changes and returns',async()=>{
+ for(const key of ['session','modelKey','modelContext','definitions'])for(const reject of [false,true]) {
+  const initial={session:{},modelKey,modelContext:context,definitions:[{...definition}]},v=await mount(initial),read=deferred();
+  try {
+   await v.select(()=>read.promise);
+   const replacement=key==='definitions'?[{...definition,targets:['other']}]:key==='modelKey'?'0 Another model':key==='modelContext'?{...context,modelSha256:'b'.repeat(64)}:{};
+   await v.render({[key]:replacement});await v.render({[key]:initial[key]});
+   await flush(()=>reject?read.reject(Error('obsolete identity read')):read.resolve(csv()));
+   assert.equal(v.recorder.snapshot().runs.length,0,`${key} transition must discard old file results`);
+   assert.deepEqual(v.events,[],'old read cannot restore selection or notify history');
+   assert.equal(v.byId('bw-sim-measurement-record-import-status'),null);
+   await v.select(async()=>csv());assert.equal(v.recorder.snapshot().runs.length,1,'new read after returning works');
+  }finally{await v.close();}
+ }
+});
+
+test('in-place definition edits cannot revive a pending import after restoring the old values',async()=>{
+ for(const reject of [false,true]) {
+  const definitions=[{...definition,targets:['brick']}],v=await mount({definitions}),read=deferred();
+  try {
+   await v.select(()=>read.promise);
+   definitions[0].targets[0]='other';await v.render({definitions});
+   definitions[0].targets[0]='brick';await v.render({definitions});
+   await flush(()=>reject?read.reject(Error('obsolete definitions')):read.resolve(csv()));
+   assert.equal(v.recorder.snapshot().runs.length,0);assert.deepEqual(v.events,[]);
+   assert.equal(v.byId('bw-sim-measurement-record-import-status'),null);
+   await v.select(async()=>csv());assert.equal(v.recorder.snapshot().runs.length,1);
+  }finally{await v.close();}
+ }
 });

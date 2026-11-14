@@ -37,13 +37,15 @@ export default function MachineConsole({widget, keyIn, mouseIn, keyboardSet}) {
         buttons.current = 0;
         point.current = null;
     };
-    React.useEffect(() => () => {
-        // On runner change or unmount, never leave guest modifiers/buttons held.
-        for (const code of held.current) {
-            for (const byte of pcSet1Bytes(code, false, keyboardSet === 'at-set1')) keyIn?.(byte);
-        }
-        if (buttons.current) mouseIn?.({dx: 0, dy: 0, buttons: 0});
-        held.current.clear(); buttons.current = 0;
+    React.useEffect(() => {
+        // Window deactivation can leave the console as document.activeElement,
+        // so element blur alone does not release guest input.
+        window.addEventListener('blur', release);
+        return () => {
+            window.removeEventListener('blur', release);
+            // Release into the old runner on replacement or unmount.
+            release();
+        };
     }, [keyIn, mouseIn, keyboardSet]);
     React.useEffect(() => {
         if (!keyIn) return undefined;
