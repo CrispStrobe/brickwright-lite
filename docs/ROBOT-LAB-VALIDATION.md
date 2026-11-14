@@ -310,7 +310,7 @@ hardware calibration is inferred from these controlled boundaries.
 
 ## Functional model sweep (2026-11-14)
 
-The [functional matrix](data/robot-lab-functional-matrix-20261114.json) records a bounded headless run of all 82 checkpoint models using the Scratch VM, Robot Lab extension and Jolt. All 104 motor shafts moved, including two passive Equinox outputs and a separate motor exercise for the intentionally held Sarrus control. The supplied programs completed for 13 models; the other 69 were still running at their recorded time bounds. This checks simulator catalogue resolution and functional motion, not rendered mesh loading, the built GUI, physical-device behavior or precision laws.
+The [functional matrix](data/robot-lab-functional-matrix-20261114.json) records a bounded headless smoke run of all 82 checkpoint models using the Scratch VM, Robot Lab extension and Jolt. All 104 motor shafts moved, including two passive Equinox outputs and a separate motor exercise for the intentionally held Sarrus control. The supplied program threads ended for 13 models; the other 69 were still running at their recorded time bounds. These smoke results do not establish successful program completion or valid output. The [program gap list](data/robot-lab-program-gaps-20261114.json) tracks those requirements per model. Neither list establishes rendered mesh loading, the built GUI, physical-device behavior or precision laws.
 
 With the repository's integrated GUI dependencies installed, run selected models with Node 22:
 
