@@ -189,3 +189,30 @@ test('binary bitwise getters require both closed Number operands without coercin
   refused(source.replace('constructor(public n:number){}','n:number;constructor(n:number){}'));
  }
 });
+
+
+test('binary bitwise setters require both closed Number operands and every actual writer',()=>{
+ for(const op of ['|','&','^','<<','>>','>>>']){
+  const source=scalarAccessorSource.replace('this.n=v',`this.n=v${op}this.n`);
+  accepted(source);
+  accepted(source.replace(`v${op}this.n`,`v${op}trace`));
+  refused(source.replace(`v${op}this.n`,`v${op}trace`)+'trace=<any>"bad";');
+  accepted(source.replace(`v${op}this.n`,`(v+1)${op}(~this.n)`));
+  accepted(source.replace(`v${op}this.n`,`(v*1e308-v*1e308)${op}(this.n*1e308)`));
+  for(const extra of ['box.value=<any>"x";','box.value=<any>true;','box.value=<any>undefined;',
+   'let absent:number;box.value=absent;','box.value=take(4);',
+   'box.n=<any>"x";','box.n=<any>true;','box.n=<any>undefined;',
+   'let alias=box;','function captured(){box.value=2}',
+   'function captured(){box.n=<any>true}','box["n"]=<any>"x";'])refused(source+extra);
+  for(const operand of ['<any>"x"','<any>true','<any>undefined','this.value','take(v)','external','1e999']){
+   refused(source.replace(`v${op}this.n`,`v${op}(${operand})`));
+   refused(source.replace(`v${op}this.n`,`(${operand})${op}this.n`));
+  }
+  refused(source.replace('new Box(2)','new Box(<any>"x")'));
+  refused(source.replace('constructor(public n:number){}','n:number;constructor(n:number){}'));
+  refused(source.replace('constructor(public n:number){}','n:number;constructor(n:number){this.n=this.n+1}'));
+  refused(source.replace(`this.n=v${op}this.n`,`v=2;this.n=v${op}this.n`));
+  refused(source.replace('let box=new Box(2);','var box=new Box(2);'));
+  refused(source.replace('let box=new Box(2);','let before=take(box.value);let box=new Box(2);'));
+ }
+});

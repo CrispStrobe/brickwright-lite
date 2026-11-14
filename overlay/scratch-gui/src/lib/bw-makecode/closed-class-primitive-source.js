@@ -126,7 +126,7 @@ export function closedClassPrimitiveSource(program,graph) {
   const setterNumber=(node,method)=>node?.type==='Number'&&Number.isFinite(Number(node.value))||formalNumber(node,method)||
    ownMember(node)&&node.object?.name==='this'&&fields.has(node.name)||
    node?.type==='Unary'&&['+','-','~'].includes(node.op)&&setterNumber(node.argument,method)||
-   node?.type==='Binary'&&['+','-','*'].includes(node.op)&&setterNumber(node.left,method)&&setterNumber(node.right,method);
+   node?.type==='Binary'&&['+','-','*','|','&','^','<<','>>','>>>'].includes(node.op)&&setterNumber(node.left,method)&&setterNumber(node.right,method);
   for(const method of cls.methods){
    const statements=method.body||[],body=statements.slice(-1);
    if(!statements.slice(0,-1).every(statement=>scalarEffect(statement,method)))valid=false;
