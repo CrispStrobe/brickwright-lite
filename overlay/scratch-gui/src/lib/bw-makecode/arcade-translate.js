@@ -1,3 +1,4 @@
+import {highScoreConfiguredSourceSafe,markHighScoreCalls,highScoreIntrinsic} from './high-score-source.js';
 import {consoleLogValueConfiguredSourceSafe,lowerConsoleLogValues} from './lower-console-log-values.js';
 import {bindScoreImageSource,scoreImageBindingView} from './score-owned-image-source.js';
 import {numberPromptLengthSourceSafe,markNumberPromptLengths,literalNumberPromptLength,markDefaultTextPrompts,literalDefaultTextPrompt} from './number-prompt-length-source.js';
@@ -972,6 +973,9 @@ class ArcadeTranslator extends BaseTranslator {
         // Arcade's score is the game's on-screen score: the extension's own, on both
         // paths. (The fixed-sprite path used to keep it in a Scratch variable named
         // `score`, which the export could not tell from a user's, so the HUD was lost.)
+        case 'info.highScore':
+            if(highScoreIntrinsic(node))return 'arcade high score';
+            this.unsupported.push('info.highScore requires its unchanged builtin and settings bindings');return '0';
         case 'info.score': return 'arcade player (1) score';
         case 'info.life': return 'lives';
         case 'game.ask':
@@ -3817,6 +3821,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
     const mathDeclared=entries.some(({node})=>node.type==='Declaration' && node.decls?.some(decl=>decl.name==='Math') ||
         ['FunctionDeclaration','FunctionExpression'].includes(node.type) && (node.params || []).includes('Math'));
     const typeOf = (node, owner) => {
+        if(highScoreIntrinsic(node))return new Set(['number']);
         if(node?.bwConsoleInspectIntrinsic===true && node.callee?.name==='__bwConsoleInspectValue')return new Set(['string']);
         if(node?.bwFontIntrinsic && node.bwFontType==='image.Font')return new Set(['font']);
         if(node?.bwFontIntrinsic==='field' && node.bwFontType==='number')return new Set(['number']);
@@ -4031,6 +4036,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
             const name={font:'Font',buffer:'Buffer',image:'Image',sprite:'Sprite',tile:'TileLocation',tilemap:'TileMapData','scene-tilemap':'SceneTileMap','legacy-tile':'LegacyTile',animation:'Animation','sevenseg-digit':'SevenSegDigit','sevenseg-counter':'DigitCounter',dart:'Dart',corgio:'Corgio','text-sprite':'TextSprite',scene:'Scene','physics-engine':'PhysicsEngine',player:'Player',number:'number',string:'string',boolean:'boolean',null:'null',undefined:'undefined',object:'object',any:'unknown',array:'array'}[type];
             if(name)graph.add(value,name);
         }
+        if(highScoreIntrinsic(node))graph.add(value,'number');
         if(node.bwConsoleInspectIntrinsic===true && node.callee?.name==='__bwConsoleInspectValue')graph.add(value,'string');
         if(node.bwFontType==='image.Font' && ['constant','getFontForText','scaledFont'].includes(node.bwFontIntrinsic))graph.add(value,'Font');
         if(node.bwFontIntrinsic==='field' && node.bwFontType==='number')graph.add(value,'number');
@@ -4780,6 +4786,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(node.type==='Call' && /^game\.(?:gameOver|over|setGameOver\w+)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && (node.callee.name==='startEffect' || node.callee.name==='destroy' && node.args?.length))return true;
         if(node.type==='Call' && (['controller.setRepeatDefault','controller._setUserEventsEnabled','game.splash','game.showLongText','game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitTile','scene.tileHitFrom','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraShake','scene.cameraFollowSprite','scene.cameraProperty','scene.cameraLeft','scene.cameraTop','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;
+        if(highScoreIntrinsic(node))return true;
         if(node.type==='Call' && /^info(?:\.player[1-4])?\.(?:life|hasLife|setLife|changeLifeBy|onLifeZero|onScore)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Member' && ['repeatDelay','repeatInterval'].includes(node.name) && (t.path(node.object)||'').startsWith('controller.'))return true;
         if(node.type==='Member' && ['fx','fy','sx','sy','scale','flags'].includes(node.name))return true;
@@ -5436,6 +5443,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const selectedSource = arcadeProjectSource(map);
     const source = selectedSource.source;
     const anyButtonSourceSafe = source.includes('anyButton') && anyButtonConfiguredSourceSafe(map);
+    const highScoreSourceSafe = source.includes('highScore') && highScoreConfiguredSourceSafe(map);
     const logValueSourceSafe = source.includes('logValue') && consoleLogValueConfiguredSourceSafe(map);
     const defaultTextPromptSourceSafe = source.includes('askForString') && numberPromptLengthSourceSafe(map);
     const numberPromptSourceSafe = source.includes('askForNumber') && numberPromptLengthSourceSafe(map);
@@ -5578,8 +5586,8 @@ export function arcadeToPseudocode (files, opts = {}) {
         return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, lowerAnimationAssets(value)]));
     };
     const callableParseOptions={parameterDefaults:true,retainParentheses:true,retainWhenUsed:true,retainClassHeritage:true,retainOrdinaryDefaultProvenance:true};
-    const ordinarySource=markDefaultTextPrompts(markNumberPromptLengths(markLegacyNoteMelodies(lowerAnyButtonRegistrations(parseSharedImageSourceProgram(sharedSourcePreparation,source,opts.procedureConstraintsPrototype===true,opts.procedureConstraintsPrototype!==true),anyButtonSourceSafe,projectInputDiagnostics),legacyMelodySourceSafe),numberPromptSourceSafe),defaultTextPromptSourceSafe);
-    const callableSourceParsed=markDefaultTextPrompts(markNumberPromptLengths(markLegacyNoteMelodies(lowerAnyButtonRegistrations(parseMakeCodeTs(source,{...callableParseOptions,retainCallableMetadata:true}),anyButtonSourceSafe),legacyMelodySourceSafe),numberPromptSourceSafe),defaultTextPromptSourceSafe);
+    const ordinarySource=markHighScoreCalls(markDefaultTextPrompts(markNumberPromptLengths(markLegacyNoteMelodies(lowerAnyButtonRegistrations(parseSharedImageSourceProgram(sharedSourcePreparation,source,opts.procedureConstraintsPrototype===true,opts.procedureConstraintsPrototype!==true),anyButtonSourceSafe,projectInputDiagnostics),legacyMelodySourceSafe),numberPromptSourceSafe),defaultTextPromptSourceSafe),highScoreSourceSafe);
+    const callableSourceParsed=markHighScoreCalls(markDefaultTextPrompts(markNumberPromptLengths(markLegacyNoteMelodies(lowerAnyButtonRegistrations(parseMakeCodeTs(source,{...callableParseOptions,retainCallableMetadata:true}),anyButtonSourceSafe),legacyMelodySourceSafe),numberPromptSourceSafe),defaultTextPromptSourceSafe),highScoreSourceSafe);
     const namedEligibility=selectNamedFunctionSourceProof(callableSourceParsed,{ordinaryProgram:ordinarySource,registrationSpec:callbackRegistrationSpec});
     const namedEnabled=namedEligibility.eligible;
     const namedLowering=namedEnabled?lowerNamedFunctionValues(callableSourceParsed):null;

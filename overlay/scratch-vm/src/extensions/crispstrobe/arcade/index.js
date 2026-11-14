@@ -1,6 +1,7 @@
 const makeExt = require('../adapter');
 const createConsoleInspectValues = require('./console-inspect-values');
 const nullSpriteGetter = require('../../../util/bw-null-sprite-getter');
+const highScoreFaults = require('./high-score-faults');
 const tileLookupFaults = require('../../../util/bw-tile-lookup-faults');
 const sceneClockNumber = require('./scene-clock-number');
 const frameDeltaNumber = require('./frame-delta-number');
@@ -76,7 +77,8 @@ module.exports = makeExt(`// Name: Arcade
           [name,Object.getOwnPropertyDescriptor(scorePrototype,name)?.value]));
       const sourceResultDescriptor=Object.getOwnPropertyDescriptor,sourceResultPrototype=Object.getPrototypeOf,sourceResultOwn=Object.prototype.hasOwnProperty,sourceResultApply=Reflect.apply;
       const sourceResultMethods=['sourceValueBinary','sourceValueUnary','_bindSourceOperationAdapter'].map(name=>[name,Object.getOwnPropertyDescriptor(scorePrototype,name)?.value]);
-      const scoreNumberOwner=Object.freeze({isInstance:value=>value===this,isCurrent:()=>Object.getPrototypeOf(this)===scorePrototype &&
+      const highScoreMethods=['highScore','_readHighScore','_settingsStore','_highScoreFailure'].map(name=>[name,Object.getOwnPropertyDescriptor(scorePrototype,name)?.value]);
+      const scoreNumberOwner=Object.freeze({isInstance:value=>value===this,isHighScoreCurrent:()=>Object.getPrototypeOf(this)===scorePrototype&&Object.getOwnPropertyDescriptor(this,'_runtime')?.value===runtime&&highScoreMethods.every(([name,method])=>typeof method==='function'&&!Object.hasOwn(this,name)&&Object.getOwnPropertyDescriptor(scorePrototype,name)?.value===method),isCurrent:()=>Object.getPrototypeOf(this)===scorePrototype &&
         Object.getOwnPropertyDescriptor(this,'_runtime')?.value===runtime && [...scoreMethods].every(([name,method])=>
           typeof method==='function' && !Object.prototype.hasOwnProperty.call(this,name) &&
           Object.getOwnPropertyDescriptor(scorePrototype,name)?.value===method),
@@ -92,8 +94,8 @@ module.exports = makeExt(`// Name: Arcade
       // One sealed owner and fault service per faulting primitive (null Sprite
       // getter, missing Sprite setter, missing Image operations).
       const getterPrototype=Object.getPrototypeOf(this),getterOwners=new Map(),getterFaults=new Map();
-      for(const {method,kind} of [...dependencies.nullSpriteGetter.kinds,...dependencies.tileLookupFaults.kinds]){
-        const getterMethods=new Map(['getInfo',method].map(name=>[name,Object.getOwnPropertyDescriptor(getterPrototype,name)?.value]));
+      for(const {method,kind} of [...dependencies.nullSpriteGetter.kinds,...dependencies.tileLookupFaults.kinds,...dependencies.highScoreFaults.kinds]){
+        const getterMethods=new Map(['getInfo',method,...(dependencies.highScoreFaults.kinds.some(row=>row.method===method)?['_readHighScore','_settingsStore','_highScoreFailure',...(method==='highScore'?[]:['_runGameOver','_prepareGameOverScores','_isBetterScore'])]:[])].map(name=>[name,Object.getOwnPropertyDescriptor(getterPrototype,name)?.value]));
         const getterOwner=Object.freeze({isInstance:value=>value===this,isCurrent:()=>Object.getPrototypeOf(this)===getterPrototype &&
           Object.getOwnPropertyDescriptor(this,'_runtime')?.value===runtime && [...getterMethods].every(([name,method])=>
             typeof method==='function' && !Object.prototype.hasOwnProperty.call(this,name) &&
@@ -354,7 +356,7 @@ module.exports = makeExt(`// Name: Arcade
     getInfo() {
       const str = (name, def) => ({ [name]: { type: Scratch.ArgumentType.STRING, defaultValue: def || '' } });
       const n = (name, def) => ({ [name]: { type: Scratch.ArgumentType.NUMBER, defaultValue: def == null ? 0 : def } });
-      return dependencies.palette.arrange(this,dependencies.frameDeltaNumber.declaration(dependencies.sceneClockNumber.declaration(dependencies.tileLookupFaults.declareAll(dependencies.nullSpriteGetter.declareAll(dependencies.createConsoleInspectValues.scoreInfo({
+      return dependencies.highScoreFaults.declareAll(dependencies.palette.arrange(this,dependencies.frameDeltaNumber.declaration(dependencies.sceneClockNumber.declaration(dependencies.tileLookupFaults.declareAll(dependencies.nullSpriteGetter.declareAll(dependencies.createConsoleInspectValues.scoreInfo({
         id: 'arcade',
         name: 'Arcade',
         color1: '#E64980',
@@ -523,6 +525,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'bufferPackAt',blockType:Scratch.BlockType.COMMAND,text:'Arcade pack number array [ARRAY] into byte buffer [BUFFER] at [OFFSET] format [FORMAT]',arguments:{...str('ARRAY',''),...str('BUFFER',''),...n('OFFSET',0),...str('FORMAT','<BH')}},
           {opcode:'bufferFromArray',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer from number array [ARRAY]',arguments:str('ARRAY','')},
           {opcode:'settingsWrite',blockType:Scratch.BlockType.COMMAND,text:'Arcade write setting [KEY] type [TYPE] value [VALUE]',arguments:{...str('KEY',''),...str('VALUE',''),TYPE:{type:Scratch.ArgumentType.STRING,menu:'settingWriteTypes',defaultValue:'Number'}}},
+          {opcode:'highScore',blockType:Scratch.BlockType.REPORTER,text:'Arcade high score',arguments:{}},
           {opcode:'settingsRead',blockType:Scratch.BlockType.REPORTER,text:'Arcade read setting [KEY] type [TYPE]',arguments:{...str('KEY',''),TYPE:{type:Scratch.ArgumentType.STRING,menu:'settingReadTypes',defaultValue:'Number'}}},
           {opcode:'settingsExists',blockType:Scratch.BlockType.BOOLEAN,text:'Arcade setting [KEY] exists',arguments:str('KEY','')},
           {opcode:'settingsRemove',blockType:Scratch.BlockType.COMMAND,text:'Arcade remove setting [KEY]',arguments:str('KEY','')},
@@ -1203,7 +1206,7 @@ module.exports = makeExt(`// Name: Arcade
           spriteFlags: {acceptReporters: false, items: Object.keys(spriteFlags)}
           ,speechModes: {acceptReporters: false, items: ['text', 'legacy']}
         }
-      },scoreNumberOwners.get(this)),method=>nullSpriteOwners.get(this).get(method)),method=>nullSpriteOwners.get(this).get(method)),sceneClockOwners.get(this)),frameDeltaOwners.get(this)));
+      },scoreNumberOwners.get(this)),method=>nullSpriteOwners.get(this).get(method)),method=>nullSpriteOwners.get(this).get(method)),sceneClockOwners.get(this)),frameDeltaOwners.get(this))),method=>nullSpriteOwners.get(this).get(method));
     }
 
     // An owned runtime may inject {now:()=>milliseconds} for deterministic
@@ -1322,6 +1325,15 @@ module.exports = makeExt(`// Name: Arcade
       if(type==='Buffer' && value)return this._bufferReference(value);
       return Scratch.BWValues.encode(value);
     });}
+    _readHighScore() {return this._settingsStore().call('readNumber','high-score') || 0;}
+    _highScoreFailure(method,args,util,error) {
+      if(!util)throw error;
+      return dependencies.highScoreFaults.fault(method,nullSpriteFaults.get(this).get(method),args,util,error,
+        fault=>exceptionOwners.get(this).rejectPrimitiveFault(args,util,fault.error,fault.lease));
+    }
+    highScore(args,util) {
+      try{return this._readHighScore();}catch(error){return this._highScoreFailure('highScore',args,util,error);}
+    }
     settingsExists(args){return this._settingsGuard(()=>this._settingsStore().call('exists',Scratch.BWValues.decode(args.KEY)),true);}
     settingsRemove(args){return this._settingsGuard(()=>this._settingsStore().call('remove',Scratch.BWValues.decode(args.KEY)));}
     settingsClear(){return this._settingsGuard(()=>this._settingsStore().call('clear'));}
@@ -4888,13 +4900,13 @@ module.exports = makeExt(`// Name: Arcade
         HAS_SOUND:Scratch.Cast.toBoolean(args.HAS_SOUND),HAS_SCORE:Scratch.Cast.toBoolean(args.HAS_SCORE),
         SCORE:Number(Scratch.BWValues.decode(args.SCORE))});
     }
-    gameOver(args,util) {return this._runGameOver(Scratch.Cast.toBoolean(args.WIN),util);}
+    gameOver(args,util) {return this._runGameOver(Scratch.Cast.toBoolean(args.WIN),util,undefined,{method:'gameOver',args});}
     // game.over(win, effect?): the effect applies unless the program chose one.
     legacyGameOver(args,util) {
       const win=Scratch.Cast.toBoolean(args.WIN),effect=this._gameOverEffect(args.EFFECT,true);
       if(effect===null)return;
       this._gameOverState().config.setEffect(win,effect,false);
-      return this._runGameOver(win,util);
+      return this._runGameOver(win,util,undefined,{method:'legacyGameOver',args});
     }
     // Resolves after ms of Arcade time (PXT pause).
     _arcadePause(ms) {return new Promise(resolve=>this._music().spawn((function*(){yield ms;resolve();})()));}
@@ -4902,20 +4914,33 @@ module.exports = makeExt(`// Name: Arcade
     _nextButtonPress() {return new Promise(resolve=>{(this._buttonPressWaiters || (this._buttonPressWaiters=[])).push(resolve);});}
     waitAnyButton() {return new Promise(resolve=>this._nativeButtonWaiters.add(resolve));}
     _buttonPressed() {const waiters=this._buttonPressWaiters;this._buttonPressWaiters=[];if(waiters)for(const resolve of waiters)resolve();for(const resolve of this._nativeButtonWaiters)resolve();this._nativeButtonWaiters.clear();}
-    async _runGameOver(win,util,capturedFrame) {
+    _prepareGameOverScores(judged,win,players) {
+      const {game}=this._gameOverModule();
+      // Display fallback and raw comparator reads are separate SDK operations.
+      const previousBest=judged && this._readHighScore();
+      let winner=null,winningScore=null;
+      if(judged && win)for(const player of players)if(this._isBetterScore(player.score,winningScore)){winningScore=player.score;winner=player;}
+      const scores=players.map(player=>new game.GameOverPlayerScore(player.number,player.score,player===winner));
+      if(judged && winner){
+        const stored=this._settingsStore().call('readNumber','high-score');
+        if(this._isBetterScore(winner.score,stored))this._settingsStore().call('writeNumber','high-score',winner.score);
+      }
+      return {previousBest,winner,scores};
+    }
+    async _runGameOver(win,util,capturedFrame,storageCall) {
       const go=this._gameOverState();
       if(go.over)return;
       go.over=true;
       const ext=this,{game}=this._gameOverModule(),goc=go.config,state=this._infoState();
       const judged=goc.scoringType!==game.ScoringType.None;
       const players=(state.players || []).map((player,index)=>({number:index+1,score:player?.score})).filter(player=>player.score!==undefined);
-      const best=this._highScore===undefined?null:this._highScore;
-      // info.highScore() reads 0 when nothing was saved.
-      const previousBest=judged && (best || 0);
-      let winner=null,winningScore=null;
-      if(judged && win)for(const player of players)if(this._isBetterScore(player.score,winningScore)){winningScore=player.score;winner=player;}
-      const scores=players.map(player=>new game.GameOverPlayerScore(player.number,player.score,player===winner));
-      if(judged && winner && this._isBetterScore(winner.score,best))this._highScore=winner.score;
+      let previousBest,winner,scores;
+      try {({previousBest,winner,scores}=this._prepareGameOverScores(judged,win,players));}
+      catch(error) {
+        // No yield preceded this actual storage failure; retain its primitive loan.
+        if(storageCall)return this._highScoreFailure(storageCall.method,storageCall.args,util,error);
+        throw error;
+      }
       const message=goc.getMessage(win,false),effect=goc.getEffect(win),sound=goc.getSound(win);
       const mode=goc.getSoundLooping(win)?this._music().pxt.music.PlaybackMode.LoopingInBackground:this._music().pxt.music.PlaybackMode.InBackground;
       // Explicit game over captures the last frame; default info loss captures
@@ -6851,8 +6876,9 @@ module.exports = makeExt(`// Name: Arcade
   frameDeltaNumber,
   bindFrameDeltaAdapterInfo: frameDeltaNumber.bindAdapterInfo,
   nullSpriteGetter,
+  highScoreFaults,
   tileLookupFaults,
-  bindNullSpriteAdapterInfo: (info, adapter, instance) => {nullSpriteGetter.bindAll(info, adapter, instance);tileLookupFaults.bindAll(info, adapter, instance);},
+  bindNullSpriteAdapterInfo: (info, adapter, instance) => {nullSpriteGetter.bindAll(info, adapter, instance);tileLookupFaults.bindAll(info, adapter, instance);highScoreFaults.bindAll(info, adapter, instance);},
   createProcedureConstraints: require('./procedure-parameter-constraints'),
   procedureEntry: require('../../../util/bw-procedure-entry'),
   createManagedReturnValues: require('./managed-return-values'),

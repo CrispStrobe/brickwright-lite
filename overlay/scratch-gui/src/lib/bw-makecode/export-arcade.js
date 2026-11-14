@@ -1978,6 +1978,7 @@ class ArcadeEmitter {
             if(this.callableExports?.get(this.target)?.sdkImageEnabled){const image=this.sdkImageLiteralResources?.allocation(this.target,b);if(image)return toImgLiteral(image);}
             return `${v('IMAGE')}.clone()`;
         }
+        case 'arcade_highScore': return 'info.highScore()';
         case 'arcade_settingsRead': {
             const type=settingType(b, this.blocks);
             if(type==='List')return `settings.list(${v('KEY')})`;
