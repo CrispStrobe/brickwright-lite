@@ -51,6 +51,7 @@ class SimLabInstructions extends React.Component {
         // Capture: the pages take ← → and Esc before the Scratch stage hears them as key presses.
         window.addEventListener('keydown', this.onKey, true);
         window.addEventListener('resize', this.onResize);
+        this.returnFocus = document.activeElement;
         this.dialog.current?.focus();
         const {lib, model} = this.props;
         const {buildSteps, fetchModelDrawing, parseLDConfig, createInstructionsView, createPartThumbnails, CATALOG, DEFAULT_COLOR} = lib;
@@ -76,6 +77,9 @@ class SimLabInstructions extends React.Component {
 
     componentWillUnmount () {
         this.disposed = true;
+        // Keep deliberate focus moves elsewhere; return only focus this dialog owns.
+        const ownsFocus = this.dialog.current?.contains(document.activeElement) || document.activeElement === document.body;
+        if (ownsFocus && document.hasFocus?.() !== false && document.contains(this.returnFocus)) this.returnFocus.focus();
         if (this.printWindow) { try { this.printWindow.close(); } catch { /* the window may already be gone */ } }
         this.printWindow = null;
         window.removeEventListener('keydown', this.onKey, true);
@@ -105,6 +109,20 @@ class SimLabInstructions extends React.Component {
     }
 
     onKey (event) {
+        if (event.key === 'Tab') {
+            const dialog = this.dialog.current;
+            if (!dialog || document.hasFocus?.() === false) return;
+            const controls = [...dialog.querySelectorAll('button:not(:disabled)')];
+            const first = controls[0], last = controls[controls.length - 1];
+            const outsideControls = !controls.includes(document.activeElement);
+            if (!first || outsideControls || (event.shiftKey ? document.activeElement === first : document.activeElement === last)) {
+                event.preventDefault();
+                event.stopPropagation();
+                (event.shiftKey ? last : first)?.focus();
+                if (!first) dialog.focus();
+            }
+            return;
+        }
         const turn = {ArrowRight: 1, ArrowLeft: -1}[event.key];
         if (event.key !== 'Escape' && event.key !== 'Home' && event.key !== 'End' && !turn) return;
         event.preventDefault();
