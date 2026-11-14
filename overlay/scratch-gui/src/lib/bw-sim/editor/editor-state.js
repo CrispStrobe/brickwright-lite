@@ -379,7 +379,7 @@ export const createEditor = ({model, catalog}) => {
                 const {around, lengthLdu} = cmd;
                 if (!Array.isArray(around) || around.length < 2 || new Set(around).size !== around.length) throw new Error('a rope runs from a drum to a hook');
                 for (const pid of around) if (!hasPart(pid)) throw new Error(`unknown id '${pid}'`);
-                if (!(typeof lengthLdu === 'number' && lengthLdu > 0)) throw new Error('bad rope length');
+                if (!(Number.isFinite(lengthLdu) && lengthLdu > 0)) throw new Error('bad rope length');
                 const ids = new Set((current.ropes || []).map(r => r.id));
                 let n = 1;
                 while (ids.has(`r${n}`)) n++;

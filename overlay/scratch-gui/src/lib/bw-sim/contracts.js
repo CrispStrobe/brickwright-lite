@@ -822,7 +822,7 @@ export const validatePlacedModel = (model, catalog) => {
             const partIds = new Set(model.parts.map(pr => pr.id));
             for (const r of model.ropes) {
                 const wr = `model.ropes[${r?.id}]`;
-                if (!(typeof r?.lengthLdu === 'number' && r.lengthLdu > 0)) out.push(`${wr}.lengthLdu: a length (LDU)`);
+                if (!(Number.isFinite(r?.lengthLdu) && r.lengthLdu > 0)) out.push(`${wr}.lengthLdu: a length (LDU)`);
                 if (!Array.isArray(r?.around) || r.around.length < 2) out.push(`${wr}.around: a drum and a hook at least`);
                 else for (const pid of r.around) if (!partIds.has(pid)) out.push(`${wr}.around: unknown part '${pid}'`);
             }
