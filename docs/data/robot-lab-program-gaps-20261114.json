@@ -5,8 +5,8 @@
   "scope": "Program completion gaps. Earlier bounded functional smoke is evidence of partial execution only; no model is working until terminal success, primary mechanism motion and valid output are verified. No physical accuracy is implied.",
   "summary": {
     "total": 82,
-    "working": 0,
-    "partial": 82,
+    "working": 2,
+    "partial": 80,
     "blocked": 0
   },
   "models": [
@@ -29,9 +29,41 @@
         "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
       },
       "gaps": [
-        "Program reached the earlier simulated-time cutoff; no terminal outcome was established.",
-        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
-      ]
+        "Program did not reach a terminal state within 20 simulated seconds.",
+        "The model-specific output contract has not yet been reviewed."
+      ],
+      "latestCompletionRun": {
+        "sourceHead": "bdfff942eb464f219f6f60342c9a420ba08da616",
+        "runnerSha256": "ecb58436a7e2d392580e2765ae6f9fc088a40e2252a866a7a5dc9a662d528798",
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 20000,
+        "simulatedMs": 19999.99999999999,
+        "execution": "BOUNDED_PARTIAL",
+        "finishedAt": null,
+        "primitiveCalls": 25901,
+        "terminalObservation": {
+          "sawZero": false,
+          "sawTransition": false
+        },
+        "messages": [],
+        "outputMeasurement": {
+          "part": null,
+          "samples": 0,
+          "invalid": false,
+          "travelM": 0,
+          "homeErrorM": null,
+          "initial": null,
+          "final": null
+        },
+        "completion": {
+          "status": "PARTIAL",
+          "gaps": [
+            "OUTPUT_CONTRACT_UNREVIEWED",
+            "PROGRAM_DID_NOT_EXIT"
+          ],
+          "failures": []
+        }
+      }
     },
     {
       "id": "bend-ripple",
@@ -728,7 +760,7 @@
     },
     {
       "id": "toggle-lever",
-      "status": "PARTIAL",
+      "status": "WORKING",
       "modelPath": "overlay/scratch-gui/static/sim-lab/models/toggle-lever.ldr",
       "modelSha256": "2cb075275272ba0e6606a62ba0e52a6d8ae95ca914b96591d849a905525fa1a8",
       "programPath": "overlay/scratch-gui/static/sim-lab/programs/toggle-lever.bw",
@@ -744,10 +776,46 @@
         "simLimitMs": 15000,
         "runnerSha256": "d099131ecbb493fd424e49eec3ac322a6a308d6be6b4294818c3fa18b0b54332"
       },
-      "gaps": [
-        "Program threads ended in the earlier smoke run; meaningful success and output are not yet reviewed.",
-        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
-      ]
+      "gaps": [],
+      "latestCompletionRun": {
+        "sourceHead": "1df217470cb38308d44f43dd10587f68f8eebbc9",
+        "runnerSha256": "ecb58436a7e2d392580e2765ae6f9fc088a40e2252a866a7a5dc9a662d528798",
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 20000,
+        "simulatedMs": 10266.666666666675,
+        "execution": "COMPLETED",
+        "finishedAt": 9266.666666666657,
+        "primitiveCalls": 7078,
+        "terminalObservation": {
+          "sawZero": true,
+          "sawTransition": true
+        },
+        "messages": [
+          "ToggleLever complete: compare the passive lever arc with the link closure."
+        ],
+        "outputMeasurement": {
+          "part": "jaw_lever",
+          "samples": 309,
+          "invalid": false,
+          "travelM": 0.006814827913761852,
+          "homeErrorM": 2.5782831214497035e-05,
+          "initial": [
+            0.052799999713897705,
+            0.04399999976158142,
+            0.006399999838322401
+          ],
+          "final": [
+            0.052775993943214417,
+            0.04399766027927399,
+            0.006409110501408577
+          ]
+        },
+        "completion": {
+          "status": "COMPLETE",
+          "gaps": [],
+          "failures": []
+        }
+      }
     },
     {
       "id": "impulse-line",
@@ -1878,7 +1946,7 @@
     },
     {
       "id": "pointweaver",
-      "status": "PARTIAL",
+      "status": "WORKING",
       "modelPath": "overlay/scratch-gui/static/sim-lab/models/pointweaver.ldr",
       "modelSha256": "9efb06f459cdfac0596023c71f9fd4481d6847dcc7784d95a47acc2112e9fd8b",
       "programPath": "overlay/scratch-gui/static/sim-lab/programs/pointweaver.bw",
@@ -1894,10 +1962,46 @@
         "simLimitMs": 15000,
         "runnerSha256": "a3989ddb1033fcaf11f1a6a24e100a7104c8418b223fb17ee7aa714671718005"
       },
-      "gaps": [
-        "Program threads ended in the earlier smoke run; meaningful success and output are not yet reviewed.",
-        "Primary mechanism movement and a valid output, preview or measurement at the terminal state are not yet verified."
-      ]
+      "gaps": [],
+      "latestCompletionRun": {
+        "sourceHead": "1df217470cb38308d44f43dd10587f68f8eebbc9",
+        "runnerSha256": "ecb58436a7e2d392580e2765ae6f9fc088a40e2252a866a7a5dc9a662d528798",
+        "engineVersion": "1.1.0-bw.10",
+        "simLimitMs": 20000,
+        "simulatedMs": 11100.000000000024,
+        "execution": "COMPLETED",
+        "finishedAt": 10100.000000000005,
+        "primitiveCalls": 5046,
+        "terminalObservation": {
+          "sawZero": true,
+          "sawTransition": true
+        },
+        "messages": [
+          "PointWeaver loop complete. Compare the dashed straight edges with the endpoint path, then reset before repeating."
+        ],
+        "outputMeasurement": {
+          "part": "endpoint_marker",
+          "samples": 334,
+          "invalid": false,
+          "travelM": 0.030137979427245824,
+          "homeErrorM": 9.182285748006328e-05,
+          "initial": [
+            0.08600000223707598,
+            0.11600000341518205,
+            -0.014000000432133675
+          ],
+          "final": [
+            0.08597369005723919,
+            0.11599964745017632,
+            -0.013912028961548289
+          ]
+        },
+        "completion": {
+          "status": "COMPLETE",
+          "gaps": [],
+          "failures": []
+        }
+      }
     }
   ],
   "configuration": "Earlier observations used headless Scratch VM and bundled Robot Lab API with Jolt; per-model engine, simulation time limit and source are recorded below. No rendered GUI or physical device is implied."
