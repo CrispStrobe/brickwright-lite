@@ -130,38 +130,21 @@ permissions:
   contents: read
   pages: write
   id-token: write
-# ROADMAP §2.1, and the reason this is keyed on the COMMIT rather than the ref.
+# Keep one main validation running to completion while coalescing pending main
+# pushes to the latest commit. Cancelling the active run on every merge starved
+# Pages: on 2026-11-14 run 43556902511 had passed build, corpus and seven unit
+# shards before the next push cancelled its remaining gates. The runner queue
+# made every main run vulnerable before it could reach publication.
 #
-# `pages-<ref>` is one group for all of main, and GitHub holds exactly ONE
-# pending entry per group: a third push cancels the second while it is still
-# queued. Measured over the 200 most recent main runs (2026-08-24 .. 2026-08-30):
-# 101 success, 26 failure, **72 cancelled** — and 62 of those 72 had ZERO JOBS.
-# No runner, no verdict, no minutes, and a conclusion that reads as if somebody
-# chose to stop it. Serializing PUBLICATION is required. Serializing VALIDATION
-# never was, and it is what threw away 62 verdicts in six days.
-#
-# Keyed on the sha, no two pushes share a group, so nothing is cancelled while
-# queued. The deploy job below carries the one shared group that is left, plus a
-# guard that refuses to publish a tree older than the published one — because
-# ordering by queue release is not ordering by commit, which is what "the site
-# lags several commits, arriving out of order" was.
-#
-# PROVEN IN A SCRATCH REPO FIRST, per this item's own instruction, because the
-# previous attempt took the live site down: CrispStrobe/bw-pages-concurrency-proof.
-# Baseline burst of 5 pushes -> 2 verdicts, 3 runs with zero jobs. Candidate
-# burst of 5 -> 5 build verdicts, 0 starved. See RESULTS.md there for run ids.
-# Concurrency. main: one group per COMMIT, never cancelled (the push side must be
-# keyed on github.sha — test/pages-deploy-ordering.test.mjs records the 62 zero-job
-# cancellations that keying on the ref cost). PRs collapse to the latest push. Any
-# OTHER ref (a lane branch, dispatched by hand): one group per BRANCH, cancelled by
-# the next dispatch — docs/CI-QUEUE-2026-09-07.md measured 16 branch runs
-# hand-cancelled a mean 1.7 min after supersession having burned 36 runner-minutes.
-# 2026-10-14: non-main groups carry the workflow name, and PR groups the event
-# kind — a label event (keyed by the label's name) never cancels a code push's
-# run, and an unrelated label never cancels the ci:full run.
+# Pending main runs may still be superseded (GitHub retains only one pending
+# entry per group). This bounds the backlog without discarding active work.
+# The superseded guard still skips an obsolete run's heavy tail when it starts;
+# deploy still serializes publication and refuses to publish an older tree.
+# PRs keep latest-push cancellation and separate label-event groups. Manual,
+# tag and other non-code events retain their isolated run groups.
 concurrency:
   group: ${{ github.workflow }}${{ !(github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request')) && format('-isolated-{0}', github.run_id) || '' }}-${{ github.ref }}-${{ (github.event.action == 'labeled' || github.event.action == 'unlabeled') && format('label-{0}', github.event.label.name) || 'code' }}
-  cancel-in-progress: ${{ github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request') }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request') && !(github.event_name == 'push' && github.ref == 'refs/heads/main') }}
 jobs:
   # CHANGE SCOPE. Decides the tiers once, for every job below.
   #   fast     — unit shards, build, corpus: every non-label event, unless the
@@ -289,19 +272,16 @@ jobs:
   # verify-bw-board-ci. Per-commit full verdicts are not merely expensive at this
   # rate, they cannot be served.
   #
-  # WHAT THIS DOES NOT DO: cancel anything, or share a concurrency group. Both
-  # were tried and both threw verdicts away — the comment above this block counts
-  # 62 lost in six days, because GitHub drops the PENDING run when a newer one
-  # joins a group, whatever cancel-in-progress says.
+  # This guard never cancels active work. The workflow now coalesces pending
+  # main pushes in one group while allowing the active validation to finish.
   #
   # Instead: a commit that is no longer main's tip by the time its run starts
-  # still gets `build`, all six `unit` shards and `corpus` (source and unit verdicts
+  # still gets `build`, all eight `unit` shards and `corpus` (source and unit verdicts
   # remain attributable to that commit), and skips the heavy tail —
   # browser, fpga-surface, deploy, verify-gui — which the tip's own run re-covers
   # anyway, unless main advanced only through excluded documentation (which has
   # NO replacement Build). That case retains the full tail. ~24 of the ~36 min,
-  # without losing the per-commit signal the per-sha
-  # design exists to protect.
+  # while retaining the source verdicts from any active validation.
   #
   # PRs are never superseded by this: the check is main-only and defaults to
   # running everything.
