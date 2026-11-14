@@ -233,7 +233,6 @@ class SimLabMeasurements extends React.Component {
         event.preventDefault();
         this.cancelPicking();
         const editor = this.state.editor;
-        const T = measurementWords(this.props.locale);
         const kind = editor ? editor.kind : this.state.kind;
         const spec = MEASUREMENT_KINDS[kind];
         const mechanism = this.props.mechanism;
@@ -262,7 +261,7 @@ class SimLabMeasurements extends React.Component {
         const labelInput = editor ? editor.label : this.state.label;
         const label = editor
             ? (editor.automaticLabel ? kind : labelInput.trim() || kind)
-            : labelInput.trim() || T.kinds[kind];
+            : labelInput.trim() || kind;
         const updated = {id: editor?.id || '', kind, label,
             ...(spec.targets ? {targets} : {}), ...(spec.joint ? {joint: joint.id, binding} : {}), ...(spec.rope ? {rope: rope.id, binding} : {})};
         this.previewActive = false;
