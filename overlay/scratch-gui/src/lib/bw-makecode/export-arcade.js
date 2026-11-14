@@ -2273,6 +2273,7 @@ class ArcadeEmitter {
         case 'arcade_spritesOfKind': return `sprites.allOfKind(${this.kindExpr(b, 'KIND')})`;
         case 'arcade_spriteCount': return `sprites.allOfKind(${this.kindExpr(b, 'KIND')}).length`;
         case 'arcade_ask': return `game.ask(${this.arrayValue(b,'TITLE')}, ${this.arrayValue(b,'SUBTITLE')})`;
+        case 'arcade_askForNumberLength': return `game.askForNumber(${v('QUESTION')}, ${v('LENGTH')})`;
         case 'arcade_askForNumber': return `game.askForNumber(${v('QUESTION')})`;
         case 'arcade_controllerStep': {
             const literal=this.literal(b,'AXIS') ?? (this.field(b,'AXIS') || null);

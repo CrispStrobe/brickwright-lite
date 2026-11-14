@@ -659,6 +659,8 @@ module.exports = makeExt(`// Name: Arcade
             text: 'ask Arcade yes/no [TITLE] subtitle [SUBTITLE]', arguments: {...str('TITLE','Continue?'),...str('SUBTITLE','')} },
           { opcode: 'askForNumber', blockType: Scratch.BlockType.REPORTER,
             text: 'ask Arcade number [QUESTION]', arguments: str('QUESTION', 'Number?') },
+          { opcode: 'askForNumberLength', blockType: Scratch.BlockType.REPORTER,
+            text: 'ask Arcade number [QUESTION] length [LENGTH]', arguments: {...str('QUESTION', 'Number?'),...n('LENGTH', 3)} },
           { opcode: 'askForString', blockType: Scratch.BlockType.REPORTER,
             text: 'ask Arcade text [QUESTION]', arguments: str('QUESTION', 'Text?') },
           { opcode: 'setBackgroundColor', blockType: Scratch.BlockType.COMMAND,
@@ -2761,6 +2763,12 @@ module.exports = makeExt(`// Name: Arcade
     askForString(args, util) { return this._askForString(args, util); }
     askForNumber(args, util) {
       return Promise.resolve(this._askForString(args, util,6,true)).then(reply => parseFloat(reply));
+    }
+    askForNumberLength(args, util) {
+      // This reporter represents only the literal-String message slice.
+      if(typeof Scratch.BWValues.decode(args.QUESTION)!=='string')throw new TypeError('Arcade limited number prompt requires a String question');
+      const length=Math.max(0,Math.min(10,this._mathArgument(args,'LENGTH',util)));
+      return Promise.resolve(this._askForString(args,util,length,true,false)).then(reply=>parseFloat(reply));
     }
     // PXT game.ask waits 500 ms, then requires release before A/B confirmation.
     // Behaviour reference: microsoft/pxt-common-packages libs/game/ask.ts (MIT).
