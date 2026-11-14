@@ -110,6 +110,7 @@ class SimLabPalette extends React.Component {
     openCatalogue () {
         this.setState({catalogue: true, note: null});
         if (this.state.list || this.loadingList) return;
+        this.setState({listError: ''});
         this.loadingList = this.props.onOpenCatalogue()
             .then(list => this.setState({list, listError: ''}),
                 error => this.setState({listError: error.message}))
