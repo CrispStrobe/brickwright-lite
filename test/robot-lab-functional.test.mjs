@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {latchProgramFailures} from '../scripts/lib/robot-lab-program-flags.mjs';
 import {nonFinitePaths, summarizeMotor, functionalFailures} from '../scripts/lib/robot-lab-functional.mjs';
 test('finite observations reject NaN and infinity without rejecting zero', () => {
     assert.deepEqual(nonFinitePaths({a: [0, NaN, Infinity], b: -Infinity}), ['/a/1', '/a/2', '/b']);
@@ -19,4 +20,13 @@ test('each unresolved, nonfinite, VM, session and stationary motor observation f
     for(const key of ['partFailures','compileErrors','vmErrors','nonfinite','sessionFailures','missingOpcodes']) assert.equal(functionalFailures({...good,[key]:['bad']}).length,1,key);
     assert.equal(functionalFailures({...good,motors:{A:{moved:false,status:'COMMANDED_STATIONARY'}}}).length,1);
     assert.equal(functionalFailures({...good,steps:0}).length,1);
+});
+
+test('sampled program faults remain latched after later resets, and zero flags stay clear', () => {
+    const observed=new Set();
+    latchProgramFailures(observed,{failed:0,fault:'0'});assert.deepEqual([...observed],[]);
+    latchProgramFailures(observed,{fault:'1'});
+    latchProgramFailures(observed,{fault:0,failed:1});
+    latchProgramFailures(observed,{fault:0,failed:0});
+    assert.deepEqual([...observed].sort(),['failed','fault']);
 });

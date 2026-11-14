@@ -9,6 +9,7 @@ import {fileURLToPath} from 'node:url';
 import {createHash} from 'node:crypto';
 import {createRequire} from 'node:module';
 import {nonFinitePaths, summarizeMotor, functionalFailures} from './lib/robot-lab-functional.mjs';
+import {latchProgramFailures} from './lib/robot-lab-program-flags.mjs';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const runnerSha256=hashRunner();
 function hashRunner(){return createHash('sha256').update(readFileSync(fileURLToPath(import.meta.url))).digest('hex');}
@@ -49,8 +50,8 @@ if(args.child){
     const report={id,programKind:probeMotors.length?'DIAGNOSTIC_MOTOR_SMOKE':'SUPPLIED',probeMotors,suppliedProgramSha256:hash(suppliedProgram),sourceHead,runnerSha256,modelSourceCommit,programSourceCommit,engineVersion:enginePackage.version,enginePackageSha256:hash(readFileSync(enginePackagePath)),motionThresholdDeg:0.1,modelPath,programPath,modelSha256:hash(modelText),programSha256:hash(program),simLimitMs:simMs,
         withSpike,compileErrors:parsed?.errors||creator.errors||[],compileWarnings:parsed?.warnings||creator.warnings||[],
         partFailures:[],missingOpcodes:[],vmErrors:[],sessionFailures:[],nonfinite:[],steps:0,primitiveCalls:0,executedOpcodes:{},motors:{},
-        programVariables:{},programFailedObserved:false,invalidPoses:[],bodySanity:{status:'UNASSESSED',assessed:false,initialBodyExtentM:null,travelBoundM:null,travelOverBound:[],factor:100,floorM:1},motorPartCount:0,unboundMotorCount:0,maxBodyDisplacementM:0,maxBodyRadiusM:0,bodyTravel:{},scope:'Finite functional smoke only; no precision, physical accuracy, full GUI, or full-program completion requirement.'};
-    const motorSamples=new Map(),initialBodies=new Map(),finite=new Set(),failures=new Set(),probeKeys=new Set();
+        programVariables:{},programFailedObserved:false,programFaultObserved:false,invalidPoses:[],bodySanity:{status:'UNASSESSED',assessed:false,initialBodyExtentM:null,travelBoundM:null,travelOverBound:[],factor:100,floorM:1},motorPartCount:0,unboundMotorCount:0,maxBodyDisplacementM:0,maxBodyRadiusM:0,bodyTravel:{},scope:'Finite functional smoke only; no precision, physical accuracy, full GUI, or full-program completion requirement.'};
+    const motorSamples=new Map(),initialBodies=new Map(),finite=new Set(),failures=new Set(),probeKeys=new Set(),programFlags=new Set();
     const collect=({session,hub,prepared},count=true)=>{
         if(count)report.steps++;
         if(session.failed)failures.add(String(session.failed));
@@ -95,7 +96,7 @@ if(args.child){
             for(const emitter of [vm,vm.runtime])for(const event of ['ERROR','BLOCKS_ERROR'])emitter.on(event,e=>report.vmErrors.push(String(e)));
             report.missingOpcodes=[...new Set(vm.runtime.targets.flatMap(t=>Object.values(t.blocks._blocks)).filter(b=>!(b.opcode in vm.runtime._primitives)&&!(b.opcode in vm.runtime._hats)&&!(Object.keys(b.fields||{}).length===1&&Object.keys(b.inputs||{}).length===0)).map(b=>b.opcode))];
             collect(ctx,false);
-        },observeFrame:ctx=>{collect(ctx);report.programVariables=Object.fromEntries(ctx.vm.runtime.targets.flatMap(t=>Object.values(t.variables||{}).filter(v=>v.type!=='list').map(v=>[v.name,v.value])));if(Number(report.programVariables.failed)===1)report.programFailedObserved=true;return null;}});
+        },observeFrame:ctx=>{collect(ctx);report.programVariables=Object.fromEntries(ctx.vm.runtime.targets.flatMap(t=>Object.values(t.variables||{}).filter(v=>v.type!=='list').map(v=>[v.name,v.value])));latchProgramFailures(programFlags,report.programVariables);return null;}});
     report.finishedAt=r.finishedAt;report.simulatedMs=r.track.at(-1)?.t;report.sessionFailures=[...failures];report.nonfinite=[...finite];
     report.vmErrors=[...new Set([...report.vmErrors,...(r.vmErrors||[])])];
     const initialPositions=[...initialBodies.values()];
@@ -116,7 +117,9 @@ if(args.child){
     if(!report.primitiveCalls)report.failures.push('no-executed-vm-primitive');
     if(report.bodySanity.status==='UNASSESSED')report.failures.push('body-stability-unassessed');
     if(report.unboundMotorCount)report.failures.push('unbound-motor:'+report.unboundMotorCount);
+    report.programFailedObserved=programFlags.has('failed');report.programFaultObserved=programFlags.has('fault');
     if(report.programFailedObserved)report.failures.push('program-failed-flag');
+    if(report.programFaultObserved)report.failures.push('program-fault-flag');
     report.failures.push(...report.invalidPoses.map(id=>'invalid-pose:'+id),...report.bodySanity.travelOverBound.map(id=>'body-travel-over-sanity-bound:'+id));
     report.needsLongerRun=!r.finishedAt&&report.failures.length>0&&report.failures.every(f=>f.startsWith('motor:'));report.status=report.failures.length?(report.needsLongerRun?'INCONCLUSIVE':'FAIL'):'PASS';
     writeFileSync(String(args.result),JSON.stringify(report,null,2)+'\n');
