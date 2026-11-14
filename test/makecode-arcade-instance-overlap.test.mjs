@@ -37,3 +37,14 @@ test('new words survive quoted keywords/nested reporters and roundtrip without l
   const c=new Creator();let rejected=false;try{c.parse('DEVICE ARCADE\nWHEN flag clicked:\n  '+line+'\n');}catch(error){assert.match(error.message,/could not be read|unsupported|unparsed/i);rejected=true;}assert.ok(rejected || c.warnings.length>0,line);
  }
 });
+test('the unchanged conversion audit consumes the new words through its raw supplier Creator',async()=>{
+ const {auditConversionSubject}=await import('../scripts/lib/conversion-audit-core.mjs');
+ const {default:RawCreator}=await import('../overlay/scratch-gui/src/lib/sb3-creator.js');
+ const source=readFileSync(new URL('fixtures/makecode/arcade-instance-overlap-runner.ts',import.meta.url),'utf8');
+ let observed=false;
+ const result=await auditConversionSubject({kind:'RAW_BASELINE',target:'arcade',name:'receiver-overlap',
+  files:{'main.ts':source,'pxt.json':JSON.stringify({name:'receiver-overlap',files:['main.ts'],dependencies:{device:'*'}})}},
+  {onCreator:creator=>{observed=true;assert.equal(creator.constructor,RawCreator);assert.equal(ops(creator.project).filter(b=>b.opcode==='arcade_whenRegisteredInstanceOverlap').length,1);}});
+ assert.equal(result.stage,'translated');assert.equal(result.creator.status,'return');assert.equal(observed,true);
+ assert.deepEqual(result.unsupported,[]);assert.equal(result.inputMutation.rootChanged,false);
+});
