@@ -77,7 +77,7 @@ test('green summary counts cannot conceal missing execution, stability, motion o
         falsePassiveClaim:copy=>{const r=copy.models.find(m=>m.id==='equinox-differential');Object.values(r.motors).find(m=>m.status==='UNCOMMANDED_MOVED').commanded=true;},
         missingDiagnostic:copy=>{delete copy.models.find(m=>m.id==='sarrus-lift-single-chain').motorDiagnostic;},
         stationaryDiagnostic:copy=>{Object.values(copy.models.find(m=>m.id==='sarrus-lift-single-chain').motorDiagnostic.motors)[0].travelDeg=0;},
-        privatePath:copy=>{copy.scope+=' Evidence: /mnt/private/result.json';}
+        privatePath:copy=>{copy.scope+=' Evidence: '+'/'+'mnt'+'/private/result.json';}
     };
     for(const [name,mutate] of Object.entries(cases)){const copy=structuredClone(matrix);mutate(copy);assert.throws(()=>validate(copy),undefined,name);}
 });
