@@ -410,7 +410,7 @@ class Parser {
      * translator needs that to declare a Scratch LIST rather than a
      * variable, and `let a: number[] = []` carries the fact nowhere else.
      */
-    skipTypeAnnotation (assertion = false) {
+    skipTypeAnnotation (assertion = false, arrowReturn = false) {
         // The type's text rides along (`lastType`): `let bird: game.LedSprite = null`
         // says it holds a sprite, and nothing else in the declaration does.
         this.lastType = '';
@@ -430,6 +430,15 @@ class Parser {
             if (depth === 0 && prev && t.line > prev.line && this.lastType &&
                 !(prev.type === 'punct' && ['|', '&', '.', '<', ',', '=>', ':'].includes(prev.value))) return isArray;
             prev = t;
+            // An arrow return annotation ends before its body delimiter. The
+            // ordinary type scanner also accepts function types, whose => must
+            // remain part of the type in declarations and named functions.
+            if (arrowReturn && depth === 0 && t.type === 'punct' && t.value === '=>') return isArray;
+            // Bare callable/grouped return types need a separate type grammar;
+            // refuse them rather than interpreting their type arrow as a body.
+            if (arrowReturn && depth === 0 && t.type === 'punct' && t.value === '(') {
+                throw new Error('MakeCode TS: grouped arrow return annotations are not supported');
+            }
             // A return type ends at the function body: `): void {`.
             if (depth === 0 && t.type === 'punct' && t.value === '{' && this.lastType) return isArray;
             // Once a type is complete, only a type suffix/operator can
@@ -1342,11 +1351,15 @@ class Parser {
             try {
                 const params = this.parseParams();
                 const paramTypes = this.lastParamTypes;
+                const annotated = this.at('punct', ':');
+                this.skipTypeAnnotation(false, true);
+                const returnType = this.lastType;
+                if (annotated && !returnType) throw new Error('MakeCode TS: missing arrow return type');
                 if (this.at('punct', '=>')) {
                     this.next();
                     const body = this.at('punct', '{') ? this.parseBlock() :
                         [{type: 'Return', value: this.parseExpression()}];
-                    return {type: 'FunctionExpression', params, paramTypes,
+                    return {type: 'FunctionExpression', params, paramTypes, ...(annotated ? {returnType} : {}),
                         ...(this.retainCallableMetadata ? {functionKind: 'arrow', parameterDefaults: params.parameterDefaults,
                             parameterDefaultPrologue: this.parameterDefaults} : {}),
                         optionalParams:params.optionalParams || [], body: [...this.defaultStatements(params), ...body]};
