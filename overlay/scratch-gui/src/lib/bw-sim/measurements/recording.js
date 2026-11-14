@@ -122,10 +122,10 @@ export const createMeasurementRecorder = () => {
             const elapsed = sampleTime - active.startTime;
             if (active.window && elapsed < 0) return snapshot();
             if (active.window && elapsed >= active.window.durationMs) return stop(active.samples.length ? 'window-complete' : 'window-missed');
-            if (!Array.isArray(rows) || rows === active.lastRows) return snapshot();
-            active.lastRows = rows;
             if (elapsed < 0) return stop('time-reset');
             if (elapsed >= RECORDING_DURATION_MS) return stop('time-limit');
+            if (!Array.isArray(rows) || rows === active.lastRows) return snapshot();
+            active.lastRows = rows;
             const last = active.samples[active.samples.length - 1];
             if (last && elapsed - last.elapsedMs < RECORDING_INTERVAL_MS) {
                 if (elapsed === last.elapsedMs || paused) {
