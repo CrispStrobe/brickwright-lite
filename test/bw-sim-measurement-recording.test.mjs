@@ -288,3 +288,46 @@ test('maximum schema-valid legacy bindings remain bounded in a complete two-run 
     assert.equal(csv.split('x'.repeat(4096)).length-1,8,'one full definition per run and measurement');
     assert.equal(csv.split('\r\n').length,4802,'every original reading is exported');
 });
+
+test('unchanged or missing readings cannot defer the 60-second recording deadline', () => {
+    for (const paused of [false, true]) for (const missing of ['same', 'undefined', 'null']) for (const deadline of [60000, 60100]) {
+        const recorder = createMeasurementRecorder(), session = {}, rows = makeRows(7);
+        start(recorder, {session});
+        const props = {session, modelKey, definitions: [definition()], selected: ['hinge'], rows, paused};
+        recorder.update({...props, sampleTime: 0});
+        const waiting = recorder.update({...props, rows: missing === 'same' ? rows : missing === 'null' ? null : undefined, sampleTime: 59999});
+        assert.equal(waiting.active, true); assert.equal(waiting.sampleCount, 1, 'stale rows cannot be retimestamped');
+        const ended = recorder.update({...props, rows: missing === 'same' ? rows : missing === 'null' ? null : undefined, sampleTime: deadline});
+        assert.equal(ended.active, false); assert.equal(ended.stoppedReason, 'time-limit');
+        assert.equal(ended.runs.length, 1);
+        assert.deepEqual(ended.runs[0].samples.map(s => [s.elapsedMs, s.timeMs, s.readings[0].value]), [[0, 0, 7]]);
+        assert.deepEqual(sample(recorder, session, 60100, 9).runs, ended.runs, 'later fresh rows cannot extend a stopped run');
+    }
+});
+
+test('deadline without readings creates no empty run; fresh paused readings before it keep their actual time', () => {
+    const empty = createMeasurementRecorder(), session = {};
+    start(empty, {session});
+    const ended = empty.update({session, modelKey, definitions: [definition()], selected: ['hinge'], sampleTime: 60000});
+    assert.equal(ended.active, false); assert.equal(ended.stoppedReason, 'time-limit'); assert.deepEqual(ended.runs, []);
+    const recorder = createMeasurementRecorder(); start(recorder, {session}); sample(recorder, session, 0, 1);
+    sample(recorder, session, 59999, 2, {}, {paused: true});
+    const fresh = sample(recorder, session, 60000, 3, {}, {paused: true});
+    assert.equal(fresh.stoppedReason, 'time-limit');
+    assert.deepEqual(fresh.runs[0].samples.map(s => [s.elapsedMs, s.timeMs, s.readings[0].value]), [[0, 0, 1], [59999, 59999, 2]]);
+});
+
+test('future recording windows keep arming, completion and missed-window behavior with stale rows', () => {
+    for (const observe of [false, true]) {
+        const recorder = createMeasurementRecorder(), session = {}, rows = makeRows(5);
+        start(recorder, {session, window: {schema: 'bw.sim-lab.recording-window.v1', startTimeMs: 120000, durationMs: 1000}});
+        const props = {session, modelKey, definitions: [definition()], selected: ['hinge']};
+        const armed = recorder.update({...props, rows: undefined, sampleTime: 60000});
+        assert.equal(armed.active, true); assert.equal(armed.armed, true); assert.equal(armed.sampleCount, 0);
+        if (observe) recorder.update({...props, rows, sampleTime: 120000});
+        const ended = recorder.update({...props, rows: observe ? rows : null, sampleTime: 121000});
+        assert.equal(ended.active, false); assert.equal(ended.stoppedReason, observe ? 'window-complete' : 'window-missed');
+        assert.equal(ended.runs.length, observe ? 1 : 0);
+        if (observe) assert.deepEqual(ended.runs[0].samples.map(s => [s.elapsedMs, s.timeMs, s.readings[0].value]), [[0, 120000, 5]]);
+    }
+});
