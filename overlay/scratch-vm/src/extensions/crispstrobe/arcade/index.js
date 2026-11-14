@@ -233,6 +233,7 @@ module.exports = makeExt(`// Name: Arcade
       this._tileHandlers = [];
       this._terrainWaits = new Set();
       this._nativeButtonWaiters = new Set();
+      this._resetSuspensions = new Set();
       this._textPromptWaits = new Set();this._textPromptTail=Promise.resolve();
       this._controllerEventIds = null;this._controlEvents = null;this._controlEventContexts = new WeakMap();
       this._terrainEpoch = 0;
@@ -247,6 +248,7 @@ module.exports = makeExt(`// Name: Arcade
         runtime.on('ARCADE_PLAYER_BUTTON_EDGE',(player,button,isDown)=>this._controllerButtonEdge(player,button,isDown));
         runtime.on('KEY_STATE_CHANGED',(key,isDown)=>this._keyboardButtonEdge(key,isDown));
         const cancelCreations = () => {
+          for(const resolve of this._resetSuspensions)resolve();this._resetSuspensions.clear();
           spriteOwner.stop();
           for(const resolve of this._nativeButtonWaiters)resolve();this._nativeButtonWaiters.clear();
           for(const cancel of this._textPromptWaits)cancel();this._textPromptWaits.clear();
@@ -439,6 +441,7 @@ module.exports = makeExt(`// Name: Arcade
             arguments:{...str('TEXT','Hello'),...str('IMAGE',''),...n('X',0),...n('Y',0),...n('COLOR',1),FONT:{type:Scratch.ArgumentType.STRING,menu:'imageFonts',defaultValue:'auto'}}},
           {opcode:'legacyGameOver',blockType:Scratch.BlockType.COMMAND,text:'Arcade legacy game over win [WIN] effect [EFFECT]',arguments:{WIN:{type:Scratch.ArgumentType.BOOLEAN},EFFECT:{type:Scratch.ArgumentType.STRING,menu:'legacyGameOverEffects',defaultValue:'unset'}}},
           {opcode:'gameOver',blockType:Scratch.BlockType.COMMAND,text:'Arcade game over win [WIN]',arguments:{WIN:{type:Scratch.ArgumentType.BOOLEAN}}},
+          {opcode:'resetGame',blockType:Scratch.BlockType.COMMAND,text:'Arcade reset game',arguments:{}},
           {opcode:'setGameOverEffect',blockType:Scratch.BlockType.COMMAND,text:'Arcade set game over effect [EFFECT] for win [WIN]',arguments:{EFFECT:{type:Scratch.ArgumentType.STRING,menu:'backgroundEffects',defaultValue:'confetti'},WIN:{type:Scratch.ArgumentType.BOOLEAN}}},
           {opcode:'setGameOverMessage',blockType:Scratch.BlockType.COMMAND,text:'Arcade set game over message [MESSAGE] for win [WIN]',arguments:{...str('MESSAGE','GAME OVER!'),WIN:{type:Scratch.ArgumentType.BOOLEAN}}},
           {opcode:'setGameOverPlayable',blockType:Scratch.BlockType.COMMAND,text:'Arcade set game over sound [PLAYABLE] looping [LOOPING] for win [WIN]',arguments:{...str('PLAYABLE',''),LOOPING:{type:Scratch.ArgumentType.BOOLEAN},WIN:{type:Scratch.ArgumentType.BOOLEAN}}},
@@ -1481,9 +1484,10 @@ module.exports = makeExt(`// Name: Arcade
     }
     setPlayerState(args,util) {return this._runTerrainGenerator(this._setPlayerStateSteps(args,util));}
     *_setPlayerStateSteps(args,util) {
+      const epoch=this._terrainEpoch;
       const player=this._player(args.PLAYER);if(!player)return;
       const key=this._playerStateNumber(args.KEY),value=this._playerStateNumber(args.VALUE);
-      if(key===0){yield* this._setPlayerScoreSteps({PLAYER:player.index+1,VALUE:value},util);if(this._terrainStopped)return;}
+      if(key===0){yield* this._setPlayerScoreSteps({PLAYER:player.index+1,VALUE:value},util);if(epoch!==this._terrainEpoch)return;}
       if(key===1)this.setLife({PLAYER:player.index+1,VALUE:value});
       this._customPlayerState(player,key).value=value;
     }
@@ -1606,7 +1610,9 @@ module.exports = makeExt(`// Name: Arcade
     }
     // Program and extension scene handlers, in registration order.
     *_sceneHandlerSteps(handlers,opcode,util) {
+      const epoch=this._terrainEpoch;
       for(const handler of handlers){
+        if(epoch!==this._terrainEpoch)return;
         if(handler.host)handler.host();
         else yield* this._registeredCallbackSteps([handler],opcode,{},util);
       }
@@ -1759,9 +1765,11 @@ module.exports = makeExt(`// Name: Arcade
       this._controlEventBus().raise(source,id);
     }
     *_controllerButtonCallbacks(number,button,event,deferred=false,explicitEvent=false) {
+      const epoch=this._terrainEpoch;
       if(!explicitEvent && !this._userControllerEvents)return;
       const handlers=this._buttonHandlers.filter(h=>h.player===number && h.button===button && h.event===event);
       for(const handler of handlers){
+        if(epoch!==this._terrainEpoch)return;
         if(handler.host){handler.host();continue;}
         // A handler fiber that died keeps its event queue locked: later events of this button never run it.
         if(handler.fiberDied)continue;
@@ -1795,13 +1803,16 @@ module.exports = makeExt(`// Name: Arcade
       timer.handle?.unref?.();this._foreverTimer=timer;
     }
     _pumpForever(source) {
+      const epoch=this._terrainEpoch;
       if(this._terrainStopped)return;
       for(const h of this._foreverHandlers.slice())if(!h.lock){
+        if(epoch!==this._terrainEpoch)return;
         h.lock=true;
         const work=this._runTerrainGenerator(this._registeredCallbackSteps([h],'arcade_whenRegisteredForever',{}));
         // PXT's h.lock = false follows h.handler() in the same fiber, so a handler that dies stays locked.
-        if(work?.then)work.then(faulted=>{if(faulted!==true)h.lock=false;},error=>{h.lock=false;throw error;});else if(work!==true)h.lock=false;
+        if(work?.then)work.then(faulted=>{if(epoch===this._terrainEpoch&&faulted!==true)h.lock=false;},error=>{if(epoch!==this._terrainEpoch)return;h.lock=false;throw error;});else if(epoch===this._terrainEpoch&&work!==true)h.lock=false;
       }
+      if(epoch!==this._terrainEpoch)return;
       this._scheduleForever(20);
       // A handler that waits continues in source turns, which arm its timers.
       if(source && this._sourceSceneTimers())this._runtime._arcadeFramePhase.requestContinuation()
@@ -1904,6 +1915,7 @@ module.exports = makeExt(`// Name: Arcade
     hasPlayerScore(args) {const state=this._lifeState(args.PLAYER);return !!state && state.score!==undefined;}
     setPlayerScore(args,util) {return this._runTerrainGenerator(this._setPlayerScoreSteps(args,util));}
     *_setPlayerScoreSteps(args,util) {
+      const epoch=this._terrainEpoch;
       const owner=this._infoState(),state=this._lifeState(args.PLAYER);if(!state)return;
       const hud=owner.hudInfo,V=this._hud().info.Visibility;
       if(!(hud.visibilityFlag & V._ExplicitlySetScore))hud.visibilityFlag|=V.Score;
@@ -1920,7 +1932,7 @@ module.exports = makeExt(`// Name: Arcade
           const registration=scoreThresholdRegistrations.get(this).get(entry.handler);
           if(!registration)throw new Error('Arcade score handler has no current registration');
           yield* this._registeredCallbackSteps([registration],'arcade_whenRegisteredScore',{},util);
-          if(this._terrainStopped)return;
+          if(epoch!==this._terrainEpoch)return;
         }
       }
     }
@@ -1974,25 +1986,26 @@ module.exports = makeExt(`// Name: Arcade
     // Returns true when a callback fiber died with an uncaught exception (PXT:
     // the fiber ends and whatever waited on its completion never resumes).
     *_registeredCallbackSteps(registrations,opcode,event,util,deferred=false) {
-      const runtime=this._runtime;if(!runtime?.allScriptsByOpcodeDo || !runtime?._pushThread)return false;
+      const runtime=this._runtime,epoch=this._terrainEpoch;if(!runtime?.allScriptsByOpcodeDo || !runtime?._pushThread)return false;
       let faulted=false;
       // Scene transitions do not cancel callback fibers already running.
       for(const registration of registrations){
-        if(registration.host){yield registration.host();if(this._terrainStopped)return faulted;continue;}
+        if(epoch!==this._terrainEpoch || this._terrainStopped)return faulted;
+        if(registration.host){yield registration.host();if(epoch!==this._terrainEpoch || this._terrainStopped)return faulted;continue;}
         const scripts=[];
         runtime.allScriptsByOpcodeDo(opcode,(script,target)=>{
           const hat=target.blocks.getBlock(script.blockId),token=target.blocks.getBlock(hat.inputs?.TOKEN?.block);
           if(token?.fields?.TEXT?.value===registration.token)scripts.push({script,target});
         });
         for(const {script,target} of scripts){
-          if(this._terrainStopped)return;
+          if(epoch!==this._terrainEpoch || this._terrainStopped)return faulted;
           const thread=runtime._pushThread(script.blockId,target);thread.bwArcadeEvent={...event,TOKEN:registration.token};thread.bwArcadeCaptures=registration.captures;
           const caller=util?.thread,active=runtime.sequencer.activeThread;
           try{if(!deferred){runtime.sequencer.activeThread=thread;dependencies.primitiveOwner.stepChild(runtime,thread,()=>runtime.sequencer.stepThread(thread));}}
           finally{if(util){util.thread=caller;util.sequencer=runtime.sequencer;}runtime.sequencer.activeThread=active;}
           if(thread.status!==thread.constructor.STATUS_DONE && !thread.isKilled && runtime.threads.includes(thread))
             yield new Promise(resolve=>this._terrainWaits.add({thread,resolve}));
-          if(this._terrainStopped)return faulted;
+          if(epoch!==this._terrainEpoch || this._terrainStopped)return faulted;
           if(exceptionOwners.get(this).failure(thread))faulted=true;
         }
       }
@@ -3572,26 +3585,34 @@ module.exports = makeExt(`// Name: Arcade
       delete sprite._wallHitbox;
     }
     *_setSpriteScalePropertySteps(sprite,property,value,util){
-      if(property==='scale'){yield* this._setSpriteScalePropertySteps(sprite,'sy',value,util);yield* this._setSpriteScalePropertySteps(sprite,'sx',value,util);return;}
+      const epoch=this._terrainEpoch;if(this._spriteValues.get(sprite.id)!==sprite)return;
+      if(property==='scale'){yield* this._setSpriteScalePropertySteps(sprite,'sy',value,util);if(epoch!==this._terrainEpoch)return;yield* this._setSpriteScalePropertySteps(sprite,'sx',value,util);return;}
       const oldX=sprite._fx,oldY=sprite._fy;sprite[property]=value;
       const desiredX=sprite._fx,desiredY=sprite._fy;sprite._fx=oldX;sprite._fy=oldY;
       yield* this._moveSpriteExplicitSteps(sprite,0,(desiredY-sprite._fy)|0,util);
+      if(epoch!==this._terrainEpoch)return;
       yield* this._moveSpriteExplicitSteps(sprite,(desiredX-sprite._fx)|0,0,util);
     }
     setSpriteScaleCore(args,util) {
       const sprite=this._spriteValues.get(String(args.ID)) || this._sprite(args.ID);if(!sprite)return;
-      const finish=()=>{this._renderSpriteImageIfPresent(sprite);this._positionSprite(sprite.id);this._changed();};
+      const epoch=this._terrainEpoch;
+      const finish=()=>{if(epoch!==this._terrainEpoch || this._spriteValues.get(sprite.id)!==sprite)return;this._renderSpriteImageIfPresent(sprite);this._positionSprite(sprite.id);this._changed();};
       const work=this._runTerrainGenerator(this._setSpriteScaleCoreSteps(sprite,args,util));return work?.then?work.then(finish):finish();
     }
     *_setSpriteScaleCoreSteps(sprite,args,util){
+      const epoch=this._terrainEpoch;
       const sx=Scratch.BWValues.decode(args.SX),sy=Scratch.BWValues.decode(args.SY),anchor=Number(args.ANCHOR)||0;
       const hasX=sx!=null,hasY=sy!=null,oldW=sprite.width,oldH=sprite.height;
-      if(hasX){const old=sprite.sx;yield* this._setSpriteScalePropertySteps(sprite,'sx',Number(sx),util);if(!hasY && Scratch.Cast.toBoolean(args.PROPORTIONAL))yield* this._setSpriteScalePropertySteps(sprite,'sy',sprite.sy*Number(sx)/old,util);}
-      if(hasY){const old=sprite.sy;yield* this._setSpriteScalePropertySteps(sprite,'sy',Number(sy),util);if(!hasX && Scratch.Cast.toBoolean(args.PROPORTIONAL))yield* this._setSpriteScalePropertySteps(sprite,'sx',sprite.sx*Number(sy)/old,util);}
+      if(hasX){const old=sprite.sx;yield* this._setSpriteScalePropertySteps(sprite,'sx',Number(sx),util);if(epoch!==this._terrainEpoch)return;if(!hasY && Scratch.Cast.toBoolean(args.PROPORTIONAL))yield* this._setSpriteScalePropertySteps(sprite,'sy',sprite.sy*Number(sx)/old,util);}
+      if(hasY){const old=sprite.sy;yield* this._setSpriteScalePropertySteps(sprite,'sy',Number(sy),util);if(epoch!==this._terrainEpoch)return;if(!hasX && Scratch.Cast.toBoolean(args.PROPORTIONAL))yield* this._setSpriteScalePropertySteps(sprite,'sx',sprite.sx*Number(sy)/old,util);}
+      if(epoch!==this._terrainEpoch)return;
       const dx=(sprite.width-oldW)/2,dy=(sprite.height-oldH)/2;
       if(anchor&2)yield* this._moveSpriteExplicitSteps(sprite,(dx*256)|0,0,util);
+      if(epoch!==this._terrainEpoch)return;
       if(anchor&4)yield* this._moveSpriteExplicitSteps(sprite,(-dx*256)|0,0,util);
+      if(epoch!==this._terrainEpoch)return;
       if(anchor&1)yield* this._moveSpriteExplicitSteps(sprite,0,(dy*256)|0,util);
+      if(epoch!==this._terrainEpoch)return;
       if(anchor&8)yield* this._moveSpriteExplicitSteps(sprite,0,(-dy*256)|0,util);
     }
     setSpriteScale(args,util){return this.setSpriteScaleCore({...args,SX:Number(args.VALUE),SY:Number(args.VALUE)},util);}
@@ -3602,6 +3623,7 @@ module.exports = makeExt(`// Name: Arcade
       if(sprite.image)this._renderSpriteImage(sprite.id);
     }
     setSpritePosition(args, util) {
+      const epoch=this._terrainEpoch;
       if(this._missingOperand(util,args,'ID'))return this._primitiveFault('setSpritePosition',args,util);
       const sprite = this._spriteValues.get(String(args.ID)) || this._sprite(args.ID);
       if (!sprite) return;
@@ -3609,14 +3631,14 @@ module.exports = makeExt(`// Name: Arcade
       const dx = ((Number(args.X) - sprite.x) * 256) | 0;
       const dy = ((Number(args.Y) - sprite.y) * 256) | 0;
       const result = this._moveSpriteExplicit(sprite, dx, dy, util);
-      const finish = () => {this._positionSprite(String(args.ID));this._changed();};
+      const finish = () => {if(epoch!==this._terrainEpoch || this._spriteValues.get(sprite.id)!==sprite)return;this._positionSprite(String(args.ID));this._changed();};
       return result?.then ? result.then(finish) : finish();
     }
     spawnSprite(args, util) {
       // The positioned factory is constructor + setPosition, just as exported
       // TypeScript is. Creation callbacks see the constructor's center first.
-      const created = this.createSprite(args, util);
-      const position = id => {const moved=this.setSpritePosition({ID:id, X:args.X, Y:args.Y},util);return moved?.then ? moved.then(()=>id) : id;};
+      const epoch=this._terrainEpoch,created = this.createSprite(args, util);
+      const position = id => {if(epoch!==this._terrainEpoch)return "";const moved=this.setSpritePosition({ID:id, X:args.X, Y:args.Y},util);return moved?.then ? moved.then(()=>id) : id;};
       return created && typeof created.then === 'function' ? created.then(position) : position(created);
     }
     _reserveSdkSprite() {const id=dependencies.sdkSpriteClasses.allocateHandle();this._spriteValues.set(id,{id,_sdkBaseOnly:true});return id;}
@@ -3669,12 +3691,14 @@ module.exports = makeExt(`// Name: Arcade
       return id;
     }
     spawnProjectile(args, util) {
+      const epoch=this._terrainEpoch;
       args = {...args, KIND:this._kindValue(args.KIND) || this._kindRegistry.builtin('Projectile')};
       // PXT creates at the scene center, runs creation handlers, then applies
       // projectile motion and edge/source placement using the resulting size.
       const created = this.createSprite({TEMPLATE: args.TEMPLATE, KIND: args.KIND,
         X: 80, Y: 60, WIDTH: args.WIDTH, HEIGHT: args.HEIGHT, IMAGE: args.IMAGE}, util);
       const finish = id => {
+        if(epoch!==this._terrainEpoch)return "";
         const state=this._state();
         // Creation handlers can destroy either reference or change the current
         // scene. PXT still finalizes the actual allocated projectile object.
@@ -3720,7 +3744,9 @@ module.exports = makeExt(`// Name: Arcade
     }
     whenRegisteredInstanceDestroyed(args,util) {return this.whenRegisteredWall(args,util);}
     *_instanceDestroyedSteps(registration,kind,id,util) {
+      const epoch=this._terrainEpoch;
       if(registration && typeof registration==='object')yield* this._registeredCallbackSteps([registration],'arcade_whenRegisteredInstanceDestroyed',{first:id},util);
+      if(epoch!==this._terrainEpoch)return;
       yield* this._registeredCallbackSteps(this._destroyedHandlers.filter(h=>h.kind===kind),'arcade_whenRegisteredKindDestroyed',{first:id},util);
     }
     registerSpriteDestroyed(args) {
@@ -3763,6 +3789,7 @@ module.exports = makeExt(`// Name: Arcade
       return this._runTerrainGenerator(this._instanceDestroyedSteps(token,sprite.kind,id,util));
     }
     setSpriteProperty(args, util) {
+      const epoch=this._terrainEpoch;
       if(this._missingOperand(util,args,'ID') && ['x','y','left','right','top','bottom','vx','vy','ax','ay','fx','fy','sx','sy','scale','width','height','z','lifespan','rotation','rotationDegrees','data','flags'].includes(String(args.PROPERTY)))return this._primitiveFault('setSpriteProperty',args,util);
       const sprite = this._spriteValues.get(String(args.ID)) || this._sprite(args.ID);
       const name = String(args.PROPERTY);
@@ -3782,7 +3809,7 @@ module.exports = makeExt(`// Name: Arcade
       }
       const value = Number(args.VALUE);
       if(['sx','sy','scale'].includes(name)){
-        const finish=()=>{this._renderSpriteImageIfPresent(sprite);this._positionSprite(sprite.id);this._changed();};
+        const finish=()=>{if(epoch!==this._terrainEpoch || this._spriteValues.get(sprite.id)!==sprite)return;this._renderSpriteImageIfPresent(sprite);this._positionSprite(sprite.id);this._changed();};
         const work=this._runTerrainGenerator(this._setSpriteScalePropertySteps(sprite,name,value,util));return work?.then?work.then(finish):finish();
       }
       const oldX = sprite._fx, oldY = sprite._fy;
@@ -3798,6 +3825,7 @@ module.exports = makeExt(`// Name: Arcade
         sprite._fx = oldX; sprite._fy = oldY;moved=this._moveSpriteExplicit(sprite, dx, dy, util);
       }
       const finish = () => {
+        if(epoch!==this._terrainEpoch || this._spriteValues.get(sprite.id)!==sprite)return;
         if(['sx','sy','scale','rotation','rotationDegrees'].includes(name))this._renderSpriteImageIfPresent(sprite);
         this._clampSprite(sprite);
         if (['sx','sy','scale','rotation','rotationDegrees','x', 'y', 'left', 'right', 'top', 'bottom'].includes(name)) this._positionSprite(String(args.ID));
@@ -3872,6 +3900,7 @@ module.exports = makeExt(`// Name: Arcade
     }
     _moveSpriteExplicit(sprite, dx, dy, util) {return this._runTerrainGenerator(this._moveSpriteExplicitSteps(sprite,dx,dy,util));}
     *_moveSpriteExplicitSteps(sprite, dx, dy, util) {
+      if(this._spriteValues.get(sprite.id)!==sprite)return;
       const oldX = sprite._fx, oldY = sprite._fy;
       sprite._fx = (oldX+dx)|0;sprite._fy = (oldY+dy)|0;
       const map = this._state().tilemap;if (!map) return;
@@ -4910,6 +4939,22 @@ module.exports = makeExt(`// Name: Arcade
         SCORE:Number(Scratch.BWValues.decode(args.SCORE))});
     }
     gameOver(args,util) {return this._runGameOver(Scratch.Cast.toBoolean(args.WIN),util,undefined,{method:'gameOver',args});}
+    resetGame(args,util) {
+      const runtime=this._runtime;
+      if(runtime?.bwArcadeHoldControlReset){
+        runtime.bwArcadeControlResets=(runtime.bwArcadeControlResets||0)+1;
+        // The original simulator posts its request and never resumes this
+        // fiber. Stop/Load invalidates its async lease before cleanup resolves it.
+        return new Promise(resolve=>this._resetSuspensions.add(resolve));
+      }
+      if(typeof runtime?.greenFlag!=='function'||typeof runtime.sequencer?.retireThread!=='function'||!Array.isArray(runtime.threads))throw new Error('Arcade reset requires the real VM restart lifecycle');
+      // The sequencer may still hold its current thread-array snapshot. Retire
+      // every old entry through its lifecycle API before greenFlag replaces it;
+      // merely removing runtime.threads could run an old sibling in this pass.
+      const old=new Set(runtime.threads);if(util?.thread)old.add(util.thread);
+      for(const thread of old)runtime.sequencer.retireThread(thread);
+      runtime.greenFlag();
+    }
     // game.over(win, effect?): the effect applies unless the program chose one.
     legacyGameOver(args,util) {
       const win=Scratch.Cast.toBoolean(args.WIN),effect=this._gameOverEffect(args.EFFECT,true);
@@ -6597,8 +6642,10 @@ module.exports = makeExt(`// Name: Arcade
       const previous = this._state().tilemap;
       const outgoing = previous && !previous.legacy && previous !== data;
       if (!this._tilemapHandlers.length || (!outgoing && !data) || (data && data.legacy)) return this._applyTilemap(data);
+      const epoch=this._terrainEpoch;
       const steps = function* () {
         if (outgoing) yield* this._tilemapEventSteps('Unloaded', previous, util);
+        if(epoch!==this._terrainEpoch)return;
         this._applyTilemap(data);
         if (data && previous !== data) yield* this._tilemapEventSteps('Loaded', data, util);
       }.call(this);
@@ -6784,15 +6831,18 @@ module.exports = makeExt(`// Name: Arcade
       if(!this._frameFaults.has(state))this._startFrameHats();
     }
     *_sdkSpriteBaseUpdateSteps(sprite,dt,camera) {
+      const epoch=this._terrainEpoch;
       // Selected Sprite.__update orders lifespan, AutoDestroy, then speech.
       // Its caller still invokes ExtendableSprite.update after destruction.
       if(sprite.lifespan!==undefined){sprite.lifespan-=dt*1000;if(sprite.lifespan<=0){
         sprite.lifespan=undefined;const work=this.destroySprite({ID:sprite.id,_core:true});if(work?.then)yield work;
       }}
+      if(epoch!==this._terrainEpoch)return;
       const relative=!!(sprite.flags & spriteFlags.RelativeToCamera),ox=relative?0:camera.drawOffsetX,oy=relative?0:camera.drawOffsetY;
       if(sprite.autoDestroy && (sprite.x+sprite.width/2<ox || sprite.x-sprite.width/2>ox+160 ||
           sprite.y+sprite.height/2<oy || sprite.y-sprite.height/2>oy+120)){
         const work=this.destroySprite({ID:sprite.id});if(work?.then)yield work;
+        if(epoch!==this._terrainEpoch)return;
       }
       yield* this._advanceSpeechSteps(dt,sprite.id);
     }

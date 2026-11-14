@@ -2743,6 +2743,7 @@ class ArcadeEmitter {
             return;
         }
         case 'arcade_clearSpriteEffects': push(`effects.clearParticles(${v('ID')})`); return;
+        case 'arcade_resetGame': push('game.reset()'); return;
         case 'arcade_gameOver': push(`game.gameOver(${this.boolValue(b, 'WIN')})`); return;
         case 'arcade_carnivalCustomGameOver': {
             const effect=this.field(b,'EFFECT'),scoring=this.field(b,'SCORING');

@@ -82,12 +82,12 @@ const SECTIONS = [
       movePlayerWithButtons --- setControllerConnected setUserEventsEnabled waitAnyButton ---
       buttonRepeatProperty setButtonRepeatProperty setButtonRepeatDefaults --- lightLevel tilt setPixel clearPixels`)],
   ['game', 'Game', 'Spiel',
-    words('whenUpdate whenInterval gameOver splash ask askForNumber askForString programMillis'),
+    words('whenUpdate whenInterval gameOver resetGame splash ask askForNumber askForNumberLength askForString programMillis'),
     words(`setGameOverEffect setGameOverMessage setGameOverPlayable setGameOverScoringType legacyGameOver ---
       showLongText --- sceneMillis frameDeltaTime --- carnivalCountdown carnivalGameOver carnivalCustomGameOver carnivalAddLabel`)],
   ['music', 'Music', 'Musik',
     words('play playTone ringTone rest setMusicVolume setTempo changeTempo stopAllSounds'),
-    words(`melodyPlayable stringPlayable tonePlayable songPlayable
+    words(`playNoteMelody melodyPlayable stringPlayable tonePlayable songPlayable
       songFromBuffer namedSongPlayable soundEffect namedMelody soundMelody beat --- musicVolume musicTempo`)],
   ['scene', 'Scene', 'Szene',
     words(`setBackgroundColor setBackgroundImage backgroundColor backgroundImage cameraFollowSprite centerCameraAt
@@ -107,7 +107,7 @@ const SECTIONS = [
   ['info', 'Info', 'Info',
     words(`getPlayerScore setPlayerScore changePlayerScore getLife setLife changeLife startCountdown stopCountdown
       whenCountdownEnds`),
-    words('hasPlayerScore hasLife setHudVisibility')],
+    words('hasPlayerScore highScore hasLife setHudVisibility')],
   ['animation', 'Animation', 'Animation',
     words('runImageAnimation stopAnimation createAnimation addAnimationFrame attachAnimation setAnimationAction'),
     words(`setAnimationInterval animationProperty animationAssetFrames animationAssetFreshFrames
