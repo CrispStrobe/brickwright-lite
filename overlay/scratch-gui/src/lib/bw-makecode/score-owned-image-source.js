@@ -159,7 +159,7 @@ export function scoreImageBindingView(program) {
         return result;
     };
     const projected=copy(program);
-    const current=()=>valid&&source.current()&&rows.every(r=>{const keys=Reflect.ownKeys(r.value);return Object.getPrototypeOf(r.value)===r.proto&&keys.length===r.keys.length&&keys.every((k,i)=>k===r.keys[i]&&(()=>{const a=Object.getOwnPropertyDescriptor(r.value,k),b=r.descriptors[i];return a&&Object.hasOwn(a,'value')&&Object.is(a.value,b.value)&&a.enumerable===b.enumerable&&a.writable===b.writable&&a.configurable===b.configurable;})());});
+    const current=()=>valid&&sources.get(program)===source&&source.current()&&rows.every(r=>{const keys=Reflect.ownKeys(r.value);return Object.getPrototypeOf(r.value)===r.proto&&keys.length===r.keys.length&&keys.every((k,i)=>k===r.keys[i]&&(()=>{const a=Object.getOwnPropertyDescriptor(r.value,k),b=r.descriptors[i];return a&&Object.hasOwn(a,'value')&&Object.is(a.value,b.value)&&a.enumerable===b.enumerable&&a.writable===b.writable&&a.configurable===b.configurable;})());});
     return valid&&changed?{program:projected,current,originalOf:node=>originals.get(node)}:null;
 }
 

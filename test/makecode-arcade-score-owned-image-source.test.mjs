@@ -49,8 +49,8 @@ test('binding captures exact original executable body and rejects later mutation
   const program=parseMakeCodeTs(files['main.ts'],GENERATED_HELPER_PROFILES.ordinary);bindScoreImageSource(program,files);const view=scoreImageBindingView(program);assert.ok(view);
   mutate(program);assert.equal(view.current(),false);assert.equal(scoreImageBindingView(program),null);
  }
- const rebound=parseMakeCodeTs(files['main.ts'],GENERATED_HELPER_PROFILES.ordinary);bindScoreImageSource(rebound,files);assert.ok(scoreImageBindingView(rebound));
- bindScoreImageSource(rebound,{...files,'images.g.ts':'invalid'});assert.equal(scoreImageBindingView(rebound),null);
+ const rebound=parseMakeCodeTs(files['main.ts'],GENERATED_HELPER_PROFILES.ordinary);bindScoreImageSource(rebound,files);const held=scoreImageBindingView(rebound);assert.ok(held);assert.equal(held.current(),true);
+ bindScoreImageSource(rebound,{...files,'images.g.ts':'invalid'});assert.equal(scoreImageBindingView(rebound),null);assert.equal(held.current(),false,'failed rebind revokes already issued views');
  const foreign=parseMakeCodeTs('info.onScore(9,function(){scene.setBackgroundImage(assets.image`badge`)});',GENERATED_HELPER_PROFILES.ordinary);
  bindScoreImageSource(foreign,files);assert.equal(scoreImageBindingView(foreign),null);
  const program=parseMakeCodeTs(files['main.ts'],GENERATED_HELPER_PROFILES.ordinary);bindScoreImageSource(program,files);const view=scoreImageBindingView(program);files['images.g.ts']+='\ninfo.setScore(9)';assert.equal(view.current(),false);
