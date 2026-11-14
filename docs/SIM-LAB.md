@@ -820,4 +820,6 @@ whose lighter body is below 10 g and whose mass ratio exceeds 20. The existing
 motor conditioning still applies. It changes neither masses, geometry nor
 collision filtering. Save and reopen preserve the declaration; invalid or
 duplicate declarations refuse simulation. Models without it retain their existing
-settings. Solstice opts in and remains experimental pending browser qualification.
+settings. Solstice opts in with its linkage saved at gravity rest and connected
+automatic instruction pages. It remains experimental; the preset does not establish
+physical accuracy or buildability.

@@ -110,13 +110,11 @@ export function createMemoryMachineStore(seed = []) {
         },
 
         async import(data) {
-            const incoming = machinesFrom(data);
-            const imported = [];
-            for (const cfg of incoming) {
-                const admitted = admit(cfg);
-                map.set(admitted.id, admitted);
-                imported.push(clone(admitted));
-            }
+            // Prepare the complete batch before replacing saved machines, as
+            // the IndexedDB implementation does before its write transaction.
+            const incoming = Array.from(machinesFrom(data), admit);
+            const imported = incoming.map(clone);
+            for (const cfg of incoming) map.set(cfg.id, cfg);
             return imported;
         },
 

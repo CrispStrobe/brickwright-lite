@@ -63,7 +63,22 @@ const run=async(c,modelText,autoPorts,label=autoPorts===false?'strict':'ordinary
 for(const c of qualificationContracts(selected).filter(c=>!c.nativeSuite)){
  const source=read(lab+'models/'+c.id+'.ldr'),program=read(lab+'programs/'+c.id+'.bw'),judge=r=>QUALIFICATION_JUDGES[c.judge](r,{native:true,contract:c});
  test(c.id+': exact source, licence, topology, compiler, unassisted equality and complete registration',()=>{
-  const dir='test/fixtures/model-files/'+c.id+'-source/',provenance=JSON.parse(read(dir+'provenance.json'));
+  // A versioned metadata adaptation retains and verifies its original intake.
+  const fixture=c.id==='rimrun'?'rimrun-internal-edge-pairs-v1-source':c.id+'-source';
+  const dir='test/fixtures/model-files/'+fixture+'/',provenance=JSON.parse(read(dir+'provenance.json'));
+  if(c.id==='rimrun'){
+   assert.equal(provenance.version,'internal-edge-pairs-v1');assert.equal(provenance.parent.fixture,'rimrun-source');
+   const parent='test/fixtures/model-files/rimrun-source/',original=read(parent+'models/rimrun.ldr');
+   assert.equal(createHash('sha256').update(read(parent+'provenance.json')).digest('hex'),provenance.parent.provenanceSha256);
+   const retained=JSON.parse(read(parent+'provenance.json'));
+   for(const[file,hash]of Object.entries(retained.files))assert.equal(createHash('sha256').update(read(parent+file)).digest('hex'),hash);
+   assert.equal(createHash('sha256').update(original).digest('hex'),provenance.parent.modelSha256);
+   const adapted=original.replace('0 !LDRAW_ORG Unofficial_Model','0 !BW INTERNAL_EDGE_PAIR left_wheel_-1 hub\n0 !BW INTERNAL_EDGE_PAIR right_wheel_-1 hub\n0 !LDRAW_ORG Unofficial_Model')
+    .replace('Native stock-part mechanics; no model physics overrides.','Native stock-part mechanics; no mass or inertia overrides.');
+   assert.equal(read(dir+'models/rimrun.ldr'),adapted,'only the exact declared metadata/header adaptation is admitted');
+   assert.equal(read(dir+'programs/rimrun.bw'),read(parent+'programs/rimrun.bw'));
+   assert.equal(read(dir+'LICENSE.txt'),read(parent+'LICENSE.txt'));
+  }
   for(const [file,hash]of Object.entries(provenance.files))assert.equal(createHash('sha256').update(read(dir+file)).digest('hex'),hash);
   assert.equal(source,read(dir+(c.id==='quartermaster'?'quartermaster.ldr':'models/'+c.id+'.ldr')));assert.equal(program,read(dir+(c.id==='quartermaster'?'quartermaster.bw':'programs/'+c.id+'.bw')));
   assert.match(source,/^0 Author: CrispStrobe$/m);assert.match(read(lab+'licenses/'+c.id+'.txt'),/BSD 3-Clause License/);

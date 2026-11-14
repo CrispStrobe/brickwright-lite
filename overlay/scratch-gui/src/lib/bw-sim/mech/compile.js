@@ -13,7 +13,7 @@
 // mechanism plus hubs, actuators bound to {hub, port}, couplings, devices,
 // body roles and the no-collide pairs; the default is the v1 mechanism.
 
-import {validatePlacedModel, validateCompiledMechanism, GROUND_FRICTION, GROUND_RESTITUTION, GROUND_MATERIAL, MATERIALS, LDU_M, lduToWorld, dirToWorld,
+import {validateInternalEdgeRemovalPairs, validatePlacedModel, validateCompiledMechanism, GROUND_FRICTION, GROUND_RESTITUTION, GROUND_MATERIAL, MATERIALS, LDU_M, lduToWorld, dirToWorld,
     partHubProfile, partSensor, portRefOf, withBodyRoles, noCollidePairs, couplingBodyPairs, V1_COUPLING_KINDS} from '../contracts.js';
 import {BUILTIN_KINDS} from '../kinds/index.js';
 import {mat3MulVec3, vecAdd, quatNormalize} from './vec.js';
@@ -188,6 +188,8 @@ export const compile = (model, catalog, opts = {}) => {
     if (model?.rotor !== undefined && !['legacy', 'native'].includes(model.rotor)) {
         throw new RangeError('rotor must be legacy or native');
     }
+    const edgeProblems = validateInternalEdgeRemovalPairs(model?.internalEdgeRemovalPairs, new Set((Array.isArray(model?.parts) ? model.parts : []).map(p => p?.id)), 'model.internalEdgeRemovalPairs');
+    if (edgeProblems.length) throw new RangeError(edgeProblems.join('; '));
     if (model?.solver !== undefined && model.solver !== 'light-links') throw new RangeError('solver must be light-links');
     const diagnostics = [];
     const catalogMap = toCatalogMap(catalog);
@@ -542,6 +544,16 @@ export const compile = (model, catalog, opts = {}) => {
     };
     if (sensors.length > 0) mechanism.sensors = sensors;
 
+    if (model.internalEdgeRemovalPairs?.length) {
+        const bodyFor = part => {
+            const matches = bodies.filter(b => b.parts.includes(part));
+            if (matches.length !== 1) throw new RangeError(`internalEdgeRemovalPairs: '${part}' must name one compiled body`);
+            return matches[0].id;
+        };
+        mechanism.internalEdgeRemovalPairs = model.internalEdgeRemovalPairs.map(pair => pair.map(bodyFor));
+        const invalid = validateInternalEdgeRemovalPairs(mechanism.internalEdgeRemovalPairs, new Set(bodies.map(b => b.id)), 'internalEdgeRemovalPairs');
+        if (invalid.length) throw new RangeError(invalid.join('; '));
+    }
     const problemsOut = validateCompiledMechanism(mechanism);
     if (problemsOut.length > 0) {
         throw new Error(`compile produced invalid mechanism: ${problemsOut.join('; ')}`);

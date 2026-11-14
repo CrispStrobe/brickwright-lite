@@ -469,8 +469,15 @@ export const prepareModel = (text, catalog, {mat = null, autoPorts: plugIn = !OW
     for (const issue of unknownOf.values()) {
         if (issue.count > 1) issue.message = `${issue.message} (and ${issue.count - 1} more)`;
     }
-    if (refusals.some(r => r.code === 'bad-motor-direction' || r.code === 'bad-rotor-model')) {
-        return {model: parsedModel, runModel: parsedModel, mechanism: null, issues};
+    if (refusals.some(r => r.code === 'bad-motor-direction' || r.code === 'bad-rotor-model' || r.code === 'bad-internal-edge-pair' || r.code === 'bad-solver-preset')) {
+        // Keep the geometry available for inspection, but do not hand the editor
+        // dangling collision-policy references. The named error still prevents
+        // simulation; parseModel retains the original invalid declarations for
+        // callers that validate, compile or save the raw parsed model.
+        const displayModel = {...parsedModel};
+        if (refusals.some(r => r.code === 'bad-internal-edge-pair')) delete displayModel.internalEdgeRemovalPairs;
+        if (refusals.some(r => r.code === 'bad-solver-preset')) delete displayModel.solver;
+        return {model: displayModel, runModel: displayModel, mechanism: null, issues};
     }
     if (parsedModel.parts.length === 0) {
         issues.push({severity: 'error', code: 'empty-model', message: 'The model has no parts the Sim Lab knows.', parts: []});
@@ -491,8 +498,16 @@ export const prepareModel = (text, catalog, {mat = null, autoPorts: plugIn = !OW
     const runModel = start ? placeOnStart(wired, start, driveAnchor(wired, catalog)) : wired;
     // A mat's obstacles (a wall) are static bodies of the scene, compiled with the model.
     // ...and its loads (a pallet: world/objects.js) dynamic bodies the model moves by contact.
-    const mechanism = compile(runModel, catalog, {version: 2, rescueLoose: plugIn, breakLoops, ...(freeHingeFrictionNm !== undefined ? {freeHingeFrictionNm} : {}), ...(matDef ? {mat, ...(matDef.obstacles.length ? {obstacles: matDef.obstacles} : {}),
+    let mechanism;
+    try {
+        mechanism = compile(runModel, catalog, {version: 2, rescueLoose: plugIn, breakLoops, ...(freeHingeFrictionNm !== undefined ? {freeHingeFrictionNm} : {}), ...(matDef ? {mat, ...(matDef.obstacles.length ? {obstacles: matDef.obstacles} : {}),
         ...(matDef.loads.length ? {loads: matDef.loads} : {})} : {})});
+    } catch (error) {
+        if (!(error instanceof RangeError) || !error.message.startsWith('internalEdgeRemovalPairs')) throw error;
+        issues.push({severity: 'error', code: 'bad-internal-edge-pair', message: error.message, parts: []});
+        return {model, runModel, mechanism: null, issues};
+    }
+
     // An explicitly declared payload is free to roll or be carried by contact.
     // Admit only wholly free payload islands: marking one structural member as
     // LOAD must never hide an accidentally detached assembly.

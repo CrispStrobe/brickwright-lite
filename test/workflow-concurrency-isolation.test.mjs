@@ -15,8 +15,9 @@ const policy = (source, github) => {
     const cancel = /^  cancel-in-progress: (.*)$/m.exec(source)[1];
     return {group:expand(group,github).toLowerCase(),cancel:expand(cancel,github)==='true'};
 };
-function check(source, labels, admit = true) {
-    if (admit) assertReviewedConcurrency(source,{labels});
+function check(source, labels, admit = true, preserveMain = false) {
+    // Build is checked by behavior, without freezing one expression spelling.
+    if (admit && !preserveMain) assertReviewedConcurrency(source,{labels});
     const get = changes => policy(source,sample(changes));
     for (const event_name of ['push','pull_request']) {
         const a = get({event_name}), b = get({event_name,run_id:102});
@@ -25,6 +26,12 @@ function check(source, labels, admit = true) {
         assert.equal(a.cancel,true);
         assert.notEqual(a.group,get({event_name,ref:'refs/heads/other'}).group);
         assert.notEqual(a.group,get({event_name,workflow:'Other'}).group);
+    }
+    for (const event_name of ['push','pull_request']) {
+        const a = get({event_name,ref:'refs/heads/main'});
+        const b = get({event_name,ref:'refs/heads/main',run_id:102});
+        assert.equal(a.group,b.group,'main retains one active and one latest pending entry');
+        assert.equal(a.cancel,!(preserveMain && event_name==='push'),'only main push validation survives a newer push');
     }
     // Code event names retain the same shared-ref behavior of the policy parent.
     assert.equal(get({}).group,get({event_name:'pull_request'}).group);
@@ -53,19 +60,19 @@ function check(source, labels, admit = true) {
         assert.equal(label.group,get({event_name:'pull_request',run_id:102,event:{action:'unlabeled',label:{name:'ci:full'}}}).group);
     }
 }
-for (const name of names) test(`${name}: exact source event/ref isolation, pending preservation and supersession`,()=> {
+for (const name of names) test(`${name}: event/ref isolation, pending preservation and supersession`,()=> {
     const source=readFileSync(new URL(`../.github/workflows/${name}.yml`,import.meta.url),'utf8');
-    check(source,labeled.has(name));
-    for (const mutation of [
+    check(source,labeled.has(name),true,name==='build');
+    if (name !== 'build') for (const mutation of [
         source.replace(/^concurrency:/m, 'unreviewed-concurrency:'),
         source.replace('concurrency:\n', 'concurrency:\n  extra-policy: true\n'),
         source.replace(/^  cancel-in-progress:.*$/m, match=>match+'\n\n  extra-policy: true'),
         source.replace(/^  cancel-in-progress:.*$/m, match=>match+'\n\n# continuation\n\n  extra-policy: true'),
-    ]) assert.throws(()=>check(mutation,labeled.has(name)),'closed policy mapping');
+    ]) assert.throws(()=>check(mutation,labeled.has(name),true,name==='build'),'closed policy mapping');
     if (labeled.has(name)) {
         const mutation=source.replace(labelSuffix,'');
-        assert.throws(()=>check(mutation,true),'label policy admission');
-        assert.throws(()=>check(mutation,true,false),'label partition behavior');
+        if (name !== 'build') assert.throws(()=>check(mutation,true),'label policy admission');
+        assert.throws(()=>check(mutation,true,false,name==='build'),'label partition behavior');
     }
     for (const [title,mutation] of [
         ['old unsafe shared group',source.replace(/\$\{\{ !\(github.ref_type.*?\}\}/,'')],
@@ -77,7 +84,7 @@ for (const name of names) test(`${name}: exact source event/ref isolation, pendi
         ['always cancel',source.replace(/^  cancel-in-progress:.*$/m,'  cancel-in-progress: true')],
         ['never supersede',source.replace(/^  cancel-in-progress:.*$/m,'  cancel-in-progress: false')],
         ['unbounded extra block',source+'\nconcurrency:\n'],
-    ]) {assert.notEqual(source,mutation,title);assert.throws(()=>check(mutation,labeled.has(name)),title); if (title !== 'unbounded extra block') assert.throws(()=>check(mutation,labeled.has(name),false),title+' behavioral refusal');}
+    ]) {assert.notEqual(source,mutation,title); if (name !== 'build') assert.throws(()=>check(mutation,labeled.has(name)),title); if (title !== 'unbounded extra block') assert.throws(()=>check(mutation,labeled.has(name),false,name==='build'),title+' behavioral refusal');}
 });
 
 

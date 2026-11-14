@@ -256,6 +256,7 @@ test('legacy or reused joint and rope IDs require explicit target confirmation, 
         const f = editorFixture({mechanism, definitions: [definition], rows: []});
         f.edit('saved'); f.name('Name only');
         assert.equal(f.control(`bw-sim-lab-measurement-${field}`).props.value, '');
+        assert.equal(f.panel.previewDefinition(), null, 'editing never previews an unconfirmed default binding');
         f.submit(); assert.equal(f.changes.length, 0, scenario);
         f.choose(`bw-sim-lab-measurement-${field}`, id); f.submit();
         assert.equal(f.changes.length, 1); assert.equal(f.changes[0][0].id, 'saved');
@@ -378,4 +379,43 @@ test('remounted measurement panel restores bounded per-model plot choices for a 
     assert.deepEqual(panel.state.plots,['span']);
     assert.match(renderToStaticMarkup(panel.render()),/bw-sim-measurement-plot/);
     assert.deepEqual(new Panel({...props,initialPlots:['a','b','c','d','e']}).state.plots,['a','b','c','d']);
+});
+
+
+test('new joint and rope measurements preview the default displayed target before Add', () => {
+    for (const [kind, field, expected] of [['jointAngle', 'joint', 'j0'], ['travel', 'joint', 'slide'], ['tension', 'rope', 'r0']]) {
+        const mechanism = bindingFixture();
+        mechanism.joints.push({id: 'slide', type: 'slider', body1: 'left', body2: 'right'});
+        let observed;
+        const f = editorFixture({mechanism, onPreview: definition => {observed = definition;}});
+        f.choose('bw-sim-lab-measurement-kind', kind);
+        assert.equal(f.control(`bw-sim-lab-measurement-${field}`).props.value, expected);
+        const preview = f.panel.previewDefinition();
+        assert.ok(preview, `${kind} has a preview for its displayed default`);
+        assert.equal(preview[field], expected);
+        assert.equal(preview.binding, field === 'joint' ? readings.jointBinding(mechanism, mechanism.joints.find(j => j.id === expected)) : readings.ropeBinding(mechanism.couplings[0]));
+        f.control('bw-sim-measurement-preview');
+        f.panel.syncPreview();
+        assert.deepEqual(observed, preview, 'the live preview observer gets the displayed binding');
+        f.submit();
+        const saved = f.changes[0].at(-1);
+        assert.equal(saved[field], preview[field]);
+        assert.equal(saved.binding, preview.binding, 'Add measures the target that was previewed');
+    }
+});
+
+test('new measurement previews follow default fallback after a chosen target disappears', () => {
+    for (const [kind, field, initial, fallback] of [['jointAngle', 'joint', 'j1', 'j0'], ['tension', 'rope', 'r1', 'r0']]) {
+        const mechanism = bindingFixture(), f = editorFixture({mechanism});
+        f.choose('bw-sim-lab-measurement-kind', kind);
+        f.choose(`bw-sim-lab-measurement-${field}`, initial);
+        assert.equal(f.panel.previewDefinition()[field], initial);
+        if (field === 'joint') mechanism.joints = mechanism.joints.filter(j => j.id !== initial);
+        else mechanism.couplings = mechanism.couplings.filter(r => r.id !== initial);
+        assert.equal(f.control(`bw-sim-lab-measurement-${field}`).props.value, fallback);
+        assert.equal(f.panel.previewDefinition()?.[field], fallback);
+        if (field === 'joint') mechanism.joints = [];
+        else mechanism.couplings = [];
+        assert.equal(f.panel.previewDefinition(), null, 'no preview without any valid target');
+    }
 });

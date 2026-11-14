@@ -18,3 +18,28 @@ test('image templates cannot disappear from logical scalar flow', () => {
 test('typed reference cells and parameters cannot disappear from scalar joins',()=>{
     assert.deepEqual(infer('let image:Image;let sprite:Sprite;let values:number[];let a=false||image;let b=true&&sprite;let c=false||values;function select(value:Image){return false||value};let d=select(image);let unknown:Missing;let e=false||unknown;let explicit:any;let f=false||explicit'),{explicit:'Any'});
 });
+
+test('string member results keep directed scalar declarations from actual receivers',()=>{
+    assert.deepEqual(infer('let text="abc";let n=text.length;let c=text.charAt(1);let copy=c;let more=copy.length'),
+        {text:'String',n:'Number',c:'String',copy:'String',more:'Number'});
+    assert.deepEqual(infer('let value=123;let n=(""+value).length;let c=(""+value).charAt(1)'),
+        {value:'Number',n:'Number',c:'String'});
+});
+
+test('unknown and mixed receivers cannot lend String member result authority',()=>{
+    for(const receiver of ['mystery()','[1,2]','1','true','undefined','null']) {
+        assert.deepEqual(infer(`let n=(${receiver}).length;let c=(${receiver}).charAt(0)`),{});
+    }
+    assert.deepEqual(infer('let text="a";text=mystery();let n=text.length;let c=text.charAt(0)'),{});
+    assert.deepEqual(infer('let text="a";text=1;let n=text.length;let c=text.charAt(0)'),{text:'Any'});
+    assert.deepEqual(infer('let text="a";let wrong=text.charAt();let extra=text.charAt(0,1);let built=new text.charAt(0)'),{text:'String'});
+});
+
+test('nullable, computed and argument-mutated receivers retain unknown member results',()=>{
+    for(const value of ['undefined','null']) {
+        assert.deepEqual(infer(`let text="a";text=${value};let n=text.length;let c=text.charAt(0)`),{text:'String'});
+    }
+    assert.deepEqual(infer('let text="a";let n=text["length"];let c=text["charAt"](0)'),{text:'String'});
+    assert.deepEqual(infer('let text="a";let c=text.charAt(text=mystery());let n=text.length'),{});
+    assert.deepEqual(infer('let text="a";let c=text.charAt(text=1);let n=text.length'),{text:'Any'});
+});

@@ -712,6 +712,23 @@ export const isPortPart = meta => Boolean(partMotorJoint(meta) || partSensor(met
 /** Determinant of a row-major 3×3. */
 export const det3 = m => m[0] * (m[4] * m[8] - m[5] * m[7]) - m[1] * (m[3] * m[8] - m[5] * m[6]) + m[2] * (m[3] * m[7] - m[4] * m[6]);
 
+/** Explicit unordered pair keys with ordered source/surface roles; absent is legacy. */
+export const validateInternalEdgeRemovalPairs = (pairs, ids, where) => {
+    if (pairs === undefined) return [];
+    if (!Array.isArray(pairs)) return [`${where}: need an array of [source, surface] pairs`];
+    const out = [], seen = new Set();
+    for (const [i, pair] of pairs.entries()) {
+        if (!Array.isArray(pair) || pair.length !== 2 || pair.some(id => typeof id !== 'string' || !id || /\s/.test(id) || !ids.has(id)) || pair[0] === pair[1]) {
+            out.push(`${where}[${i}]: need two distinct known ids [source, surface]`);
+            continue;
+        }
+        const key = JSON.stringify([...pair].sort());
+        if (seen.has(key)) out.push(`${where}[${i}]: duplicate unordered pair`);
+        seen.add(key);
+    }
+    return out;
+};
+
 /**
  * @param {PlacedModel} model
  * @param {Map<string, PartMeta>|Record<string, PartMeta>} [catalog] when given, every part must be in it
@@ -730,6 +747,7 @@ export const validatePlacedModel = (model, catalog) => {
     if (model.solver !== undefined && model.solver !== 'light-links') out.push('model.solver: expected light-links');
     if (!Array.isArray(model.parts)) return [...out, 'model.parts: not an array'];
     uniqueIds(model.parts, 'model.parts', out);
+    out.push(...validateInternalEdgeRemovalPairs(model.internalEdgeRemovalPairs, new Set(model.parts.map(p => p?.id)), 'model.internalEdgeRemovalPairs'));
     if (model.drawings !== undefined) {
         if (!Array.isArray(model.drawings)) out.push('model.drawings: not an array');
         else for (const d of model.drawings) {
@@ -805,7 +823,7 @@ export const validatePlacedModel = (model, catalog) => {
             const partIds = new Set(model.parts.map(pr => pr.id));
             for (const r of model.ropes) {
                 const wr = `model.ropes[${r?.id}]`;
-                if (!(typeof r?.lengthLdu === 'number' && r.lengthLdu > 0)) out.push(`${wr}.lengthLdu: a length (LDU)`);
+                if (!(Number.isFinite(r?.lengthLdu) && r.lengthLdu > 0)) out.push(`${wr}.lengthLdu: a length (LDU)`);
                 if (!Array.isArray(r?.around) || r.around.length < 2) out.push(`${wr}.around: a drum and a hook at least`);
                 else for (const pid of r.around) if (!partIds.has(pid)) out.push(`${wr}.around: unknown part '${pid}'`);
             }
@@ -850,6 +868,7 @@ const checkMechanismV1 = (m, out, v2 = false, jointTypes = JOINT_TYPES_V1) => {
     }
     if (out.length) return false;
     const bodies = uniqueIds(m.bodies, 'bodies', out);
+    out.push(...validateInternalEdgeRemovalPairs(m.internalEdgeRemovalPairs, bodies, 'mechanism.internalEdgeRemovalPairs'));
     m.bodies.forEach(b => {
         const w = `bodies[${b?.id}]`;
         if (b?.motion !== 'static' && b?.motion !== 'dynamic') out.push(`${w}.motion: need 'static' or 'dynamic'`);
@@ -1020,6 +1039,8 @@ export const dirToWorld = d => [d[0], 0 - d[1], 0 - d[2]];
  *               FOREIGN_LIGHT_LINKS, models from elsewhere only); bodies keep their own massKg.
  *               loopBalls?: the ids of the hinges made ball joints to break closed hinge loops (mech/loops.js).
  *               maxLinearVelocity?: m/s no body exceeds (mech/compile.js FOREIGN_MAX_SPEED_M_S).
+ *   internalEdgeRemovalPairs? [[sourceBody, surfaceBody]] explicit native query orientation;
+ *               immutable session configuration, no body flag changes; absent keeps legacy behavior.
  *   rotor?      'native' when the model declares `0 !BW ROTOR_INERTIA native` (#1494): the core configures
  *               the engine's relative hinge rotor instead of adding the reflected rotor inertia to
  *               both hinge bodies (physics/jolt-core.js setRotorInertia). Absent: the legacy treatment.
@@ -1131,6 +1152,7 @@ export const mechanismV1 = m => {
     const out = {version: 1, gravity: m.gravity, bodies: m.bodies.map(({role, collisionGroup, ...b}) => b), joints: a.joints, gears: a.gears,
         diagnostics: m.diagnostics};
     if (a.sensors.length > 0) out.sensors = a.sensors;
+    if (m.internalEdgeRemovalPairs !== undefined) out.internalEdgeRemovalPairs = m.internalEdgeRemovalPairs;
     return out;
 };
 
@@ -1166,6 +1188,7 @@ export const upgradeMechanismV1 = m => {
     const out = {version: 2, gravity: m.gravity, bodies: withBodyRoles(m.bodies), joints: m.joints, gears: m.gears, diagnostics: m.diagnostics};
     if (m.sensors !== undefined) out.sensors = m.sensors;
     if (m.rotor !== undefined) out.rotor = m.rotor;
+    if (m.internalEdgeRemovalPairs !== undefined) out.internalEdgeRemovalPairs = m.internalEdgeRemovalPairs;
     if (m.solver !== undefined) out.solver = m.solver;
     return Object.assign(out, {hubs: [], actuators, couplings, devices, noCollide: noCollidePairs(m.joints, couplings)});
 };

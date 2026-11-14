@@ -45,8 +45,18 @@ export default class SimLabMeasurementRecorder extends React.Component {
         this.state = {snapshot: this.recorder.snapshot(), importStatus: '', windowStart: '', windowDuration: '10'};
         this.importFile = React.createRef();
         this.importRevision = 0;
+        this.importDefinitions = JSON.stringify(props.definitions);
     }
     componentDidUpdate (previous) {
+        const definitions = JSON.stringify(this.props.definitions);
+        if (['session', 'modelKey', 'modelContext'].some(key => previous[key] !== this.props[key]) ||
+            definitions !== this.importDefinitions) this.importRevision++;
+        this.importDefinitions = definitions;
+        // A file read belongs to the import permission at selection time. Do not
+        // revive it when a control pair, full history or replay is later cleared.
+        if ((!previous.pairActive && this.props.pairActive) ||
+            (previous.recordingAllowed !== false && this.props.recordingAllowed === false) ||
+            (!previous.replaying && this.props.replaying)) this.importRevision++;
         if (previous.recorder !== this.props.recorder && this.props.recorder) {
             this.importRevision++;
             this.recorder.stop('panel-closed');
@@ -104,11 +114,12 @@ export default class SimLabMeasurementRecorder extends React.Component {
         const current = () => revision === this.importRevision && session === this.props.session && modelKey === this.props.modelKey &&
             context === this.props.modelContext && definitions === JSON.stringify(this.props.definitions) && !this.props.replaying;
         try {
+            if (this.props.replaying) throw new Error(words(this.props.locale).replay);
             if (this.props.pairActive) throw new Error('Clear the explicit control pair before importing ordinary runs');
             if (this.props.recordingAllowed === false) throw new Error('Four model histories are retained; export or clear a recording first');
             if (!context || !Number.isFinite(file.size) || file.size > CSV_BYTE_LIMIT) throw new Error('CSV file is too large or no model is ready');
             const text = await file.text();
-            if (!current()) return;
+            if (!current() || this.props.pairActive || this.props.recordingAllowed === false) return;
             const snapshot = this.recorder.importCsv(text, {...context, definitions: this.props.definitions});
             this.props.onRestoredSelection?.(snapshot.runs[0]?.definitions.map(d => d.id) || []);
             this.setState({snapshot, importStatus: words(this.props.locale).imported}, () => this.props.onHistoryChanged?.());

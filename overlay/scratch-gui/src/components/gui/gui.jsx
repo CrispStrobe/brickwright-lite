@@ -602,7 +602,7 @@ const GUIComponent = props => {
             stop();                                 // replace any prior machine mirror
             mirror = createMachineVideoMirror({panel: controllerPanel, videoFn, widget});
             mirror.start();
-            setMachineConsole({name: widget.name,
+            setMachineConsole({name: widget.name, keyboardSet: p.keyboardSet,
                 keyIn: typeof p.keyInFn === 'function' ? p.keyInFn : null,
                 mouseIn: typeof p.mouseInFn === 'function' ? p.mouseInFn : null});
             // Make the screen actually visible: dock the Widgets pane, play

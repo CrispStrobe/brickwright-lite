@@ -49,6 +49,7 @@ const makeModel = (version, parts, groups, steps, belts = null, ropes = null, ho
     if (carried && carried.files) out.files = carried.files;
     if (carried && carried.motorDirection !== undefined) out.motorDirection = carried.motorDirection;
     if (carried && carried.rotor !== undefined) out.rotor = carried.rotor;
+    if (carried && carried.internalEdgeRemovalPairs !== undefined) out.internalEdgeRemovalPairs = carried.internalEdgeRemovalPairs;
     if (carried && carried.solver !== undefined) out.solver = carried.solver;
     if (groups) out.groups = deepFreeze(groups);
     if (steps) out.steps = deepFreeze(steps);
@@ -69,6 +70,7 @@ const importModel = model => {
         files: model.files ? Object.freeze({...model.files}) : null,
         ...(model.motorDirection !== undefined ? {motorDirection: model.motorDirection} : {}),
         ...(model.rotor !== undefined ? {rotor: model.rotor} : {}),
+        ...(model.internalEdgeRemovalPairs !== undefined ? {internalEdgeRemovalPairs: deepFreeze(model.internalEdgeRemovalPairs.map(pair => pair.slice()))} : {}),
         ...(model.solver !== undefined ? {solver: model.solver} : {})};
     return makeModel(model.version, model.parts.map(frozenPart), groups, steps, belts, ropes, hoses, carried);
 };
@@ -80,7 +82,6 @@ const nextPartId = (parts, ids) => {
     while (ids.has(id)) {
         id = `p${parts.length + counter}`;
         counter++;
-        if (counter > 100) break;
     }
     return id;
 };
@@ -249,10 +250,11 @@ export const createEditor = ({model, catalog}) => {
      * given. A rubber band or a rope goes with the parts it is round: one round a part that is gone goes too.
      */
     const derive = (parts, groups = current.groups || null, belts = current.belts || null, ropes = current.ropes || null, hoses = current.hoses || null) => {
-        const ids = parts !== current.parts && ((belts && belts.length) || (ropes && ropes.length) || (hoses && hoses.length)) ? new Set(parts.map(p => p.id)) : null;
+        const ids = parts !== current.parts && ((belts && belts.length) || (ropes && ropes.length) || (hoses && hoses.length) || current.internalEdgeRemovalPairs?.length) ? new Set(parts.map(p => p.id)) : null;
         const keep = list => (list && ids ? list.filter(b => b.around.every(id => ids.has(id))) : list);
         const keptHoses = hoses && ids ? hoses.filter(h => ids.has(h.a.part) && ids.has(h.b.part)) : hoses;
-        return makeModel(current.version, parts, groups, current.steps || null, keep(belts), keep(ropes), keptHoses, current);
+        const carried = current.internalEdgeRemovalPairs && ids ? {...current, internalEdgeRemovalPairs: deepFreeze(current.internalEdgeRemovalPairs.filter(pair => pair.every(id => ids.has(id))))} : current;
+        return makeModel(current.version, parts, groups, current.steps || null, keep(belts), keep(ropes), keptHoses, carried);
     };
     /** `parts` with the part at `idx` replaced by a frozen copy carrying `changes` (a field set to undefined is removed). */
     const withPart = (parts, idx, changes) => {
@@ -266,11 +268,12 @@ export const createEditor = ({model, catalog}) => {
      * A new part appended to `parts` as snap.js placePart (the next free id; a truthy port), then the colour
      * and port the command asks for. Returns the new parts array.
      */
-    const appended = (parts, {part, position, rotation, port}, {color, setPort}) => {
+    const appended = (parts, {part, position, rotation, port}, {color, setPort, pen}) => {
         const ids = new Set(parts.map(p => p.id));
         const fields = {id: nextPartId(parts, ids), part, position, rotation};
         if (port) fields.port = port;
         if (color !== undefined) fields.color = color;
+        if (pen !== undefined) fields.pen = pen;
         if (setPort !== undefined) {
             if (setPort) fields.port = setPort;
             else delete fields.port;
@@ -339,7 +342,7 @@ export const createEditor = ({model, catalog}) => {
                 const port = portsForCopies(current, catalogMap, [orig])[0];
                 // A single clone forms no group (a group needs two); cloneMany handles groups.
                 next = derive(appended(current.parts, {part: orig.part, position: newPos, rotation: orig.rotation, port},
-                    {color: orig.color, setPort: port || null}));
+                    {color: orig.color, setPort: port || null, pen: orig.pen}));
             } else if (cmd.type === 'group') {
                 const {ids, name} = cmd;
                 if (!Array.isArray(ids) || ids.length < 2) throw new Error('group needs at least 2 parts');
@@ -378,7 +381,7 @@ export const createEditor = ({model, catalog}) => {
                 const {around, lengthLdu} = cmd;
                 if (!Array.isArray(around) || around.length < 2 || new Set(around).size !== around.length) throw new Error('a rope runs from a drum to a hook');
                 for (const pid of around) if (!hasPart(pid)) throw new Error(`unknown id '${pid}'`);
-                if (!(typeof lengthLdu === 'number' && lengthLdu > 0)) throw new Error('bad rope length');
+                if (!(Number.isFinite(lengthLdu) && lengthLdu > 0)) throw new Error('bad rope length');
                 const ids = new Set((current.ropes || []).map(r => r.id));
                 let n = 1;
                 while (ids.has(`r${n}`)) n++;
@@ -434,7 +437,7 @@ export const createEditor = ({model, catalog}) => {
                 if (poses) {
                     for (const po of poses) parts = withPart(parts, parts.findIndex(p => p.id === po.id), {position: po.position, rotation: po.rotation});
                 } else {
-                    for (const pid of ids) {
+                    for (const pid of new Set(ids)) {
                         const idx = parts.findIndex(p => p.id === pid);
                         const at = parts[idx].position;
                         parts = withPart(parts, idx, {position: [at[0] + delta[0], at[1] + delta[1], at[2] + delta[2]]});
@@ -454,26 +457,27 @@ export const createEditor = ({model, catalog}) => {
                 const {ids, offset} = cmd;
                 if (!Array.isArray(ids) || ids.length === 0) throw new Error('cloneMany needs ids');
                 for (const pid of ids) if (!hasPart(pid)) throw new Error(`unknown id '${pid}'`);
+                const selection = [...new Set(ids)];
                 const off = offset || [40, 0, 0];
                 if (!Array.isArray(off) || off.length !== 3) throw new Error('bad offset');
                 // Ports for the copies (in model order).
-                const partsToCopy = ids.map(pid => current.parts.find(p => p.id === pid));
+                const partsToCopy = selection.map(pid => current.parts.find(p => p.id === pid));
                 const ports = portsForCopies(current, catalogMap, partsToCopy);
                 const origToCloneId = new Map();
                 let parts = current.parts;
-                ids.forEach((pid, i) => {
+                selection.forEach((pid, i) => {
                     const orig = partsToCopy[i];
                     const port = ports[i];
                     const newPos = [orig.position[0] + off[0], orig.position[1] + off[1], orig.position[2] + off[2]];
-                    parts = appended(parts, {part: orig.part, position: newPos, rotation: orig.rotation, port}, {color: orig.color, setPort: port || null});
+                    parts = appended(parts, {part: orig.part, position: newPos, rotation: orig.rotation, port}, {color: orig.color, setPort: port || null, pen: orig.pen});
                     origToCloneId.set(pid, parts[parts.length - 1].id);
                 });
                 // Clones keep their group structure: a cloned group (two or more members copied) becomes a new group.
                 let groups = current.groups || null;
                 if (current.groups) {
                     groups = current.groups.slice();
-                    for (const og of current.groups.filter(g => g.parts.some(pid => ids.includes(pid)))) {
-                        const clonedParts = og.parts.filter(pid => ids.includes(pid)).map(pid => origToCloneId.get(pid));
+                    for (const og of current.groups.filter(g => g.parts.some(pid => selection.includes(pid)))) {
+                        const clonedParts = og.parts.filter(pid => selection.includes(pid)).map(pid => origToCloneId.get(pid));
                         if (clonedParts.length >= 2) groups.push({id: nextGroupId({groups}), name: og.name, parts: clonedParts});
                     }
                 }

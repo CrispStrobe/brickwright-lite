@@ -6,10 +6,10 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {loadJolt} from '../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js';
-import {sourceIdentities,prepareInputs} from './fixtures/resting-creep-1435/observe.mjs';
+import {sourceIdentities,prepareInputs} from './fixtures/resting-creep-current/observe.mjs';
 import {contactManifest,buildContactCase,runContactCase,colliderGaps} from './fixtures/resting-creep-1435/observe-contact.mjs';
-import {auditContactRecord,auditContactAll,extractContactRecords,contactSummary,CONTACT_PREFIX} from '../scripts/verify-sim-resting-creep-contact.mjs';
-import {recompute,expectedIdentities} from '../scripts/verify-sim-resting-creep.mjs';
+import {auditContactRecord,auditContactAll,extractContactRecords,contactSummary,CONTACT_PREFIX} from '../scripts/verify-sim-resting-creep-contact-current.mjs';
+import {recompute,expectedIdentities} from '../scripts/verify-sim-resting-creep-current.mjs';
 
 const spec=id=>contactManifest.cases.find(c=>c.id===id);
 

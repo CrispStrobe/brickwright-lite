@@ -118,6 +118,16 @@ export const gateEntries = (yml, npmScripts = {}) => {
     return {shards: [...browser.shards, FPGA], browserShards: [...browser.shards], entries};
 };
 
+/**
+ * Leading JS documentation is not an executable dependency edge. Only remove
+ * the unambiguous prefix before the first code token: no JS parser/dependencies
+ * are available in the scope job. Leave in-body comments and every code/string
+ * byte conservative, and retain the full source for fixture mentions below.
+ */
+const dependencySource = text => text.replace(
+    /^(?:#![^\n]*(?:\n|$))?(?:\s+|\/\/[^\n]*(?:\n|$)|\/\*[\s\S]*?\*\/)*/, ''
+);
+
 /** Walk each entry's import closure. Returns Map<file, Set<label>> and Map<file, text>. */
 export const closureOf = (root, entries) => {
     const reach = new Map();
@@ -141,8 +151,9 @@ export const closureOf = (root, entries) => {
             if (!CODE.test(f)) continue;
             let text = texts.get(f);
             if (text === undefined) { text = readFileSync(path.join(root, f), 'utf8'); texts.set(f, text); }
-            for (const m of text.matchAll(REL)) { const r = resolve(f, m[1]); if (r && /^(?:scripts|test|bin|apps)\//.test(r)) stack.push(r); }
-            for (const m of text.matchAll(ROOT_REL)) if (isFile(m[1])) stack.push(m[1]);
+            const dependencies = dependencySource(text);
+            for (const m of dependencies.matchAll(REL)) { const r = resolve(f, m[1]); if (r && /^(?:scripts|test|bin|apps)\//.test(r)) stack.push(r); }
+            for (const m of dependencies.matchAll(ROOT_REL)) if (isFile(m[1])) stack.push(m[1]);
         }
     }
     return {reach, texts};

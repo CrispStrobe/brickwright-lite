@@ -49,6 +49,10 @@ test('solver preset parses strictly and roundtrips through LDR and MPD',()=>{
   assert.ok(parsed.refusals.some(x=>x.code==='bad-solver-preset'));
   assert.throws(()=>serializeModel(parsed.model),/solver must/);
   assert.throws(()=>compile(parsed.model,catalog,{version:2}),/solver must/);
+  const prepared=prepare(annotation+'\n'+baseline);
+  assert.equal(prepared.mechanism,null,'invalid preset prevents simulation without throwing');
+  assert.ok(prepared.issues.some(x=>x.code==='bad-solver-preset'&&x.severity==='error'));
+  assert.equal(prepared.model.solver,undefined,'display model remains usable in Build');
  }
 });
 
@@ -82,6 +86,19 @@ test('Build import, edit, undo, redo and save/reopen retain the solver preset',(
  ordinary.apply({type:'recolor',id:ordinary.model.parts[0].id,color:changedColor});
  assert.equal(ordinary.model.solver,undefined,'editing ordinary models does not opt in');
  assert.ok(validatePlacedModel({...prepared.model,solver:'typo'},catalog).some(problem=>problem.includes('model.solver')));
+});
+
+test('solver preset and explicit contact pairs survive the same edit, export and upgrade',()=>{
+ const model={version:1,solver:'light-links',internalEdgeRemovalPairs:[['b','a']],parts:['a','b'].map((id,i)=>({id,part:'3001.dat',color:4,position:[i*200,0,0],rotation:[1,0,0,0,1,0,0,0,1]}))};
+ const editor=createEditor({model,catalog});
+ editor.apply({type:'recolor',id:'a',color:1});editor.undo();editor.redo();
+ const parsed=parseModel(serializeModel(editor.model),{catalog});assert.deepEqual(parsed.refusals,[]);
+ assert.equal(parsed.model.solver,'light-links');assert.deepEqual(parsed.model.internalEdgeRemovalPairs,[['b','a']]);
+ const v1=compile(parsed.model,catalog,{ground:false}),v2=compile(parsed.model,catalog,{ground:false,version:2});
+ assert.deepEqual(upgradeMechanismV1(v1).solver,{lightLinks:AUTHORED_LIGHT_LINKS});
+ assert.deepEqual(v2.solver,{lightLinks:AUTHORED_LIGHT_LINKS});
+ assert.deepEqual(v2.internalEdgeRemovalPairs,upgradeMechanismV1(v1).internalEdgeRemovalPairs);
+ assert.equal(v2.internalEdgeRemovalPairs.length,1,'the current contact policy remains active alongside the preset');
 });
 
 const residualReader=prepared=>{
@@ -121,9 +138,8 @@ test('every 5ms startup sample meets unchanged law bounds; removing the preset r
 
 test('real Solstice full program passes while pin_P disconnection loses the unchanged law',async t=>{
  const {runRobotLabProgram}=await import('./helpers/robot-lab-direct-vm.mjs');
- const {heldQ5Contract}=await import('../scripts/lib/sim-lab-q5-held.mjs');
  const {disconnectedSource,actuatorState}=await import('../scripts/lib/robot-lab-qualification.mjs');
- const contract=heldQ5Contract('solstice-pumpjack');
+ const contract={id:'solstice-pumpjack',judge:'walking-beam-v1',parts:93,ports:['A'],coldMs:500,timeLimitMs:90000,afterMs:500,frameMs:25,frozenOutput:'walking_beam',disconnect:['pin_P'],disconnectInputDeg:350,disconnectLoss:'r4'};
  const run=async modelText=>{
   const errors=[];let hooked=false;
   const r=await runRobotLabProgram(program,{...contract,modelText,autoPorts:false,observeFrame:({session,vm})=>{

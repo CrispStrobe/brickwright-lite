@@ -19,7 +19,7 @@
 // matrix}], drawn as the file has it, never simulated or edited, and written back as it was read.
 // Only a matrix that flattens (determinant ~0) or is not finite is `bad-matrix`.
 
-import {det3} from '../contracts.js';
+import {validateInternalEdgeRemovalPairs, det3} from '../contracts.js';
 
 /** Port ids a `0 !BW PORT` line may name: hub output letters, and the numbered inputs of the RCX (1–3) and NXT/EV3 (1–4). */
 const HUB_PORTS = new Set(['A', 'B', 'C', 'D', 'E', 'F', '1', '2', '3', '4']);
@@ -745,6 +745,13 @@ export const parseModel = (text, {catalog} = {}) => {
                 message: 'ROTOR_INERTIA needs exactly one legacy or native setting in the main model'});
         } else model.rotor = value;
     }
+    // Only the main model opts in; submodel comments never change collision policy.
+    const edgeLines = mainLines.filter(l => /^\s*0\s+!BW\s+INTERNAL_EDGE_PAIR(?:\s|$)/i.test(l.text));
+    if (edgeLines.length) {
+        model.internalEdgeRemovalPairs = edgeLines.map(l => l.text.trim().replace(/^0\s+!BW\s+INTERNAL_EDGE_PAIR\s*/i, '').trim().split(/\s+/));
+        const issues = validateInternalEdgeRemovalPairs(model.internalEdgeRemovalPairs, new Set(parts.map(p => p.id)), 'model.internalEdgeRemovalPairs');
+        if (issues.length) refusals.push({line: edgeLines[0].lineNo, severity: 'error', code: 'bad-internal-edge-pair', message: issues.join('; ')});
+    }
     // An authored linkage can explicitly request stronger light-link convergence.
     // A named preset survives export without exposing arbitrary solver counts.
     const solverLines = mainLines.filter(l => /^\s*0\s+!BW\s+SOLVER(?:\s|$)/i.test(l.text));
@@ -837,6 +844,8 @@ export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright 
     if (model.rotor !== undefined && !['legacy', 'native'].includes(model.rotor)) {
         throw new RangeError('rotor must be legacy or native');
     }
+    const edgeProblems = validateInternalEdgeRemovalPairs(model.internalEdgeRemovalPairs, new Set(model.parts.map(p => p.id)), 'model.internalEdgeRemovalPairs');
+    if (edgeProblems.length) throw new RangeError(edgeProblems.join('; '));
     if (model.solver !== undefined && model.solver !== 'light-links') throw new RangeError('solver must be light-links');
     if (![6, 12].includes(precision)) throw new RangeError('LDraw precision must be 6 or 12');
     const number = n => formatNumber(n, precision);
@@ -849,6 +858,7 @@ export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright 
     lines.push(`0 Author: ${author}`);
     if (model.motorDirection !== undefined) lines.push(`0 !BW MOTOR_DIRECTION ${model.motorDirection}`);
     if (model.rotor !== undefined) lines.push(`0 !BW ROTOR_INERTIA ${model.rotor}`);
+    for (const [source, surface] of model.internalEdgeRemovalPairs || []) lines.push(`0 !BW INTERNAL_EDGE_PAIR ${source} ${surface}`);
     if (model.solver !== undefined) lines.push(`0 !BW SOLVER ${model.solver}`);
     if (model.attribution?.license) lines.push(`0 !LICENSE ${model.attribution.license}`);
     for (const d of model.drawings || []) {

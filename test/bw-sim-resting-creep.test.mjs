@@ -3,11 +3,12 @@
 // independent reader. Integrity assertions only; drift values are reported,
 // never accepted or rejected against an invented tolerance.
 import {test} from 'node:test';
+import {readEngineAdmission} from '../scripts/lib/sim-engine-admission.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {loadJolt} from '../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js';
-import {manifest,sha256,sourceIdentities,prepareInputs,buildCase,isolateFrame,runCase} from './fixtures/resting-creep-1435/observe.mjs';
-import {auditRecord,auditAll,recompute,extractRecords,expectedIdentities,PREFIX} from '../scripts/verify-sim-resting-creep.mjs';
+import {manifest,sha256,sourceIdentities,prepareInputs,buildCase,isolateFrame,runCase} from './fixtures/resting-creep-current/observe.mjs';
+import {auditRecord,auditAll,recompute,extractRecords,expectedIdentities,PREFIX} from '../scripts/verify-sim-resting-creep-current.mjs';
 const root=new URL('./fixtures/resting-creep-1435/',import.meta.url);
 
 test('Resting creep: frozen inputs, single-coordinate variant and source identities',()=>{
@@ -19,14 +20,14 @@ test('Resting creep: frozen inputs, single-coordinate variant and source identit
     assert.deepEqual(differing,[change.line-1],'only one source line differs');
     assert.equal(raised[change.line-1],change.from);assert.equal(coplanar[change.line-1],change.to);
     assert.equal(raised[change.line-2],'0 !BW ID base_rail_0');
-    const ids=sourceIdentities();
-    assert.equal(ids.engine.integrity,manifest.engine.integrity);
+    const admitted=readEngineAdmission(),ids=sourceIdentities();
+    assert.equal(ids.engine.integrity,admitted.integrity);
     const pinURL=new URL(ids.engine.resolved);
     assert.equal(pinURL.hostname,'github.com');
     // The producer's release tag names the bytes (bw.9: bw.9-qualified-20261029, not v<version>).
-    assert.equal(pinURL.pathname,'/CrispStrobe/JoltPhysics.js/releases/download/'+manifest.engine.releaseTag+'/jolt-physics-'+manifest.engine.version+'.tgz');
+    assert.equal(pinURL.pathname,'/CrispStrobe/JoltPhysics.js/releases/download/'+admitted.releaseTag+'/jolt-physics-'+admitted.version+'.tgz');
     const lock=JSON.parse(readFileSync(new URL('../packages/scratch-gui/package-lock.json',import.meta.url),'utf8')).packages['node_modules/jolt-physics'];
-    assert.deepEqual({version:lock.version,resolved:lock.resolved,integrity:lock.integrity},{version:manifest.engine.version,resolved:pinURL.href,integrity:manifest.engine.integrity});
+    assert.deepEqual({version:lock.version,resolved:lock.resolved,integrity:lock.integrity},{version:admitted.version,resolved:pinURL.href,integrity:admitted.integrity});
     assert.deepEqual(ids,expectedIdentities().identities,'producer and reader bind the same identities');
 });
 
