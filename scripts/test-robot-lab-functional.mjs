@@ -10,6 +10,8 @@ import {createHash} from 'node:crypto';
 import {createRequire} from 'node:module';
 import {nonFinitePaths, summarizeMotor, functionalFailures} from './lib/robot-lab-functional.mjs';
 const root=fileURLToPath(new URL('../',import.meta.url));
+const runnerSha256=hashRunner();
+function hashRunner(){return createHash('sha256').update(readFileSync(fileURLToPath(import.meta.url))).digest('hex');}
 const sourceHead=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
 const args=Object.fromEntries(process.argv.slice(2).map(x=>{const i=x.indexOf('=');return i<0?[x.replace(/^--/,''),true]:[x.slice(0,i).replace(/^--/,''),x.slice(i+1)];}));
 const hash=x=>createHash('sha256').update(x).digest('hex');
@@ -34,20 +36,29 @@ if(args.child){
     const withSpike=(project.extensions||[]).includes('spikeprime');
     const enginePackagePath=join(root,'packages/scratch-gui/node_modules/jolt-physics/package.json');
     const enginePackage=JSON.parse(readFileSync(enginePackagePath));
-    const report={id,sourceHead,engineVersion:enginePackage.version,enginePackageSha256:hash(readFileSync(enginePackagePath)),motionThresholdDeg:0.1,modelPath,programPath,modelSha256:hash(modelText),programSha256:hash(program),simLimitMs:simMs,
+    const modelSourceCommit=execFileSync('git',['log','-1','--format=%H','--',modelPath],{cwd:root,encoding:'utf8'}).trim();
+    const programSourceCommit=execFileSync('git',['log','-1','--format=%H','--',programPath],{cwd:root,encoding:'utf8'}).trim();
+    const report={id,sourceHead,runnerSha256,modelSourceCommit,programSourceCommit,engineVersion:enginePackage.version,enginePackageSha256:hash(readFileSync(enginePackagePath)),motionThresholdDeg:0.1,modelPath,programPath,modelSha256:hash(modelText),programSha256:hash(program),simLimitMs:simMs,
         withSpike,compileErrors:parsed?.errors||creator.errors||[],compileWarnings:parsed?.warnings||creator.warnings||[],
         partFailures:[],missingOpcodes:[],vmErrors:[],sessionFailures:[],nonfinite:[],steps:0,motors:{},
-        programVariables:{},motorPartCount:0,unboundMotorCount:0,maxBodyDisplacementM:0,maxBodyRadiusM:0,bodyTravel:{},scope:'Finite functional smoke only; no precision, physical accuracy, full GUI, or full-program completion requirement.'};
+        programVariables:{},programFailedObserved:false,invalidPoses:[],bodySanity:{assessed:false,initialBodyExtentM:null,travelBoundM:null,travelOverBound:[],factor:100,floorM:1},motorPartCount:0,unboundMotorCount:0,maxBodyDisplacementM:0,maxBodyRadiusM:0,bodyTravel:{},scope:'Finite functional smoke only; no precision, physical accuracy, full GUI, or full-program completion requirement.'};
     const motorSamples=new Map(),initialBodies=new Map(),finite=new Set(),failures=new Set();
     const collect=({session,hub,prepared},count=true)=>{
         if(count)report.steps++;
         if(session.failed)failures.add(String(session.failed));
         for(const a of prepared.mechanism.actuators){
-            const port=a.port,index=typeof port==='number'?port:port.charCodeAt(0)-65,m=hub.data.motors[index],c=hub.backend._controllers[index];
-            const samples=motorSamples.get(port)||[];samples.push({position:m?.position,mode:c?.mode});motorSamples.set(port,samples);
+            const port=a.port,owner=(session.hubs.length===1?session.hubs[0]:session.hubs.find(h=>h.id===a.hub)||(!a.hub?session.hubs[0]:null))?.hub;
+            const reading=owner?.readPort?.(port),index=typeof port==='number'?port:port.charCodeAt(0)-65;
+            const c=owner?.motors?.get?.(port)||owner?.hubState?.backend?._controllers?.[index];
+            const mode=reading?.mode||c?.mode,requested=mode==='power'?(c?.power??c?.requested):(c?.speedDps??c?.requested);
+            const nonzeroDrive=['speed','power','position','time','servo'].includes(mode)&&Number.isFinite(requested)&&Math.abs(requested)>0;
+            const position=session.core.jointState(a.joint).angle*180/Math.PI;
+            const key=(a.hub?String(a.hub)+':':'')+port;
+            const samples=motorSamples.get(key)||[];samples.push({position,mode,nonzeroDrive});motorSamples.set(key,samples);
         }
         const poses={};for(const b of prepared.mechanism.bodies.filter(b=>b.motion==='dynamic')){
             const p=session.core.bodyPose(b.id);poses[b.id]=p;
+            if(!Array.isArray(p?.position)||p.position.length!==3||!Array.isArray(p?.rotation)||p.rotation.length!==4){if(!report.invalidPoses.includes(b.id))report.invalidPoses.push(b.id);continue;}
             const v=p.position||p.pos||p.p;if(Array.isArray(v)){
                 if(!initialBodies.has(b.id))initialBodies.set(b.id,v.slice());
                 const initial=initialBodies.get(b.id),travel=Math.hypot(...v.map((x,i)=>x-initial[i]));
@@ -72,12 +83,24 @@ if(args.child){
             for(const emitter of [vm,vm.runtime])for(const event of ['ERROR','BLOCKS_ERROR'])emitter.on(event,e=>report.vmErrors.push(String(e)));
             report.missingOpcodes=[...new Set(vm.runtime.targets.flatMap(t=>Object.values(t.blocks._blocks)).filter(b=>!(b.opcode in vm.runtime._primitives)&&!(b.opcode in vm.runtime._hats)&&!(Object.keys(b.fields||{}).length===1&&Object.keys(b.inputs||{}).length===0)).map(b=>b.opcode))];
             collect(ctx,false);
-        },observeFrame:ctx=>{collect(ctx);report.programVariables=Object.fromEntries(ctx.vm.runtime.targets.flatMap(t=>Object.values(t.variables||{}).filter(v=>v.type!=='list').map(v=>[v.name,v.value])));return null;}});
+        },observeFrame:ctx=>{collect(ctx);report.programVariables=Object.fromEntries(ctx.vm.runtime.targets.flatMap(t=>Object.values(t.variables||{}).filter(v=>v.type!=='list').map(v=>[v.name,v.value])));if(Number(report.programVariables.failed)===1)report.programFailedObserved=true;return null;}});
     report.finishedAt=r.finishedAt;report.simulatedMs=r.track.at(-1)?.t;report.sessionFailures=[...failures];report.nonfinite=[...finite];
+    report.vmErrors=[...new Set([...report.vmErrors,...(r.vmErrors||[])])];
+    const initialPositions=[...initialBodies.values()];
+    if(initialPositions.length){
+        const low=[0,1,2].map(i=>Math.min(...initialPositions.map(v=>v[i]))),high=[0,1,2].map(i=>Math.max(...initialPositions.map(v=>v[i])));
+        report.bodySanity.initialBodyExtentM=Math.hypot(...high.map((v,i)=>v-low[i]));
+        report.bodySanity.travelBoundM=Math.max(report.bodySanity.floorM,report.bodySanity.factor*report.bodySanity.initialBodyExtentM);
+        report.bodySanity.assessed=report.invalidPoses.length===0&&Number.isFinite(report.bodySanity.travelBoundM);
+        report.bodySanity.travelOverBound=Object.entries(report.bodyTravel).filter(([,travel])=>travel>report.bodySanity.travelBoundM).map(([body])=>body);
+    }
+    report.execution=r.finishedAt?'COMPLETED':'BOUNDED_PARTIAL';
     report.motors=Object.fromEntries([...motorSamples].map(([p,s])=>[p,summarizeMotor(s)]));
     report.failures=functionalFailures(report);
     if(report.unboundMotorCount)report.failures.push('unbound-motor:'+report.unboundMotorCount);
-    if(Number(report.programVariables.failed)===1)report.failures.push('program-failed-flag');report.status=report.failures.length?'FAIL':'PASS';
+    if(report.programFailedObserved)report.failures.push('program-failed-flag');
+    report.failures.push(...report.invalidPoses.map(id=>'invalid-pose:'+id),...report.bodySanity.travelOverBound.map(id=>'body-travel-over-sanity-bound:'+id));
+    report.needsLongerRun=!r.finishedAt&&report.failures.length>0&&report.failures.every(f=>f.startsWith('motor:'));report.status=report.failures.length?(report.needsLongerRun?'INCONCLUSIVE':'FAIL'):'PASS';
     writeFileSync(String(args.result),JSON.stringify(report,null,2)+'\n');
     process.exit(report.status==='PASS'?0:1);
 }else{
@@ -92,6 +115,7 @@ if(args.child){
         const child=spawnSync(process.execPath,['--max-old-space-size=768','--import',join(root,'scripts/lib/register-gui-scope.mjs'),fileURLToPath(import.meta.url),'--child='+id,'--result='+result,'--sim-ms='+simMs],{cwd:root,timeout:wallMs,maxBuffer:4*1024*1024,encoding:'utf8'});
         writeFileSync(log,(child.stdout||'')+(child.stderr||''));
         let row;try{row=JSON.parse(readFileSync(result));}catch{row={id,status:child.error?.code==='ETIMEDOUT'?'FAIL':'BLOCKED',failures:[child.error?.code==='ETIMEDOUT'?'PROCESS_TIMEOUT':'PROCESS_ERROR_UNATTRIBUTED'],error:String(child.error||child.signal||child.status)};writeFileSync(result,JSON.stringify(row,null,2)+'\n');}
+        if(row.status==='PASS'&&(child.status!==0||child.error||child.signal)){row.status='BLOCKED';row.failures.push('NONZERO_CHILD_EXIT');writeFileSync(result,JSON.stringify(row,null,2)+'\n');}
         results.push(row);console.log(`${id}: ${row.status} ${row.failures?.join(';')||''}`);
         const summary={schema:1,sourceHead,simMs,wallMs,models:results};writeFileSync(join(out,'functional-summary.json'),JSON.stringify(summary,null,2)+'\n');
     }

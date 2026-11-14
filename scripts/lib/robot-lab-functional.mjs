@@ -9,9 +9,10 @@ export function summarizeMotor(samples) {
     const positions = samples.map(s => s.position);
     const finite = positions.length > 1 && positions.every(Number.isFinite);
     const travelDeg = finite ? Math.max(...positions) - Math.min(...positions) : null;
-    const commanded = samples.some(s => !['idle', 'coast', 'brake', 'hold', undefined].includes(s.mode));
-    return {samples: samples.length, commanded, travelDeg, moved: finite && travelDeg >= 0.1,
-        status: !finite ? 'NONFINITE_OR_NO_OBSERVATIONS' : travelDeg >= 0.1 ? 'MOVED' : commanded ? 'COMMANDED_STATIONARY' : 'UNCOMMANDED_STATIONARY'};
+    const commanded = samples.some(s => s.nonzeroDrive === true);
+    const modes = [...new Set(samples.map(s=>s.mode))];
+    return {samples: samples.length, commanded, modes, travelDeg, moved: finite && travelDeg >= 0.1,
+        status: !finite ? 'NONFINITE_OR_NO_OBSERVATIONS' : travelDeg >= 0.1 ? (commanded ? 'MOVED' : 'UNCOMMANDED_MOVED') : commanded ? 'COMMANDED_STATIONARY' : 'UNCOMMANDED_STATIONARY'};
 }
 export function functionalFailures(report) {
     return [
@@ -21,7 +22,7 @@ export function functionalFailures(report) {
         ...report.nonfinite.map(x => `nonfinite:${x}`),
         ...report.sessionFailures.map(x => `session:${x}`),
         ...report.missingOpcodes.map(x => `opcode:${x}`),
-        ...Object.entries(report.motors).filter(([,m]) => !m.moved).map(([p,m]) => `motor:${p}:${m.status}`),
+        ...Object.entries(report.motors).filter(([,m]) => !m.moved || !m.commanded).map(([p,m]) => `motor:${p}:${m.status}`),
         ...(report.steps > 0 ? [] : ['no-vm-steps'])
     ];
 }
