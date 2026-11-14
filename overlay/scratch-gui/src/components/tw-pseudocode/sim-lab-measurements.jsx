@@ -130,8 +130,10 @@ class SimLabMeasurements extends React.Component {
         const raw = editor?.targets || this.state.targets;
         const targets = Array.from({length: spec.targets || 0}, (_, i) => raw[i] || (!editor && this.props.parts[Math.min(i, this.props.parts.length - 1)]?.id) || '');
         if (targets.some(id => !this.props.parts.some(p => p.id === id))) return null;
-        const joint = spec.joint && this.props.mechanism.joints.find(j => j.type === spec.joint && j.id === (editor?.joint || this.state.joint));
-        const rope = spec.rope && (this.props.mechanism.couplings || []).find(r => r.kind === 'rope' && r.id === (editor?.rope || this.state.rope));
+        const joints = this.props.mechanism.joints.filter(j => j.type === spec.joint);
+        const ropes = (this.props.mechanism.couplings || []).filter(r => r.kind === 'rope');
+        const joint = spec.joint && (joints.find(j => j.id === (editor ? editor.joint : this.state.joint)) || (!editor && joints[0]));
+        const rope = spec.rope && (ropes.find(r => r.id === (editor ? editor.rope : this.state.rope)) || (!editor && ropes[0]));
         if (spec.joint && !joint || spec.rope && !rope) return null;
         const binding = joint ? jointBinding(this.props.mechanism, joint) : rope ? ropeBinding(rope) : '';
         if (editor && binding && editor.selectedBinding !== binding) return null;
