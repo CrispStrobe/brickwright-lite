@@ -455,14 +455,15 @@ export const createEditor = ({model, catalog}) => {
                 const {ids, offset} = cmd;
                 if (!Array.isArray(ids) || ids.length === 0) throw new Error('cloneMany needs ids');
                 for (const pid of ids) if (!hasPart(pid)) throw new Error(`unknown id '${pid}'`);
+                const selection = [...new Set(ids)];
                 const off = offset || [40, 0, 0];
                 if (!Array.isArray(off) || off.length !== 3) throw new Error('bad offset');
                 // Ports for the copies (in model order).
-                const partsToCopy = ids.map(pid => current.parts.find(p => p.id === pid));
+                const partsToCopy = selection.map(pid => current.parts.find(p => p.id === pid));
                 const ports = portsForCopies(current, catalogMap, partsToCopy);
                 const origToCloneId = new Map();
                 let parts = current.parts;
-                ids.forEach((pid, i) => {
+                selection.forEach((pid, i) => {
                     const orig = partsToCopy[i];
                     const port = ports[i];
                     const newPos = [orig.position[0] + off[0], orig.position[1] + off[1], orig.position[2] + off[2]];
@@ -473,8 +474,8 @@ export const createEditor = ({model, catalog}) => {
                 let groups = current.groups || null;
                 if (current.groups) {
                     groups = current.groups.slice();
-                    for (const og of current.groups.filter(g => g.parts.some(pid => ids.includes(pid)))) {
-                        const clonedParts = og.parts.filter(pid => ids.includes(pid)).map(pid => origToCloneId.get(pid));
+                    for (const og of current.groups.filter(g => g.parts.some(pid => selection.includes(pid)))) {
+                        const clonedParts = og.parts.filter(pid => selection.includes(pid)).map(pid => origToCloneId.get(pid));
                         if (clonedParts.length >= 2) groups.push({id: nextGroupId({groups}), name: og.name, parts: clonedParts});
                     }
                 }
