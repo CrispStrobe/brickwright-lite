@@ -574,6 +574,8 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'playerButtonPressed',blockType:Scratch.BlockType.BOOLEAN,text:'Arcade player [PLAYER] button [BUTTON] pressed?',arguments:{...str('PLAYER',''),...n('BUTTON',0)}},
           {opcode:'registerButtonHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register button [BUTTON] event [EVENT] as [TOKEN] capturing [CAPTURES]',arguments:{BUTTON:{type:Scratch.ArgumentType.STRING,menu:'buttons',defaultValue:'a'},EVENT:{type:Scratch.ArgumentType.NUMBER,menu:'buttonEvents',defaultValue:2049},...str('TOKEN','handler'),...str('CAPTURES','')}},
           {opcode:'whenRegisteredButton',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade button handler [TOKEN] runs',arguments:str('TOKEN','handler')},
+          {opcode:'registerInstanceOverlapHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register instance overlap of [ID] as [TOKEN] capturing [CAPTURES]',arguments:{...str('ID',''),...str('TOKEN','handler'),...str('CAPTURES','')}},
+          {opcode:'whenRegisteredInstanceOverlap',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade instance overlap handler [TOKEN] runs',arguments:str('TOKEN','handler')},
           {opcode:'registerInstanceDestroyedHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register instance destruction of [ID] as [TOKEN] capturing [CAPTURES]',arguments:{...str('ID',''),...str('TOKEN','handler'),...str('CAPTURES','')}},
           {opcode:'whenRegisteredInstanceDestroyed',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade instance destruction handler [TOKEN] runs',arguments:str('TOKEN','handler')},
           {opcode:'registerDestroyedHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register destroyed kind [KIND] as [TOKEN] capturing [CAPTURES]',arguments:{...str('KIND','Player'),...str('TOKEN','handler'),...str('CAPTURES','')}},
@@ -3666,6 +3668,20 @@ module.exports = makeExt(`// Name: Arcade
       };
       return created && typeof created.then === 'function' ? created.then(finish) : finish(created);
     }
+    registerInstanceOverlapHandler(args,util) {
+      const sprite=this._spriteValues.get(String(args.ID)) || this._state().sprites[String(args.ID)];if(!sprite)return;
+      sprite._overlapRegistration=this._handlerRegistration(args,util);
+    }
+    whenRegisteredInstanceOverlap(args,util) {return this.whenRegisteredWall(args,util);}
+    *_instanceOverlapSteps(receiver,other) {
+      const clock=this._sourceSceneTimers()?this._programClockEpoch:null;
+      yield new Promise(resolve=>(clock?clock.setTimeout:setTimeout)(resolve,0));
+      if(this._terrainStopped || this._spriteValues.get(receiver.id)!==receiver)return false;
+      // The historical SDK reads the replacing slot when the fiber starts.
+      const registration=receiver._overlapRegistration;if(!registration)return false;
+      return yield* this._registeredCallbackSteps([registration],'arcade_whenRegisteredInstanceOverlap',
+        {first:receiver.id,second:other.id},undefined,false);
+    }
     registerInstanceDestroyedHandler(args,util) {
       const id=String(args.ID),state=this._state();
       const sprite=this._spriteValues.get(id) || state.sprites[id];if(!sprite)return;
@@ -3940,7 +3956,7 @@ module.exports = makeExt(`// Name: Arcade
       const pair=[first.id,second.id].sort().join('|');if(owner.overlapLocks.has(pair) || !matches.length)return;
       owner.overlapLocks.add(pair);let remaining=matches.length;
       for(const h of matches){
-        const flipped=h.kind!==first.kind,a=flipped?second:first,b=flipped?first:second;
+        const flipped=h.instanceReceiver?h.instanceReceiver!==first.id:h.kind!==first.kind,a=flipped?second:first,b=flipped?first:second;
         const finish=()=>{if(--remaining===0)owner.overlapLocks.delete(pair);};
         let work;
         if(h.legacy){
@@ -3948,22 +3964,28 @@ module.exports = makeExt(`// Name: Arcade
           thread.bwArcadeEvent={A:h.kind,B:h.otherKind,first:a.id,second:b.id};
           // A hat-based handler that ends in an uncaught exception keeps its pair overlapping, like a dead fiber.
           work=new Promise(resolve=>this._terrainWaits.add({thread,resolve})).then(()=>!!exceptionOwners.get(this).failure(thread));
-        }else work=this._runTerrainGenerator(this._registeredCallbackSteps([h],'arcade_whenRegisteredOverlap',{first:a.id,second:b.id,deferredFiber:true},undefined,true));
+        }else if(h.instanceReceiver)work=this._runTerrainGenerator(this._instanceOverlapSteps(a,b));
+        else work=this._runTerrainGenerator(this._registeredCallbackSteps([h],'arcade_whenRegisteredOverlap',{first:a.id,second:b.id,deferredFiber:true},undefined,true));
         // PXT removes the pair from _overlappers after the handler returns; a dead fiber leaves it overlapping.
         if(work?.then)work.then(faulted=>{if(faulted!==true)finish();},error=>{finish();throw error;});else if(work!==true)finish();
       }
     }
     _physicsOverlapRounds(grid,handlers,owner) {
-      if(!handlers.length)return;
+      const instanceOverlap=Object.values(owner.sprites).some(sprite=>sprite._overlapRegistration);
+      if(!handlers.length && !instanceOverlap)return;
       const checked=new Set(),blocked=s=>s._destroyed || s.flags&(2|spriteFlags.GhostThroughSprites|spriteFlags.RelativeToCamera);
       for(const bucket of grid.filled){
         if(bucket.length===1)continue;
         for(const first of bucket){if(blocked(first))continue;
           for(const second of bucket){
-            if(first===second)continue;
+            if(first===second || blocked(second))continue;
             const pair=[first.id,second.id].sort().join('|');if(checked.has(pair))continue;checked.add(pair);
             if(owner.overlapLocks?.has(pair))continue;
             const matches=handlers.filter(h=>(h.kind===first.kind && h.otherKind===second.kind)||(h.kind===second.kind && h.otherKind===first.kind));
+            if(instanceOverlap) {
+              const receiver=[first,second].sort((a,b)=>a.pxtId-b.pxtId).find(sprite=>sprite._overlapRegistration);
+              if(receiver)matches.unshift({...receiver._overlapRegistration,instanceReceiver:receiver.id});
+            }
             if(!matches.length)continue;
             const higher=first.pxtId>second.pxtId?first:second,lower=higher===first?second:first;
             if(this.spriteOverlaps({A:higher.id,B:lower.id}))this._queueOverlapPair(first,second,matches,owner);
@@ -3981,7 +4003,7 @@ module.exports = makeExt(`// Name: Arcade
       const ratio=((engine.maxVelocity<<8)/engine.minSingleStep)|0;
       const count=(Math.trunc(Math.imul(ratio,Math.trunc(dtMs))/1000)+128)>>8;
       for(let round=0;round<count && movers.length;round++){
-        const remaining=[];
+        const remaining=[],instanceOverlap=live.some(sprite=>sprite._overlapRegistration);
         for(const motion of movers){
           const sprite=motion.sprite;
           for(const axis of ['x','y']){
@@ -3997,7 +4019,8 @@ module.exports = makeExt(`// Name: Arcade
           motion.dx-=dx;motion.dy-=dy;
           sprite._fx=(sprite._fx+dx)|0;sprite._fy=(sprite._fy+dy)|0;
           if(!sprite._destroyed && !(sprite.flags&(2|spriteFlags.GhostThroughSprites|spriteFlags.RelativeToCamera)) &&
-            [...this._overlapHandlers,...handlers.filter(h=>h.legacy)].some(h=>h.kind===sprite.kind || h.otherKind===sprite.kind))this._physicsInsert(grid,sprite);
+            (instanceOverlap ||
+            [...this._overlapHandlers,...handlers.filter(h=>h.legacy)].some(h=>h.kind===sprite.kind || h.otherKind===sprite.kind)))this._physicsInsert(grid,sprite);
           if(map)yield* this._collideTileWallsSteps(sprite,map,dx,dy,motion);
           if(epoch!==this._terrainEpoch || this._state()!==owner)return;
           this._clampSprite(sprite);

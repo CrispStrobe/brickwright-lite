@@ -27,6 +27,7 @@ import art from './sb3-creator-vector-art.js';
 import spikeRuntimeOps from './spike-runtime-ops.js';
 import {LEGACY_IDS as SPIKE_LEGACY_IDS} from './spike-legacy-migration.js';
 import {withRobotLab, ROBOTLAB_RUNTIME} from './robot-lab-pseudocode.js';
+import withArcadeInstanceOverlap from './arcade-instance-overlap-pseudocode.js';
 import {withMenuShapes} from './extension-menu-args.js';
 
 // Returns the entry count; ignored here, asserted by the tests (246 as of 2026-08-30).
@@ -59,7 +60,7 @@ for (const legacyId of SPIKE_LEGACY_IDS) {
 // door, on the byte-identical vendored compiler (lib/robot-lab-pseudocode.js); the word
 // table is lib/robotLabDialect.js. test/robot-lab-dialect.test.mjs holds the round trips.
 SB3Creator.RUNTIME_EXTENSIONS.robotlab = ROBOTLAB_RUNTIME;
-const WithRobotLab = withRobotLab(SB3Creator);
+const WithRobotLab = withArcadeInstanceOverlap(withRobotLab(SB3Creator));
 
 // Peer sessions (task E11): the peer dialect words are Lite-only and exist only in a build
 // made with BW_ENABLE_PEERS=1 (a DefinePlugin literal; in node, process.env holds strings, so

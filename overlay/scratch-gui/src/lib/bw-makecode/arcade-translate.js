@@ -2063,10 +2063,11 @@ class ArcadeTranslator extends BaseTranslator {
             else if (node.callee.name === 'say' || node.callee.name === 'sayText') {
                 this.spriteSpeech(handle, node.callee.name, a, push);
             }
-            else if (node.callee.name === 'onDestroyed') {
+            else if (['onDestroyed', 'onOverlap'].includes(node.callee.name)) {
+                const overlap = node.callee.name === 'onOverlap';
                 const registration = this.sceneRegistrations.get(node);
-                if (registration) push(`arcade register instance destruction of (${handle}) as "${registration.token}" capturing ${JSON.stringify([...registration.ownCaptures].join(' '))}`);
-                else push(this.note('sprite.onDestroyed() requires one inline callback without parameters and a typed sprite reference'));
+                if (registration) push(`arcade register instance ${overlap ? 'overlap' : 'destruction'} of (${handle}) as "${registration.token}" capturing ${JSON.stringify([...registration.ownCaptures].join(' '))}`);
+                else push(this.note(overlap ? 'sprite.onOverlap() requires one inline callback with zero parameters or one Sprite-typed parameter and a typed sprite reference' : 'sprite.onDestroyed() requires one inline callback without parameters and a typed sprite reference'));
             }
             else if (node.callee.name === 'setKind') push(`arcade set kind of ${handle} to ${this.kindSlot(a[0])}`);
             else if (node.callee.name === 'setFlag' && this.path(a[0]) === 'SpriteFlag.AutoDestroy') {
@@ -4243,17 +4244,18 @@ const discoverRuntimeRegistrations = (ast, translator) => {
             for (const param of node.params || []) bindings.set(param, {key:translator.varName(param),owner});
             for (const local of localNames(node.body)) bindings.set(local, {key:local,owner});
         }
-        const instance=node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='onDestroyed' && translator.spriteReferences.has(node.callee.object);
+        const instance=node.type==='Call' && node.callee?.type==='Member' && ['onDestroyed','onOverlap'].includes(node.callee.name) && translator.spriteReferences.has(node.callee.object);
         const externalName=node.type==='Call' && node.callee?.type==='Member' && translator.externalName(node.callee);
         const externalHandler=externalName && node.args?.length && node.args[node.args.length-1]?.type==='FunctionExpression'?
             {kind:'external',handlerIndex:node.args.length-1,arity:node.args.length,prefix:'__bwExternal',maxParams:0}:null;
-        const baseSpec=instance?{kind:'instanceDestroyed',handlerIndex:0,arity:1,prefix:'__bwInstanceDestroyed',maxParams:0}:node.type==='Call' && (specs[translator.path(node.callee)] || (translator.sceneStackProgram || isIndependentRegistration(translator.path(node.callee))) && sceneRegistrationSpec(translator.path(node.callee)));
+        const baseSpec=instance?(node.callee.name==='onOverlap'?{kind:'instanceOverlap',handlerIndex:0,arity:1,prefix:'__bwInstanceOverlap',maxParams:1}:{kind:'instanceDestroyed',handlerIndex:0,arity:1,prefix:'__bwInstanceDestroyed',maxParams:0}):node.type==='Call' && (specs[translator.path(node.callee)] || (translator.sceneStackProgram || isIndependentRegistration(translator.path(node.callee))) && sceneRegistrationSpec(translator.path(node.callee)));
         const spec=externalHandler||baseSpec;
         if (spec && (spec.kind!=='score'||translator.scoreRegistrationProof.has(node))) {
             const handler=node.args?.[spec.handlerIndex];
             const kind=node.args?.[0];
             const nativeScene=spec.maxParams!==undefined;
             const validScene=nativeScene && handler?.params?.length<=spec.maxParams &&
+                (spec.kind!=='instanceOverlap' || handler.params.every(param=>{const type=handler.paramTypes?.[param];return type==='Sprite' || type?.text==='Sprite' && !type.isArray;})) &&
                 (spec.kinds||[]).every(index=>fixedKind(node.args[index])) &&
                 (!['scenePush','scenePop'].includes(spec.kind) || !handler.params.length || !containsAst(handler.body,value=>value.type==='Identifier' && value.name===handler.params[0]));
             if (handler?.type==='FunctionExpression' && (spec.arities?spec.arities.includes(node.args.length):node.args.length===spec.arity) &&
@@ -4318,13 +4320,13 @@ const emitSceneRegistrations = (translator,out,localHandles=new Map(),callbackLo
         translator.capturedBindings=captures;
         translator.localVars=new Set([...locals,...handler.params]);
         translator.currentParameters=new Set(handler.params);
-        const spriteParams=kind==='destroyed'?handler.params.slice(0,1):kind==='overlap'?handler.params.slice(0,2):[];
+        const spriteParams=kind==='instanceOverlap'?handler.params.slice(0,1):kind==='destroyed'?handler.params.slice(0,1):kind==='overlap'?handler.params.slice(0,2):[];
         translator.localHandleVars=new Set([...(localHandles.get(callbackLocals.get(handler)) || []),...spriteParams]);
         translator.handleAliases=new Map();
-        const label=kind==='controlEvent'?'control event':kind==='multiplayerConnection'?'multiplayer connection':kind==='multiplayerButton'?'multiplayer button':kind==='scenePush'?'scene push':kind==='scenePop'?'scene pop':kind==='instanceDestroyed'?'instance destruction':kind==='destroyed'?'destroyed kind':kind==='lifeZero'?'life zero':kind;
+        const label=kind==='controlEvent'?'control event':kind==='multiplayerConnection'?'multiplayer connection':kind==='multiplayerButton'?'multiplayer button':kind==='scenePush'?'scene push':kind==='scenePop'?'scene pop':kind==='instanceOverlap'?'instance overlap':kind==='instanceDestroyed'?'instance destruction':kind==='destroyed'?'destroyed kind':kind==='lifeZero'?'life zero':kind;
         out.push(`WHEN arcade ${label} handler "${token}" runs:`);
         if(['multiplayerButton','multiplayerConnection'].includes(kind) && handler.params[0])out.push(`  arcade set local ${translator.varName(handler.params[0])} to arcade event player`);
-        for(const [index,param] of spriteParams.entries())out.push(`  arcade set local ${translator.varName(param)} to arcade event ${index===0?'first':'second'}`);
+        for(const [index,param] of spriteParams.entries())out.push(`  arcade set local ${translator.varName(param)} to arcade event ${kind==='instanceOverlap'?'second':index===0?'first':'second'}`);
         translator.block(handler.body,1,out);out.push('');
         translator.capturedBindings=previous.captures;translator.localVars=previous.locals;translator.currentParameters=previous.parameters;translator.localHandleVars=previous.handles;translator.handleAliases=previous.aliases;
     }

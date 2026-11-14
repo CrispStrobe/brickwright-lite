@@ -16,6 +16,7 @@ function analyseConsoleCaptures({targets, blocks, input, literal}) {
         ['arcade_registerPaintHandler','arcade_whenRegisteredPaint'],
         ['arcade_registerShadeHandler','arcade_whenRegisteredShade'],
         ['arcade_registerInstanceDestroyedHandler','arcade_whenRegisteredInstanceDestroyed'],
+        ['arcade_registerInstanceOverlapHandler','arcade_whenRegisteredInstanceOverlap'],
         ['arcade_registerDestroyedHandler','arcade_whenRegisteredKindDestroyed'],
         ['arcade_registerOverlapHandler','arcade_whenRegisteredOverlap'],
         ['arcade_registerScenePushHandler','arcade_whenRegisteredScenePush'],
