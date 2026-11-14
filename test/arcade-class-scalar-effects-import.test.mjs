@@ -170,3 +170,22 @@ test('setter bitwise NOT recursively checks actual formals and initialized own f
  refused(base.replace('constructor(public n:number){}','n:number;constructor(n:number){}'));
  refused(base.replace('this.n=~(v+this.n)','v=2;this.n=~(v+this.n)'));
 });
+
+
+test('binary bitwise getters require both closed Number operands without coercing mixed producers',()=>{
+ const expressions=['this.n|1','this.n&3','this.n^7','this.n<<2','this.n>>2','this.n>>>2',
+  '(this.n+1)|(~this.n)','(this.n*1e308-this.n*1e308)^this.n'];
+ for(const expression of expressions)accepted(scalarAccessorSource.replace('return this.n','return '+expression));
+ for(const op of ['|','&','^','<<','>>','>>>']){
+  const source=scalarAccessorSource.replace('return this.n',`return this.n${op}1`);
+  for(const extra of ['box.n=<any>"x";','box.n=<any>true;','box.n=<any>undefined;',
+   'box.value=<any>"x";','let alias=box;','function capture(){box.n=<any>true}',
+   'box["n"]=<any>"x";'])refused(source+extra);
+  for(const operand of ['<any>"x"','<any>true','<any>undefined','this.value','trace','take(this.n)','external']){
+   refused(source.replace(`this.n${op}1`,`this.n${op}(${operand})`));
+   refused(source.replace(`this.n${op}1`,`(${operand})${op}this.n`));
+  }
+  refused(source.replace('new Box(2)','new Box(<any>"x")'));
+  refused(source.replace('constructor(public n:number){}','n:number;constructor(n:number){}'));
+ }
+});
