@@ -217,6 +217,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     // ---- state ---------------------------------------------------------------
     // Drawn on demand: a frame is drawn only when something in it changed (render below). On a
     // software GPU a 2,000-part model takes seconds to draw, so an idle view must not redraw it.
+    let disposed = false;
     let dirty = true;
     const invalidate = () => { dirty = true; };
     const meshes = new Map(); // id → Mesh
@@ -1806,12 +1807,15 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         return true;
     };
     const paste = async () => {
+        if (disposed) return false;
         // Our copy is the newest thing to paste and is here already: no need to wait for the system clipboard.
         if (clipboard.length && !systemHasCopy) return pasteText(null);
         let text = null;
         try {
             text = navigator.clipboard && navigator.clipboard.readText ? await navigator.clipboard.readText() : null;
         } catch { /* not allowed: what was copied here */ }
+        // Closing the view also cancels a pending clipboard read or permission prompt.
+        if (disposed) return false;
         return pasteText(text);
     };
     const undo = () => {
@@ -3030,6 +3034,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         return true;
     };
     const dispose = () => {
+        disposed = true;
         unsubscribe();
         dropFences();
         if (paletteDrag) detachPaletteDrag();
