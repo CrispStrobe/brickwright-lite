@@ -1,3 +1,4 @@
+import {bindScoreImageSource,scoreImageBindingView} from './score-owned-image-source.js';
 import {numberPromptLengthSourceSafe,markNumberPromptLengths,literalNumberPromptLength,markDefaultTextPrompts,literalDefaultTextPrompt} from './number-prompt-length-source.js';
 import {MUSIC_MELODIES} from './music-melodies.js';
 import {lowerSourceValueOperatorHelpers} from './source-value-operator-helpers.js';
@@ -4153,8 +4154,9 @@ const SCORE_REGISTRATION_APIS = new Map([...['info','info.player1','info.player2
 const scoreRegistrationProof = program => {
     const pathOf=node=>node?.type==='Identifier'?node.name:node?.type==='Member'?pathOf(node.object)+'.'+node.name:null;
     if(!containsAst(program,node=>node.type==='Call'&&SCORE_REGISTRATION_APIS.has(pathOf(node.callee))))return {has:()=>false};
-    const proof=inspectGeneratedHelperBindings(program,GENERATED_HELPER_PROFILES.ordinary);
-    if(!proof.isCurrent())return {has:()=>false};
+    let proof=inspectGeneratedHelperBindings(program,GENERATED_HELPER_PROFILES.ordinary),view=null;
+    if(!proof.isCurrent()){view=scoreImageBindingView(program);if(view)proof=inspectGeneratedHelperBindings(view.program,GENERATED_HELPER_PROFILES.ordinary);}
+    if(!proof.isCurrent()||view&&!view.current())return {has:()=>false};
     const methods=['score','hasScore','setScore','changeScoreBy','life','hasLife','setLife','changeLifeBy','onLifeZero','onScore'];
     const publicCalls=new Set(['info','info.player1','info.player2','info.player3','info.player4'].flatMap(root=>methods.map(method=>root+'.'+method)));
     for(const method of ['startCountdown','stopCountdown','onCountdownEnd','showScore','showLife','showCountdown'])publicCalls.add('info.'+method);
@@ -4176,12 +4178,14 @@ const scoreRegistrationProof = program => {
     for(const node of proof.nodes)if(node.type==='Call'&&SCORE_REGISTRATION_APIS.has(pathOf(node.callee))){
         let root=node.callee;while(root?.type==='Member')root=root.object;
         if(!node.args?.length)continue;
-        const types=facts.typesAt(node.args[0]);
+        const actual=view?view.originalOf(node):node;
+        if(view&&(actual?.args?.[0]?.type!=='Number'||!Number.isFinite(Number(actual.args[0].value))))continue;
+        const types=facts.typesAt(actual.args[0]);
         const internal=pathOf(node.callee)==='info.player1.impl.onScore';
         if(!node.isNew&&!node.constructorCall&&!node.optional&&!node.typeArguments?.length&&!node.args.some(arg=>arg?.type==='Spread')&&
-            proof.unbound(root)&&types.size&&[...types].every(type=>type==='Number')&&(!internal||pureRead(node.args[0])))selected.add(node);
+            proof.unbound(root)&&types.size&&[...types].every(type=>type==='Number')&&(!internal||pureRead(actual.args[0])))selected.add(actual);
     }
-    return {has:node=>proof.isCurrent()&&selected.has(node)};
+    return {has:node=>proof.isCurrent()&&(!view||view.current())&&selected.has(node)};
 };
 const isInfoRegistration = name => SCORE_REGISTRATION_APIS.has(name)||/^info(?:\.player[1-4])?\.onLifeZero$/.test(name || '') || name==='info.onCountdownEnd';
 const isForeverRegistration = name => ['forever','game.forever','basic.forever'].includes(name);
@@ -5748,6 +5752,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     }
     projectInputDiagnostics.push(...built.diagnostics);
     const ast = built.ast;
+    if(source.includes('onScore')&&source.includes('assets.image'))bindScoreImageSource(ast,map);
     const sharedImageTransport = currentSharedImageArrayTransport(ast);
     // Issue only for the actual chosen output, after transport finishing or
     // ordinary-current fallback. No abandoned build transfers an emission fact.
