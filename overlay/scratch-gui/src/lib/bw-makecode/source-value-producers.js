@@ -1,3 +1,4 @@
+import {highScoreIntrinsic} from './high-score-source.js';
 import {proveLocalArrayFamilyReads} from './local-array-family-entry.js';
 import {inspectNativeArrayAddHelpers} from './native-array-binary-helper-source.js';
 import {createOrdinaryFrameDeltaNumberSource} from './ordinary-frame-delta-number-source.js';
@@ -407,6 +408,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         else if(['Undefined','Null','String','Number','Boolean'].includes(node.type))add(current,node.type);
         else if(node.type==='Member'&&frameDeltaNumbers?.isNumberRead(node)){frameDeltaNumberUsed=true;add(current,'Number');}
         else if(musicNumbers?.has(node)){musicNumberUsed=true;add(current,'Number');}
+        else if(highScoreIntrinsic(node))add(current,'Number');
         else if(ordinaryNumbers?.has(node)||sceneBackgroundNumbers?.has(node)||cameraPropertyNumbers?.has(node)||numberFormatNumbers?.has(node)||mathNumbers?.has(node)||sceneNumbers?.has(node)||buttonEventNumbers?.has(node)||spriteAyNumbers?.has(node)||cameraNumberInput?.has(node))add(current,'Number');
         else if(destroyedNumbers?.has(node)){destroyedNumberUsed=true;add(current,'Number');}
         else if(spriteAyNumbers?.primitiveHas?.(node)){for(const type of ['Number','String','Boolean','Null','Undefined'])add(current,type);}

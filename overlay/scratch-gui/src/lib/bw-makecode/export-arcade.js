@@ -267,7 +267,7 @@ const REGISTERED_HAT_KINDS = {
     arcade_whenRegisteredExternal:'external'
 };
 const REGISTERED_COMMANDS = new Set(['arcade_registerMultiplayerConnection','arcade_registerControlEvent','arcade_startParallelHandler','arcade_registerLegacyWallHandler','arcade_registerMultiplayerButtonHandler','arcade_registerSpriteCreated','arcade_registerWallHandler','arcade_registerTilemapEvent','arcade_registerTileHandler',
-    'arcade_registerUpdateHandler','arcade_registerIntervalHandler','arcade_registerButtonHandler','arcade_registerPaintHandler','arcade_registerShadeHandler',
+    'arcade_registerUpdateHandler','arcade_registerIntervalHandler','arcade_registerPlayerButtonHandler','arcade_registerButtonHandler','arcade_registerPaintHandler','arcade_registerShadeHandler',
     'arcade_registerInstanceDestroyedHandler','arcade_registerDestroyedHandler','arcade_registerOverlapHandler','arcade_registerScenePushHandler','arcade_registerScenePopHandler',
     'arcade_registerForeverHandler','arcade_registerLifeZeroHandler','arcade_registerScoreHandler','arcade_registerCountdownHandler','arcade_registerExternalHandler']);
 
@@ -1978,6 +1978,7 @@ class ArcadeEmitter {
             if(this.callableExports?.get(this.target)?.sdkImageEnabled){const image=this.sdkImageLiteralResources?.allocation(this.target,b);if(image)return toImgLiteral(image);}
             return `${v('IMAGE')}.clone()`;
         }
+        case 'arcade_highScore': return 'info.highScore()';
         case 'arcade_settingsRead': {
             const type=settingType(b, this.blocks);
             if(type==='List')return `settings.list(${v('KEY')})`;
@@ -2273,6 +2274,7 @@ class ArcadeEmitter {
         case 'arcade_spritesOfKind': return `sprites.allOfKind(${this.kindExpr(b, 'KIND')})`;
         case 'arcade_spriteCount': return `sprites.allOfKind(${this.kindExpr(b, 'KIND')}).length`;
         case 'arcade_ask': return `game.ask(${this.arrayValue(b,'TITLE')}, ${this.arrayValue(b,'SUBTITLE')})`;
+        case 'arcade_askForNumberLength': return `game.askForNumber(${v('QUESTION')}, ${v('LENGTH')})`;
         case 'arcade_askForNumber': return `game.askForNumber(${v('QUESTION')})`;
         case 'arcade_controllerStep': {
             const literal=this.literal(b,'AXIS') ?? (this.field(b,'AXIS') || null);
@@ -2741,6 +2743,7 @@ class ArcadeEmitter {
             return;
         }
         case 'arcade_clearSpriteEffects': push(`effects.clearParticles(${v('ID')})`); return;
+        case 'arcade_resetGame': push('game.reset()'); return;
         case 'arcade_gameOver': push(`game.gameOver(${this.boolValue(b, 'WIN')})`); return;
         case 'arcade_carnivalCustomGameOver': {
             const effect=this.field(b,'EFFECT'),scoring=this.field(b,'SCORING');
@@ -2827,6 +2830,7 @@ class ArcadeEmitter {
             push(`${v('MELODY')}.${mode}()`);
             return;
         }
+        case 'arcade_playNoteMelody': push(`music.playMelody(${v('NOTES')}, ${v('TEMPO')})`); return;
         case 'arcade_playSound': {
             // The bool slot holds a constant comparison when the source had a literal.
             const untilDone = this.literalNumber(b, 'UNTIL_DONE'), condition = this.condition(b, 'UNTIL_DONE');
@@ -3051,6 +3055,7 @@ class ArcadeEmitter {
         case 'arcade_registerPaintHandler':
         case 'arcade_registerShadeHandler':
         case 'arcade_registerIntervalHandler':
+        case 'arcade_registerPlayerButtonHandler':
         case 'arcade_registerButtonHandler':
         case 'arcade_registerInstanceDestroyedHandler':
         case 'arcade_registerDestroyedHandler':
@@ -3064,7 +3069,7 @@ class ArcadeEmitter {
         case 'arcade_registerCountdownHandler':
         case 'arcade_registerExternalHandler': {
             const kinds={arcade_registerExternalHandler:'external',arcade_registerMultiplayerConnection:'multiplayerConnection',arcade_registerControlEvent:'controlEvent',arcade_startParallelHandler:'parallel',arcade_registerMultiplayerButtonHandler:'multiplayerButton',arcade_registerUpdateHandler:'update',arcade_registerPaintHandler:'paint',arcade_registerShadeHandler:'shade',arcade_registerIntervalHandler:'interval',
-                arcade_registerInstanceDestroyedHandler:'instanceDestroyed',arcade_registerButtonHandler:'button',arcade_registerDestroyedHandler:'destroyed',arcade_registerOverlapHandler:'overlap',
+                arcade_registerInstanceDestroyedHandler:'instanceDestroyed',arcade_registerPlayerButtonHandler:'button',arcade_registerButtonHandler:'button',arcade_registerDestroyedHandler:'destroyed',arcade_registerOverlapHandler:'overlap',
                 arcade_registerScenePushHandler:'scenePush',arcade_registerScenePopHandler:'scenePop',
                 arcade_registerForeverHandler:'forever',arcade_registerLifeZeroHandler:'lifeZero',arcade_registerScoreHandler:'score',arcade_registerCountdownHandler:'countdown'};
             const kind=kinds[b.opcode],token=this.literalInput(b,'TOKEN'),callback=token && this.registeredCallback(token);
@@ -3099,7 +3104,13 @@ class ArcadeEmitter {
             if(kind==='button'){
                 const button=this.literalInput(b,'BUTTON');
                 if(!['A','B','up','down','left','right'].includes(button)){push(`// ${this.note('Arcade button registration requires a fixed supported button')}`);return;}
-                api=`controller.${button}.onEvent`;args.push(this.arrayValue(b,'EVENT'));
+                if(b.opcode==='arcade_registerPlayerButtonHandler'){
+                    const player=this.literalNumber(b,'PLAYER'),enumButton={A:'A',B:'B',up:'Up',down:'Down',left:'Left',right:'Right'}[button];
+                    if(!Number.isInteger(player)||player<1||player>4){push(`// ${this.note('Arcade player button registration requires fixed player 1 through 4')}`);return;}
+                    const event={2049:'Pressed',2048:'Released',2054:'Repeated'}[this.literalNumber(b,'EVENT')];
+                    if(!event){push(`// ${this.note('Arcade player button registration requires a fixed supported event')}`);return;}
+                    api=`controller.player${player}.onButtonEvent`;args.push(`ControllerButton.${enumButton}`,`ControllerButtonEvent.${event}`);
+                }else{api=`controller.${button}.onEvent`;args.push(this.arrayValue(b,'EVENT'));}
             }
             if(kind==='controlEvent'){api='control.onEvent';args.push(this.arrayValue(b,'SOURCE'),this.arrayValue(b,'VALUE'),body,this.arrayValue(b,'FLAGS'));}
             else args.push(body);
