@@ -477,6 +477,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'playMusic',blockType:Scratch.BlockType.COMMAND,text:'Arcade play music [PLAYABLE] mode [MODE]',arguments:{...str('PLAYABLE',''),MODE:{type:Scratch.ArgumentType.STRING,menu:'playbackModes',defaultValue:'UntilDone'}}},
           {opcode:'play',blockType:Scratch.BlockType.COMMAND,text:'Arcade play [PLAYABLE] mode [MODE]',arguments:{...str('PLAYABLE',''),MODE:{type:Scratch.ArgumentType.STRING,menu:'playbackModes',defaultValue:'UntilDone'}}},
           {opcode:'playMelody',blockType:Scratch.BlockType.COMMAND,text:'Arcade play melody [MELODY] mode [MODE]',arguments:{...str('MELODY',''),MODE:{type:Scratch.ArgumentType.STRING,menu:'melodyModes',defaultValue:'play'}}},
+          {opcode:'playNoteMelody',blockType:Scratch.BlockType.COMMAND,text:'Arcade play note melody [NOTES] at [TEMPO] bpm',arguments:{...str('NOTES','C D E F G A B C5'),...n('TEMPO',120)}},
           {opcode:'playSoundEffect',blockType:Scratch.BlockType.COMMAND,text:'Arcade play sound effect [EFFECT] mode [MODE]',arguments:{...str('EFFECT',''),MODE:{type:Scratch.ArgumentType.STRING,menu:'soundPlayModes',defaultValue:'UntilDone'}}},
           {opcode:'playSound',blockType:Scratch.BlockType.COMMAND,text:'Arcade play sound [SOUND] until done [UNTIL_DONE]',arguments:{...str('SOUND','c d e'),UNTIL_DONE:{type:Scratch.ArgumentType.BOOLEAN}}},
           {opcode:'playTone',blockType:Scratch.BlockType.COMMAND,text:'Arcade play tone [FREQUENCY] Hz for [DURATION] ms',arguments:{...n('FREQUENCY',262),...n('DURATION',500)}},
@@ -5505,6 +5506,16 @@ module.exports = makeExt(`// Name: Arcade
       if(mode==='loop'){melody.loop();return;}
       if(mode!=='play' && mode!=='playUntilDone'){this._musicMenu({},mode);return;}
       return music.run(melody[mode]());
+    }
+    playNoteMelody(args,util) {
+      const music=this._music(),notes=Scratch.BWValues.decode(args.NOTES);
+      let tempo=Scratch.BWValues.decode(args.TEMPO);
+      // Only a numeric editor shadow needs parsing. Opaque connected operands
+      // reach the original generator unchanged, after its notes.split check.
+      if(typeof tempo==='string')tempo=this._mathArgument(args,'TEMPO',util);
+      // This original API formats rests/octaves and uses Melody's default255;
+      // stringPlayable instead reads the mutable global music.volume().
+      return music.run(music.pxt.music.playMelody(notes,tempo));
     }
     playSoundEffect(args) {
       const music=this._music(),effect=this._musicValue(args.EFFECT,'Playable'),mode=this._musicMenu(music.pxt.SoundExpressionPlayMode,String(args.MODE));

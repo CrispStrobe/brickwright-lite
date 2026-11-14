@@ -8,6 +8,7 @@ import {prepareSharedImageArrayTransport,projectSharedImageArrayTransport,finish
 import {prepareProcedureConstraintSourceForTranslation,procedureConstraintAstMetadata} from './procedure-constraint-source.js';
 import {BUTTON_EVENTS,controllerButtonEventNumberLeaves} from './controller-button-event-number-source.js';
 import {lowerAnyButtonRegistrations,anyButtonConfiguredSourceSafe} from './any-button-registration-source.js';
+import {legacyNoteMelodySourceSafe,markLegacyNoteMelodies,literalLegacyNoteMelody} from './legacy-note-melody-source.js';
 import {CAMERA_PROPERTIES} from './camera-property-constants.js';
 import {createProcedureOwnerEmission} from './procedure-owner-emission.js';
 import {prepareThrowSource,prepareThrowEmission,reproveThrowEmission,hasThrowEmission} from './throw-source-gate.js';
@@ -1818,7 +1819,7 @@ class ArcadeTranslator extends BaseTranslator {
         if(this.textSpriteStatement(node,a,push))return;
         if(this.spriteExtensionStatement(node,a,push))return;
         if(this.sevensegStatement(node,a,push))return;
-        if(this.musicStatement(name,a,push))return;
+        if(this.musicStatement(name,a,push,node))return;
         if(this.carnivalStatement(name,a,push))return;
         if(this.gameOverStatement(name,a,push))return;
         const screenEffect=/^effects\.(\w+)\.(startScreenEffect|endScreenEffect)$/.exec(name||'');
@@ -2886,7 +2887,7 @@ class ArcadeTranslator extends BaseTranslator {
         }
     }
     /** PXT mixer statements; returns whether `name` was music. */
-    musicStatement (name, a, push) {
+    musicStatement (name, a, push, node) {
         if (!this.handleTemplates || !/^music\./.test(name || '') || this.bindsName('music')) return false;
         const value = i => `(${this.expr(a[i])})`;
         const melody = /^music\.(\w+)\.(play|playUntilDone|loop)$/.exec(name);
@@ -2901,6 +2902,10 @@ class ArcadeTranslator extends BaseTranslator {
             return true;
         };
         switch (name) {
+        case 'music.playMelody':
+            if(node?.bwPxtLegacyNoteMelody===true&&literalLegacyNoteMelody(node))push(`arcade play note melody ${value(0)} at ${value(1)} bpm`);
+            else push(this.note('music.playMelody() requires unchanged direct SDK bindings, literal melody-editor notes and a finite literal tempo'));
+            return true;
         case 'music.play': {
             const mode = a.length === 2 && this.musicEnum(a[1], 'music.PlaybackMode');
             if (mode) push(`arcade play playable ${value(0)} mode ${mode}`);
@@ -5424,6 +5429,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const selectedSource = arcadeProjectSource(map);
     const source = selectedSource.source;
     const anyButtonSourceSafe = source.includes('anyButton') && anyButtonConfiguredSourceSafe(map);
+    const legacyMelodySourceSafe = source.includes('playMelody') && legacyNoteMelodySourceSafe(map);
     setExternalRoots(map, source);
     const sharedSourcePreparation = capturePreparedSharedImageSources(map,selectedSource);
     let sharedSourceConsumed=false;
@@ -5562,8 +5568,8 @@ export function arcadeToPseudocode (files, opts = {}) {
         return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, lowerAnimationAssets(value)]));
     };
     const callableParseOptions={parameterDefaults:true,retainParentheses:true,retainWhenUsed:true,retainClassHeritage:true,retainOrdinaryDefaultProvenance:true};
-    const ordinarySource=lowerAnyButtonRegistrations(parseSharedImageSourceProgram(sharedSourcePreparation,source,opts.procedureConstraintsPrototype===true,opts.procedureConstraintsPrototype!==true),anyButtonSourceSafe,projectInputDiagnostics);
-    const callableSourceParsed=lowerAnyButtonRegistrations(parseMakeCodeTs(source,{...callableParseOptions,retainCallableMetadata:true}),anyButtonSourceSafe);
+    const ordinarySource=markLegacyNoteMelodies(lowerAnyButtonRegistrations(parseSharedImageSourceProgram(sharedSourcePreparation,source,opts.procedureConstraintsPrototype===true,opts.procedureConstraintsPrototype!==true),anyButtonSourceSafe,projectInputDiagnostics),legacyMelodySourceSafe);
+    const callableSourceParsed=markLegacyNoteMelodies(lowerAnyButtonRegistrations(parseMakeCodeTs(source,{...callableParseOptions,retainCallableMetadata:true}),anyButtonSourceSafe),legacyMelodySourceSafe);
     const namedEligibility=selectNamedFunctionSourceProof(callableSourceParsed,{ordinaryProgram:ordinarySource,registrationSpec:callbackRegistrationSpec});
     const namedEnabled=namedEligibility.eligible;
     const namedLowering=namedEnabled?lowerNamedFunctionValues(callableSourceParsed):null;

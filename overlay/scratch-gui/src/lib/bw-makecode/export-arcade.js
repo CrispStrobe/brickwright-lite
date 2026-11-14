@@ -2827,6 +2827,7 @@ class ArcadeEmitter {
             push(`${v('MELODY')}.${mode}()`);
             return;
         }
+        case 'arcade_playNoteMelody': push(`music.playMelody(${v('NOTES')}, ${v('TEMPO')})`); return;
         case 'arcade_playSound': {
             // The bool slot holds a constant comparison when the source had a literal.
             const untilDone = this.literalNumber(b, 'UNTIL_DONE'), condition = this.condition(b, 'UNTIL_DONE');
