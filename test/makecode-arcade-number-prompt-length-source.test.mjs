@@ -35,3 +35,40 @@ test('original source namespace, dependency and opaque mutations prevent new adm
   assert.doesNotMatch(arcadeToPseudocode(files).code,/ask number .* length/,name);
  }
 });
+
+
+test('exact Image array declaration type can coexist with bounded number prompt',()=>{
+ for(const kind of ['let','const','var']){
+  const source=`${kind} frames: Image[] = [];let value=game.askForNumber("Input?",2)`;
+  assert.equal(numberPromptLengthSourceSafe({'main.ts':source}),true,kind);
+  const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[],kind);
+  assert.match(imported.code,/arcade ask number "Input\?" length 2/);
+ }
+ const source='let frames /* type */ : Image [ /* empty */ ] = [];let value=game.askForNumber("Input?",3)';
+ assert.equal(numberPromptLengthSourceSafe({'main.ts':source}),true);
+ assert.deepEqual(arcadeToPseudocode(source).unsupported,[]);
+});
+
+test('Image type exception never admits runtime indexes, reflection, malformed types or hidden writers',()=>{
+ const call='let value=game.askForNumber("Input?",2)';
+ for(const prefix of [
+  'let frames=Image[0];',
+  'let frames:Image[]=[];frames[0]=null;',
+  'let frames:Image[]=[];game["askForNumber"]=function(){return 1};',
+  'let frames:Image[]=[];let alias=game.askForNumber;',
+  'let frames:Image[]=[];Object.assign(game,{});',
+  'let frames:Image[]=[];game.askForNumber=function(){return 1};',
+  'let frames:Image[]=[];class Hidden{constructor(){game.askForNumber=function(){return 1}}}',
+  'let frames:Image[0]=[];',
+  'let frames:Image[][]=[];',
+  'let frames:Other[]=[];',
+  'let frames:Image[];',
+  'frames:Image[]=[];'
+ ]){
+  assert.equal(numberPromptLengthSourceSafe({'main.ts':prefix+call}),false,prefix);
+ }
+ const files={'main.ts':'let frames:Image[]=[];'+call,'hidden.g.ts':'game["askForNumber"]=function(){return 1}',
+  'pxt.json':JSON.stringify({files:['main.ts','hidden.g.ts']})};
+ assert.equal(numberPromptLengthSourceSafe(files),false);
+ assert.doesNotMatch(arcadeToPseudocode(files).code,/ask number .* length/);
+});

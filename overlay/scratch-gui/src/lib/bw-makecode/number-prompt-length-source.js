@@ -8,6 +8,14 @@ const mathCalls=new Set(['abs','ceil','floor','round','min','max','pow','sqrt','
 const readonlyCalls=new Set(['String','String.fromCharCode','Number','Array.isArray','parseFloat']);
 const ambient=new Set(['globalThis','global','window','self','eval','Function','Reflect','Object','Proxy','arguments','constructor','prototype','__proto__']);
 const writes=new Set(['=','+=','-=','*=','/=','%=','&=','|=','^=','<<=','>>=','>>>=','++','--']);
+// Only the erased empty array suffix in this complete declaration-type
+// prefix is exempt from the computed-receiver veto. The initializer and every
+// other bracket remain subject to the ordinary configured-source census.
+const imageArrayDeclarationType=(tokens,index)=>
+    ['let','const','var'].includes(tokens[index-4]?.type)&&tokens[index-3]?.type==='ident'&&
+    tokens[index-2]?.value===':'&&tokens[index-1]?.type==='ident'&&tokens[index-1]?.value==='Image'&&
+    tokens[index]?.value==='['&&tokens[index+1]?.value===']'&&tokens[index+2]?.value==='=';
+
 
 // A negative-only census of all configured source bytes precedes erasing
 // transforms. Unknown syntax, computed receiver acquisition, active Python or
@@ -31,7 +39,7 @@ export function numberPromptLengthSourceSafe(files) {
                 if(token.unknownBefore||token.invalidLiteral||token.type==='number'&&!Number.isFinite(Number(token.value)))return false;
                 if(token.type==='template'&&token.value.includes('${'))return false;
                 if(['ident','string'].includes(token.type)&&ambient.has(token.value))return false;
-                if(token.value==='['&&(['ident','number','string','template'].includes(before?.type)||[')',']','}','.'].includes(before?.value)))return false;
+                if(token.value==='['&&!imageArrayDeclarationType(tokens,i)&&(['ident','number','string','template'].includes(before?.type)||[')',']','}','.'].includes(before?.value)))return false;
                 if(token.type!=='ident'||!['game','Math','String','Number','Array','parseFloat','console'].includes(token.value))continue;
                 let top=token.value,end=i;
                 while(tokens[end+1]?.value==='.'&&tokens[end+2]?.type==='ident'){top+='.'+tokens[end+2].value;end+=2;}
