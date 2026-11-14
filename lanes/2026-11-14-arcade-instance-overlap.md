@@ -1,15 +1,17 @@
 # Historical Arcade receiver-overlap import
 
-Status: DONE (local implementation); corpus measurement pending.
+Status: local implementation and canonical compiler integration; corpus measurement pending.
 Owner: Codex, user-requested MakeCode coverage continuation.
 Branch: `lane/arcade-instance-overlap-20261114`.
 Base: `43f534195db2dcfa072a68b17654fad4d14a7c08`.
 
 The user requested coordination and implementation in one local batch, without
-a claim-only push. Scope: Arcade importer, app-owned Creator compatibility
-words/registering door, runtime overlap registration/dispatch, its capture and
+a claim-only push. Scope: Arcade importer, canonical Creator vocabulary and registering door, runtime overlap registration/dispatch, its capture and
 palette metadata, four existing MIT corpus-source fixtures and focused tests.
-No supplier source or pin changes; no corpus runner changes.
+Canonical supplier pin advances from `8e53c1621a1b9eeb42e0565f987c4c47ab598961`
+to `b211d4a10bcd575cc4b2174962bbcb36c67c8203` for the two vocabulary entries,
+with normal sync and byte-identical mirrors. The app-only wrapper is removed.
+No corpus runner or audit core changes.
 
 Support the historical `sprite.onOverlap(callback)` receiver slot: replacement,
 actual receiver identity, the other-sprite parameter, deferred slot lookup,
