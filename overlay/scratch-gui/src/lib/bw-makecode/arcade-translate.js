@@ -7,6 +7,7 @@ import {capturePreparedSharedImageSources,parseSharedImageSourceBoundary,parseSh
 import {prepareSharedImageArrayTransport,projectSharedImageArrayTransport,finishSharedImageArrayTransport,currentSharedImageArrayTransport,reproveSharedImageArrayTransport} from './source-shared-image-array-transport.js';
 import {prepareProcedureConstraintSourceForTranslation,procedureConstraintAstMetadata} from './procedure-constraint-source.js';
 import {BUTTON_EVENTS,controllerButtonEventNumberLeaves} from './controller-button-event-number-source.js';
+import {lowerAnyButtonRegistrations,anyButtonConfiguredSourceSafe} from './any-button-registration-source.js';
 import {CAMERA_PROPERTIES} from './camera-property-constants.js';
 import {createProcedureOwnerEmission} from './procedure-owner-emission.js';
 import {prepareThrowSource,prepareThrowEmission,reproveThrowEmission,hasThrowEmission} from './throw-source-gate.js';
@@ -5422,6 +5423,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const map = typeof files === 'string' ? {'main.ts': files} : (files || {});
     const selectedSource = arcadeProjectSource(map);
     const source = selectedSource.source;
+    const anyButtonSourceSafe = source.includes('anyButton') && anyButtonConfiguredSourceSafe(map);
     setExternalRoots(map, source);
     const sharedSourcePreparation = capturePreparedSharedImageSources(map,selectedSource);
     let sharedSourceConsumed=false;
@@ -5560,8 +5562,8 @@ export function arcadeToPseudocode (files, opts = {}) {
         return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, lowerAnimationAssets(value)]));
     };
     const callableParseOptions={parameterDefaults:true,retainParentheses:true,retainWhenUsed:true,retainClassHeritage:true,retainOrdinaryDefaultProvenance:true};
-    const ordinarySource=parseSharedImageSourceProgram(sharedSourcePreparation,source,opts.procedureConstraintsPrototype===true,opts.procedureConstraintsPrototype!==true);
-    const callableSourceParsed=parseMakeCodeTs(source,{...callableParseOptions,retainCallableMetadata:true});
+    const ordinarySource=lowerAnyButtonRegistrations(parseSharedImageSourceProgram(sharedSourcePreparation,source,opts.procedureConstraintsPrototype===true,opts.procedureConstraintsPrototype!==true),anyButtonSourceSafe,projectInputDiagnostics);
+    const callableSourceParsed=lowerAnyButtonRegistrations(parseMakeCodeTs(source,{...callableParseOptions,retainCallableMetadata:true}),anyButtonSourceSafe);
     const namedEligibility=selectNamedFunctionSourceProof(callableSourceParsed,{ordinaryProgram:ordinarySource,registrationSpec:callbackRegistrationSpec});
     const namedEnabled=namedEligibility.eligible;
     const namedLowering=namedEnabled?lowerNamedFunctionValues(callableSourceParsed):null;
