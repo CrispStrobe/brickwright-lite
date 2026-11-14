@@ -1,4 +1,4 @@
-import {numberPromptLengthSourceSafe,markNumberPromptLengths,literalNumberPromptLength} from './number-prompt-length-source.js';
+import {numberPromptLengthSourceSafe,markNumberPromptLengths,literalNumberPromptLength,markDefaultTextPrompts,literalDefaultTextPrompt} from './number-prompt-length-source.js';
 import {MUSIC_MELODIES} from './music-melodies.js';
 import {lowerSourceValueOperatorHelpers} from './source-value-operator-helpers.js';
 import {NUMBER_FORMAT_MEMBERS} from './ordinary-primitive-sdk-number-source.js';
@@ -981,7 +981,7 @@ class ArcadeTranslator extends BaseTranslator {
             this.unsupported.push('game.askForNumber() with digit limit or other options');
             return '0';
         case 'game.askForString':
-            if (a.length === 1) return `arcade ask text ${this.expr(a[0])}`;
+            if (a.length === 1 || node.bwPxtDefaultTextPrompt===true&&literalDefaultTextPrompt(node)) return `arcade ask text ${this.expr(a[0])}`;
             this.unsupported.push('game.askForString() with length limit or other options');
             return '""';
         case 'scene.cameraLeft':
@@ -5431,6 +5431,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const selectedSource = arcadeProjectSource(map);
     const source = selectedSource.source;
     const anyButtonSourceSafe = source.includes('anyButton') && anyButtonConfiguredSourceSafe(map);
+    const defaultTextPromptSourceSafe = source.includes('askForString') && numberPromptLengthSourceSafe(map);
     const numberPromptSourceSafe = source.includes('askForNumber') && numberPromptLengthSourceSafe(map);
     const legacyMelodySourceSafe = source.includes('playMelody') && legacyNoteMelodySourceSafe(map);
     setExternalRoots(map, source);
@@ -5571,8 +5572,8 @@ export function arcadeToPseudocode (files, opts = {}) {
         return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, lowerAnimationAssets(value)]));
     };
     const callableParseOptions={parameterDefaults:true,retainParentheses:true,retainWhenUsed:true,retainClassHeritage:true,retainOrdinaryDefaultProvenance:true};
-    const ordinarySource=markNumberPromptLengths(markLegacyNoteMelodies(lowerAnyButtonRegistrations(parseSharedImageSourceProgram(sharedSourcePreparation,source,opts.procedureConstraintsPrototype===true,opts.procedureConstraintsPrototype!==true),anyButtonSourceSafe,projectInputDiagnostics),legacyMelodySourceSafe),numberPromptSourceSafe);
-    const callableSourceParsed=markNumberPromptLengths(markLegacyNoteMelodies(lowerAnyButtonRegistrations(parseMakeCodeTs(source,{...callableParseOptions,retainCallableMetadata:true}),anyButtonSourceSafe),legacyMelodySourceSafe),numberPromptSourceSafe);
+    const ordinarySource=markDefaultTextPrompts(markNumberPromptLengths(markLegacyNoteMelodies(lowerAnyButtonRegistrations(parseSharedImageSourceProgram(sharedSourcePreparation,source,opts.procedureConstraintsPrototype===true,opts.procedureConstraintsPrototype!==true),anyButtonSourceSafe,projectInputDiagnostics),legacyMelodySourceSafe),numberPromptSourceSafe),defaultTextPromptSourceSafe);
+    const callableSourceParsed=markDefaultTextPrompts(markNumberPromptLengths(markLegacyNoteMelodies(lowerAnyButtonRegistrations(parseMakeCodeTs(source,{...callableParseOptions,retainCallableMetadata:true}),anyButtonSourceSafe),legacyMelodySourceSafe),numberPromptSourceSafe),defaultTextPromptSourceSafe);
     const namedEligibility=selectNamedFunctionSourceProof(callableSourceParsed,{ordinaryProgram:ordinarySource,registrationSpec:callbackRegistrationSpec});
     const namedEnabled=namedEligibility.eligible;
     const namedLowering=namedEnabled?lowerNamedFunctionValues(callableSourceParsed):null;

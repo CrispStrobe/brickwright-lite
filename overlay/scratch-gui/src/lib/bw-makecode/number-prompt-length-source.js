@@ -71,3 +71,22 @@ export function markNumberPromptLengths(program,sourceSafe) {
     for(const node of calls)node.bwPxtNumberPromptLength=true;
     return program;
 }
+
+
+export function literalDefaultTextPrompt(node) {
+    return node?.type==='Call'&&!node.isNew&&!node.constructorCall&&!node.optional&&!node.typeArguments?.length&&node.args?.length===2&&
+        node.args[0]?.type==='String'&&node.args[1]?.type==='Number'&&Number(node.args[1].value)===12;
+}
+
+// Pinned game.askForString defaults to length 12 and useOnScreenKeyboard=false:
+// system keyboard when supported, otherwise the screen fallback. Only this
+// effect-free explicit default may use the existing one-argument word.
+export function markDefaultTextPrompts(program,sourceSafe) {
+    if(!sourceSafe)return program;
+    const proof=inspectGeneratedHelperBindings(program,GENERATED_HELPER_PROFILES.ordinary),calls=[];
+    if(!proof.isCurrent())return program;
+    for(const node of proof.nodes)if(path(node.callee)==='game.askForString'&&literalDefaultTextPrompt(node)&&
+        proof.unbound(node.callee.object))calls.push(node);
+    for(const node of calls)node.bwPxtDefaultTextPrompt=true;
+    return program;
+}
