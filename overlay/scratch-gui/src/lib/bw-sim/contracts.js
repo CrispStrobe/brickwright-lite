@@ -744,6 +744,7 @@ export const validatePlacedModel = (model, catalog) => {
     if (model.rotor !== undefined && !['legacy', 'native'].includes(model.rotor)) {
         out.push('model.rotor: expected legacy or native');
     }
+    if (model.solver !== undefined && model.solver !== 'light-links') out.push('model.solver: expected light-links');
     if (!Array.isArray(model.parts)) return [...out, 'model.parts: not an array'];
     uniqueIds(model.parts, 'model.parts', out);
     out.push(...validateInternalEdgeRemovalPairs(model.internalEdgeRemovalPairs, new Set(model.parts.map(p => p?.id)), 'model.internalEdgeRemovalPairs'));
@@ -1188,6 +1189,7 @@ export const upgradeMechanismV1 = m => {
     if (m.sensors !== undefined) out.sensors = m.sensors;
     if (m.rotor !== undefined) out.rotor = m.rotor;
     if (m.internalEdgeRemovalPairs !== undefined) out.internalEdgeRemovalPairs = m.internalEdgeRemovalPairs;
+    if (m.solver !== undefined) out.solver = m.solver;
     return Object.assign(out, {hubs: [], actuators, couplings, devices, noCollide: noCollidePairs(m.joints, couplings)});
 };
 
