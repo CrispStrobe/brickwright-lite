@@ -92,3 +92,24 @@ test('ordinary scene transitions preserve the callback snapshot and caller conti
   const out=arcadeToPseudocode('let calls=0;let after=0;game.addScenePushHandler(function(){calls+=1});game.addScenePushHandler(function(){calls+=2});game.pushScene();game.popScene();game.pushScene();after=1;after+=0');assert.deepEqual(out.unsupported,[]);const run=await runProgram(out.code,{frames:6,countExtensionCalls:false});assert.equal(values(run).calls,6);assert.equal(values(run).after,1);assert.deepEqual(run.errors,[]);
  }finally{quitStrandedVMs()}
 });
+for(const transition of ['push','pop'])test('game-over '+transition+' callback reset cannot apply the old terminal scene to the fresh program',async()=>{
+ try{
+  const body=transition==='push'?'game.addScenePushHandler(function(){game.reset()});game.over(false)':'game.pushScene();game.addScenePopHandler(function(){game.reset()});game.over(false)';
+  const source=rebootOnce('game.setGameOverEffect(false,effects.confetti);'+body)+';scene.setBackgroundColor(7)';
+  const {run,clock,native}=await timed(source);run.vm.greenFlag();await stepFrames(run.vm,8,0);await advance(run,clock,2000);
+  assert.equal(values(run).boots,2);assert.equal(values(run).ready,1);assert.equal(native._sceneStack.length,0);assert.equal(native._state().backgroundColor,7);assert.equal(native._state().backgroundImage,undefined);assert.equal(native._gameOverState().over,false);assert.equal(native._renderablesOf().some(row=>row.z===100),false);assert.deepEqual(run.errors,[]);
+  let starts=0;run.vm.runtime.on('PROJECT_START',()=>starts++);native._controllerButtonEdge(1,'a',true);await advance(run,clock,3000);assert.equal(starts,0);assert.equal(values(run).boots,2);
+ }finally{quitStrandedVMs()}
+});
+test('awaited game-over scene handler cancellation cannot resume into a new program',async()=>{
+ try{
+  const body='game.addScenePushHandler(function(){controller.A.onEvent(ControllerButtonEvent.Pressed,function(){game.reset()});pause(100)});game.over(false)';
+  const {run,clock,native}=await timed(rebootOnce(body)+';scene.setBackgroundColor(7)');run.vm.greenFlag();await stepFrames(run.vm,8,0);assert.equal(values(run).boots,1);assert.equal(native._sceneStack.length,1);native._controllerButtonEdge(1,'a',true);await stepFrames(run.vm,8,0);await advance(run,clock,2000);assert.equal(values(run).boots,2);assert.equal(native._state().backgroundImage,undefined);assert.equal(native._state().backgroundColor,7);assert.equal(native._gameOverState().over,false);assert.deepEqual(run.errors,[]);
+ }finally{quitStrandedVMs()}
+});
+test('completed game-over button wait held across reset cannot restart the fresh program again',async()=>{
+ try{
+  const {run,clock,native}=await timed(rebootOnce('game.over(false)')+';scene.setBackgroundColor(7)');let release;const gate=new Promise(resolve=>{release=resolve}),wait=native._nextButtonPress;let pressed=false;native._nextButtonPress=function(){return wait.call(this).then(value=>{pressed=true;return gate.then(()=>value)})};
+  run.vm.greenFlag();await stepFrames(run.vm,8,0);await advance(run,clock,1000);native._controllerButtonEdge(1,'a',true);await stepFrames(run.vm,6,0);assert.equal(pressed,true);native._nextButtonPress=wait;let starts=0;run.vm.runtime.on('PROJECT_START',()=>starts++);native.resetGame({});await stepFrames(run.vm,6,0);assert.equal(values(run).boots,2);release();await advance(run,clock,2000);assert.equal(starts,1);assert.equal(values(run).boots,2);assert.equal(native._state().backgroundColor,7);assert.deepEqual(run.errors,[]);
+ }finally{quitStrandedVMs()}
+});

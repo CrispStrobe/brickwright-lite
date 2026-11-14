@@ -4982,6 +4982,7 @@ module.exports = makeExt(`// Name: Arcade
       return {previousBest,winner,scores};
     }
     async _runGameOver(win,util,capturedFrame,storageCall) {
+      const epoch=this._terrainEpoch;
       const go=this._gameOverState();
       if(go.over)return;
       go.over=true;
@@ -4995,14 +4996,15 @@ module.exports = makeExt(`// Name: Arcade
         if(storageCall)return this._highScoreFailure(storageCall.method,storageCall.args,util,error);
         throw error;
       }
+      if(epoch!==this._terrainEpoch)return;
       const message=goc.getMessage(win,false),effect=goc.getEffect(win),sound=goc.getSound(win);
       const mode=goc.getSoundLooping(win)?this._music().pxt.music.PlaybackMode.LoopingInBackground:this._music().pxt.music.PlaybackMode.InBackground;
       // Explicit game over captures the last frame; default info loss captures
       // the partial HUD pass at the original terminal draw boundary.
       const shown=capturedFrame || (state._hudPass?.epoch===this._terrainEpoch && state._hudPass.screen.pixels.slice()) ||
         (this._state()._renderPass?.epoch===this._terrainEpoch && this._state()._renderPass.screen.pixels.slice()) || state.sceneFrame?.pixels?.slice() || new Uint8Array(160*120);
-      while(this._sceneStack.length){const pending=this.popScene({},util);if(pending?.then)await pending;}
-      const pushed=this.pushScene({},util);if(pushed?.then)await pushed;
+      while(this._sceneStack.length){const pending=this.popScene({},util);if(epoch!==this._terrainEpoch)return;if(pending?.then)await pending;if(epoch!==this._terrainEpoch)return;}
+      const pushed=this.pushScene({},util);if(epoch!==this._terrainEpoch)return;if(pushed?.then)await pushed;if(epoch!==this._terrainEpoch)return;
       const scene=this._state();
       scene.backgroundImage={width:160,height:120,pixels:shown};this._renderBackgroundImage();
       if(sound)this._music().spawn(this._music().pxt.music.play(sound,mode));
@@ -5010,19 +5012,21 @@ module.exports = makeExt(`// Name: Arcade
       else if(effect?.kind==='image') {
         // An image effect runs in control.runInParallel: its first step comes after
         // the fiber that started it yields, i.e. after the new scene's first frame.
-        const imageEffect=this._particles().effects[effect.name],start=()=>{if(ext._state()===scene)imageEffect.startScreenEffect();};
+        const imageEffect=this._particles().effects[effect.name],start=()=>{if(epoch===ext._terrainEpoch && ext._state()===scene)imageEffect.startScreenEffect();};
         if(scene._framesDone)start();else (scene._afterFrame || (scene._afterFrame=[])).push(start);
       }
       await this._arcadePause(400);
-      if(this._state()!==scene)return;
+      if(epoch!==this._terrainEpoch || this._state()!==scene)return;
       const dialog=new game.GameOverDialog(win,message,judged,scores,previousBest,undefined);
       this._addSceneRenderable(scene,{z:100,id:scene.nextSpriteId++,draw:screen=>{
         dialog.update();
         imageEngine.blit(screen,dialog.image.raw,'drawTransparentImage',0,(120-dialog.image.height)>>1);
       }});
       await this._arcadePause(500);
+      if(epoch!==this._terrainEpoch)return;
       dialog.displayCursor();
       await this._nextButtonPress();
+      if(epoch!==this._terrainEpoch)return;
       // control.reset restarts the program. A host that owns restarts (the
       // differential harness: the original simulator only posts a restart
       // message to its parent) holds it and counts the request instead.
