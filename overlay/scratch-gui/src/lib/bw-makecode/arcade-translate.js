@@ -1,3 +1,4 @@
+import {consoleLogValueConfiguredSourceSafe,lowerConsoleLogValues} from './lower-console-log-values.js';
 import {bindScoreImageSource,scoreImageBindingView} from './score-owned-image-source.js';
 import {numberPromptLengthSourceSafe,markNumberPromptLengths,literalNumberPromptLength,markDefaultTextPrompts,literalDefaultTextPrompt} from './number-prompt-length-source.js';
 import {MUSIC_MELODIES} from './music-melodies.js';
@@ -5435,6 +5436,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const selectedSource = arcadeProjectSource(map);
     const source = selectedSource.source;
     const anyButtonSourceSafe = source.includes('anyButton') && anyButtonConfiguredSourceSafe(map);
+    const logValueSourceSafe = source.includes('logValue') && consoleLogValueConfiguredSourceSafe(map);
     const defaultTextPromptSourceSafe = source.includes('askForString') && numberPromptLengthSourceSafe(map);
     const numberPromptSourceSafe = source.includes('askForNumber') && numberPromptLengthSourceSafe(map);
     const legacyMelodySourceSafe = source.includes('playMelody') && legacyNoteMelodySourceSafe(map);
@@ -5706,7 +5708,8 @@ export function arcadeToPseudocode (files, opts = {}) {
     const throwProgram=throwSource.program;
     const inspectionValues=lowerConsoleInspectValues(throwProgram);
     projectInputDiagnostics.push(...inspectionValues.unsupported);
-    const fontValues = lowerSdkFontValues(inspectionValues.program);
+    const logValues = lowerConsoleLogValues(inspectionValues.program,logValueSourceSafe);
+    const fontValues = lowerSdkFontValues(logValues);
     projectInputDiagnostics.push(...fontValues.unsupported);
     const fontSource = lowerLiveFontMetrics(fontValues.program);
     const sharedPreparation = !namedEnabled && !callableEnabled && !classEnabled ? prepareSharedImageArrayTransport(fontSource,{sourceContext:sharedSourceContext}) : null;
