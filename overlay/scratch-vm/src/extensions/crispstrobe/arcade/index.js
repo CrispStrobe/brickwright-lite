@@ -576,6 +576,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'eventPlayer',blockType:Scratch.BlockType.REPORTER,text:'Arcade event player'},
           {opcode:'playerConnected',blockType:Scratch.BlockType.BOOLEAN,text:'Arcade player [PLAYER] connected?',arguments:str('PLAYER','')},
           {opcode:'playerButtonPressed',blockType:Scratch.BlockType.BOOLEAN,text:'Arcade player [PLAYER] button [BUTTON] pressed?',arguments:{...str('PLAYER',''),...n('BUTTON',0)}},
+          {opcode:'registerPlayerButtonHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register player [PLAYER] button [BUTTON] event [EVENT] as [TOKEN] capturing [CAPTURES]',arguments:{...n('PLAYER',1),BUTTON:{type:Scratch.ArgumentType.STRING,menu:'buttons',defaultValue:'a'},EVENT:{type:Scratch.ArgumentType.NUMBER,menu:'buttonEvents',defaultValue:2049},...str('TOKEN','handler'),...str('CAPTURES','')}},
           {opcode:'registerButtonHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register button [BUTTON] event [EVENT] as [TOKEN] capturing [CAPTURES]',arguments:{BUTTON:{type:Scratch.ArgumentType.STRING,menu:'buttons',defaultValue:'a'},EVENT:{type:Scratch.ArgumentType.NUMBER,menu:'buttonEvents',defaultValue:2049},...str('TOKEN','handler'),...str('CAPTURES','')}},
           {opcode:'whenRegisteredButton',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade button handler [TOKEN] runs',arguments:str('TOKEN','handler')},
           {opcode:'registerInstanceOverlapHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register instance overlap of [ID] as [TOKEN] capturing [CAPTURES]',arguments:{...str('ID',''),...str('TOKEN','handler'),...str('CAPTURES','')}},
@@ -1689,6 +1690,14 @@ module.exports = makeExt(`// Name: Arcade
       const registration={...this._handlerRegistration(args,util),button,event,player:1};
       const index=this._buttonHandlers.findIndex(h=>h.player===1 && h.button===button && h.event===event);
       if(index<0){this._buttonHandlers.push(registration);this._registerControlButton(1,button,event);}else this._buttonHandlers[index]=registration;
+    }
+    registerPlayerButtonHandler(args,util) {
+      const player=Number(Scratch.BWValues.decode(args.PLAYER));
+      if(!Number.isInteger(player)||player<1||player>4)throw new TypeError('Button registration requires player 1 through 4');
+      const button=String(args.BUTTON).toLowerCase(),event=Number(args.EVENT);
+      const registration={...this._handlerRegistration(args,util),button,event,player};
+      const index=this._buttonHandlers.findIndex(h=>h.player===player && h.button===button && h.event===event);
+      if(index<0){this._buttonHandlers.push(registration);this._registerControlButton(player,button,event);}else this._buttonHandlers[index]=registration;
     }
     _multiplayerButton(value) {const raw=Scratch.BWValues.decode(value);return raw===null || raw===undefined?undefined:['a','b','up','right','down','left'][Number(raw)];}
     registerMultiplayerButtonHandler(args,util) {

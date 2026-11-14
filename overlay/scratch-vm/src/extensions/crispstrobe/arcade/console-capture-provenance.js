@@ -13,6 +13,7 @@ function analyseConsoleCaptures({targets, blocks, input, literal}) {
         ['arcade_registerUpdateHandler','arcade_whenRegisteredUpdate'],
         ['arcade_registerIntervalHandler','arcade_whenRegisteredInterval'],
         ['arcade_registerButtonHandler','arcade_whenRegisteredButton'],
+        ['arcade_registerPlayerButtonHandler','arcade_whenRegisteredButton'],
         ['arcade_registerPaintHandler','arcade_whenRegisteredPaint'],
         ['arcade_registerShadeHandler','arcade_whenRegisteredShade'],
         ['arcade_registerInstanceDestroyedHandler','arcade_whenRegisteredInstanceDestroyed'],
