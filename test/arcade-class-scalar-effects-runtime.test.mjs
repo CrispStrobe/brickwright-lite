@@ -138,7 +138,46 @@ const shiftGetterSource=`class Box{constructor(public n:number,public m:number){
  box.n=2147483648;box.m=-1;let negativeLeft=take(box.left);let negativeSigned=take(box.signed);let negativeUnsigned=take(box.unsigned);
  box.n=5;box.m=64;let wrapLeft=take(box.left);let wrapSigned=take(box.signed);let wrapUnsigned=take(box.unsigned);
  box.n=1e308;box.m=1e308;let nonfinite=take(box.nonfinite);let hugeLeft=take(box.left);let hugeUnsigned=take(box.unsigned);let done=hugeUnsigned;`;
+const binarySetterSource=`let trace=0;
+ class Box{constructor(public n:number){}
+ get value():number{trace=trace*10+1;return this.n}
+ set value(v:number){trace=trace*10+2;this.n=(v|this.n)^(v&this.n)}}
+ function argument():number{trace=trace*10+3;return 3.25}
+ function pair(a:number,b:number){return a*10+b}
+ function take(n:number){return n}
+ let box=new Box(5.75);let actual=argument();box.value=actual;
+ let first=take(box.value);let ordered=pair(trace,box.value);
+ box.n=2147483648;box.value=0;let signed=take(box.value);
+ box.n=-2.75;box.value=3;let negative=take(box.value);
+ box.n=1e308;box.value=1;let huge=take(box.value);
+ let skipped=false&&take(box.value);let done=trace;`;
+const shiftSetterSource=`class Box{constructor(public n:number){}
+ get value():number{return this.n}
+ get left():number{return this.n}
+ set left(v:number){this.n=this.n<<v}
+ get signed():number{return this.n}
+ set signed(v:number){this.n=this.n>>v}
+ get unsigned():number{return this.n}
+ set unsigned(v:number){this.n=this.n>>>v}
+ get nonfinite():number{return this.n}
+ set nonfinite(v:number){this.n=(v*1e308-v*1e308)^(this.n*1e308)}}
+ function take(n:number){return n}
+ let box=new Box(-8.75);box.left=33.75;let left=take(box.value);
+ box.n=-8.75;box.signed=33.75;let signed=take(box.value);
+ box.n=-8.75;box.unsigned=33.75;let unsigned=take(box.value);
+ box.n=-1;box.unsigned=0;let fullUnsigned=take(box.value);
+ box.n=2147483648;box.left=-1;let negativeLeft=take(box.value);
+ box.n=2147483648;box.signed=-1;let negativeSigned=take(box.value);
+ box.n=2147483648;box.unsigned=-1;let negativeUnsigned=take(box.value);
+ box.n=5;box.left=64;let wrapLeft=take(box.value);
+ box.n=5;box.signed=64;let wrapSigned=take(box.value);
+ box.n=5;box.unsigned=64;let wrapUnsigned=take(box.value);
+ box.n=1e308;box.nonfinite=1e308;let nonfinite=take(box.value);
+ box.n=1e308;box.left=1e308;let hugeLeft=take(box.value);
+ box.n=1e308;box.unsigned=1e308;let hugeUnsigned=take(box.value);let done=hugeUnsigned;`;
 for(const [name,source,expected]of [
+ ['binary bitwise setter',binarySetterSource,{first:6,ordered:3216,signed:-2147483648,negative:-3,huge:1,skipped:false,trace:3211212121,done:3211212121}],
+ ['binary shift setter',shiftSetterSource,{left:-16,signed:-4,unsigned:2147483644,fullUnsigned:4294967295,negativeLeft:0,negativeSigned:-1,negativeUnsigned:1,wrapLeft:5,wrapSigned:5,wrapUnsigned:5,nonfinite:0,hugeLeft:0,hugeUnsigned:0,done:0}],
  ['binary bitwise getter',binaryGetterSource,{first:6,ordered:16,signed:-2147483648,negative:-3,huge:1,skipped:false,trace:112111,done:112111}],
  ['binary shift getter',shiftGetterSource,{left:-16,signed:-4,unsigned:2147483644,fullUnsigned:4294967295,negativeLeft:0,negativeSigned:-1,negativeUnsigned:1,wrapLeft:5,wrapSigned:5,wrapUnsigned:5,nonfinite:0,hugeLeft:0,hugeUnsigned:0,done:0}],
  ['bitwise setter',bitwiseSetterSource,{first:-7,ordered:113,signedMinimum:-2147483648,signedMaximum:2147483647,wrapped:-1,infinite:-1,negative:1,trace:23,done:23}],
