@@ -1,0 +1,99 @@
+#!/usr/bin/env node
+// SPDX-License-Identifier: BSD-3-Clause
+// Actual source parser -> SB3 -> Scratch VM -> bundled extension -> virtual hub -> Jolt.
+// Run with Node 22 and --import ./scripts/lib/register-gui-scope.mjs.
+import {readFileSync, writeFileSync, mkdirSync, existsSync} from 'node:fs';
+import {spawnSync, execFileSync} from 'node:child_process';
+import {resolve, join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {createHash} from 'node:crypto';
+import {createRequire} from 'node:module';
+import {nonFinitePaths, summarizeMotor, functionalFailures} from './lib/robot-lab-functional.mjs';
+const root=fileURLToPath(new URL('../',import.meta.url));
+const sourceHead=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
+const args=Object.fromEntries(process.argv.slice(2).map(x=>{const i=x.indexOf('=');return i<0?[x.replace(/^--/,''),true]:[x.slice(0,i).replace(/^--/,''),x.slice(i+1)];}));
+const hash=x=>createHash('sha256').update(x).digest('hex');
+const inventory=JSON.parse(readFileSync(join(root,'docs/data/robot-lab-experimental-checkpoint.json'))).models;
+const simMs=Number(args['sim-ms']||120000), wallMs=Number(args['wall-ms']||180000);
+if(!Number.isFinite(simMs)||simMs<=0||simMs>600000||!Number.isFinite(wallMs)||wallMs<=0||wallMs>600000)throw Error('Bounds must be positive and at most 600000 ms');
+if(args.child){
+    const id=String(args.child), item=inventory.find(m=>m.id===id);if(!item)throw Error('Unknown inventory ID');
+    const {MODELS}=await import('../overlay/scratch-gui/src/lib/bw-sim/sim-session.js');
+    const {EXPERIMENTAL_MODELS}=await import('../overlay/scratch-gui/src/lib/bw-sim/model/experimental-models.js');
+    const choices=[...MODELS,...EXPERIMENTAL_MODELS].filter(m=>(m.id||m.file.replace(/\.ldr$/,''))===id);
+    // Entries may appear in both registries during promotion; equivalent mappings are one choice.
+    const unique=[...new Map(choices.map(m=>[m.file+'\0'+m.example,m])).values()];if(unique.length!==1)throw Error(`Expected one product model/program mapping: ${id}`);
+    const choice=unique[0], modelPath='overlay/scratch-gui/static/sim-lab/models/'+choice.file, programPath='overlay/scratch-gui/static/sim-lab/programs/'+choice.example;
+    const modelText=readFileSync(join(root,modelPath),'utf8'),program=readFileSync(join(root,programPath),'utf8');
+    const Creator=(await import('../overlay/scratch-gui/src/lib/sb3-creator-register-art.js')).default;
+    const creator=new Creator();const parsed=creator.parse(program);
+    const {runRobotLabProgram}=await import('../test/helpers/robot-lab-direct-vm.mjs');
+    const guiRequire=createRequire(join(root,'packages/scratch-gui/package.json'));
+    const JSZip=guiRequire('jszip'),sb3=await creator.generateSB3();
+    const project=JSON.parse(await(await JSZip.loadAsync(await sb3.arrayBuffer())).file('project.json').async('string'));
+    const withSpike=(project.extensions||[]).includes('spikeprime');
+    const enginePackagePath=join(root,'packages/scratch-gui/node_modules/jolt-physics/package.json');
+    const enginePackage=JSON.parse(readFileSync(enginePackagePath));
+    const report={id,sourceHead,engineVersion:enginePackage.version,enginePackageSha256:hash(readFileSync(enginePackagePath)),motionThresholdDeg:0.1,modelPath,programPath,modelSha256:hash(modelText),programSha256:hash(program),simLimitMs:simMs,
+        withSpike,compileErrors:parsed?.errors||creator.errors||[],compileWarnings:parsed?.warnings||creator.warnings||[],
+        partFailures:[],missingOpcodes:[],vmErrors:[],sessionFailures:[],nonfinite:[],steps:0,motors:{},
+        programVariables:{},motorPartCount:0,unboundMotorCount:0,maxBodyDisplacementM:0,maxBodyRadiusM:0,bodyTravel:{},scope:'Finite functional smoke only; no precision, physical accuracy, full GUI, or full-program completion requirement.'};
+    const motorSamples=new Map(),initialBodies=new Map(),finite=new Set(),failures=new Set();
+    const collect=({session,hub,prepared},count=true)=>{
+        if(count)report.steps++;
+        if(session.failed)failures.add(String(session.failed));
+        for(const a of prepared.mechanism.actuators){
+            const port=a.port,index=typeof port==='number'?port:port.charCodeAt(0)-65,m=hub.data.motors[index],c=hub.backend._controllers[index];
+            const samples=motorSamples.get(port)||[];samples.push({position:m?.position,mode:c?.mode});motorSamples.set(port,samples);
+        }
+        const poses={};for(const b of prepared.mechanism.bodies.filter(b=>b.motion==='dynamic')){
+            const p=session.core.bodyPose(b.id);poses[b.id]=p;
+            const v=p.position||p.pos||p.p;if(Array.isArray(v)){
+                if(!initialBodies.has(b.id))initialBodies.set(b.id,v.slice());
+                const initial=initialBodies.get(b.id),travel=Math.hypot(...v.map((x,i)=>x-initial[i]));
+                report.bodyTravel[b.id]=Math.max(report.bodyTravel[b.id]||0,travel);
+                report.maxBodyDisplacementM=Math.max(report.maxBodyDisplacementM,travel);
+                report.maxBodyRadiusM=Math.max(report.maxBodyRadiusM,Math.hypot(...v));
+            }
+        }
+        const joints=Object.fromEntries(prepared.mechanism.joints.filter(j=>['hinge','slider'].includes(j.type)).map(j=>[j.id,session.core.jointState(j.id)]));
+        for(const p of nonFinitePaths({poses,joints,motors:hub.data.motors}))if(finite.size<50)finite.add(p);
+    };
+    const r=await runRobotLabProgram(program,{modelText,timeLimitMs:simMs,withSpike,
+        observeSetup:ctx=>{
+            const {vm,prepared}=ctx;
+            const parts=JSON.parse(readFileSync(join(root,'overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json'))).parts;
+            const motorParts=new Set(parts.filter(p=>p.category==='motor').map(p=>p.part));
+            report.motorPartCount=prepared.model.parts.filter(p=>motorParts.has(p.part)).length;
+            report.unboundMotorCount=Math.max(0,report.motorPartCount-prepared.mechanism.actuators.length);
+            report.placements=prepared.model.parts.length;report.bodies=prepared.mechanism.bodies.length;report.actuators=prepared.mechanism.actuators;
+            report.issues=prepared.issues;report.partFailures=prepared.issues.filter(i=>/unknown.part|missing.part|unresolved/.test(i.code||'')).map(i=>i.code+':'+i.message);
+            report.compileErrors.push(...prepared.issues.filter(i=>i.severity==='error').map(i=>i.code+':'+i.message));
+            for(const emitter of [vm,vm.runtime])for(const event of ['ERROR','BLOCKS_ERROR'])emitter.on(event,e=>report.vmErrors.push(String(e)));
+            report.missingOpcodes=[...new Set(vm.runtime.targets.flatMap(t=>Object.values(t.blocks._blocks)).filter(b=>!(b.opcode in vm.runtime._primitives)&&!(b.opcode in vm.runtime._hats)&&!(Object.keys(b.fields||{}).length===1&&Object.keys(b.inputs||{}).length===0)).map(b=>b.opcode))];
+            collect(ctx,false);
+        },observeFrame:ctx=>{collect(ctx);report.programVariables=Object.fromEntries(ctx.vm.runtime.targets.flatMap(t=>Object.values(t.variables||{}).filter(v=>v.type!=='list').map(v=>[v.name,v.value])));return null;}});
+    report.finishedAt=r.finishedAt;report.simulatedMs=r.track.at(-1)?.t;report.sessionFailures=[...failures];report.nonfinite=[...finite];
+    report.motors=Object.fromEntries([...motorSamples].map(([p,s])=>[p,summarizeMotor(s)]));
+    report.failures=functionalFailures(report);
+    if(report.unboundMotorCount)report.failures.push('unbound-motor:'+report.unboundMotorCount);
+    if(Number(report.programVariables.failed)===1)report.failures.push('program-failed-flag');report.status=report.failures.length?'FAIL':'PASS';
+    writeFileSync(String(args.result),JSON.stringify(report,null,2)+'\n');
+    process.exit(report.status==='PASS'?0:1);
+}else{
+    if(!args.out)throw Error('Provide --out=<owned evidence directory>');
+    const out=resolve(String(args.out));mkdirSync(out,{recursive:true});
+    const wanted=args.models?String(args.models).split(','):inventory.map(m=>m.id);
+    for(const id of wanted)if(!inventory.some(m=>m.id===id))throw Error('Unknown model '+id);
+    const results=[];
+    for(const id of wanted){
+        const result=join(out,id+'.json'),log=join(out,id+'.log');
+        if(existsSync(result)||existsSync(log))throw Error('Use fresh output files for '+id);
+        const child=spawnSync(process.execPath,['--max-old-space-size=768','--import',join(root,'scripts/lib/register-gui-scope.mjs'),fileURLToPath(import.meta.url),'--child='+id,'--result='+result,'--sim-ms='+simMs],{cwd:root,timeout:wallMs,maxBuffer:4*1024*1024,encoding:'utf8'});
+        writeFileSync(log,(child.stdout||'')+(child.stderr||''));
+        let row;try{row=JSON.parse(readFileSync(result));}catch{row={id,status:child.error?.code==='ETIMEDOUT'?'FAIL':'BLOCKED',failures:[child.error?.code==='ETIMEDOUT'?'PROCESS_TIMEOUT':'PROCESS_ERROR_UNATTRIBUTED'],error:String(child.error||child.signal||child.status)};writeFileSync(result,JSON.stringify(row,null,2)+'\n');}
+        results.push(row);console.log(`${id}: ${row.status} ${row.failures?.join(';')||''}`);
+        const summary={schema:1,sourceHead,simMs,wallMs,models:results};writeFileSync(join(out,'functional-summary.json'),JSON.stringify(summary,null,2)+'\n');
+    }
+    process.exitCode=results.every(r=>r.status==='PASS')?0:1;
+}
