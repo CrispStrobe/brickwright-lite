@@ -97,7 +97,29 @@ const bitwiseNaNConstructorSource=`class Box{n:number;constructor(a:number,b:num
  function take(n:number){return n}
  let nanBox=new Box(1e308,1e308);let nanOperand=take(nanBox.value);
  let zeroBox=new Box(0,0);let recovered=take(zeroBox.value);let done=recovered;`;
+const bitwiseSetterSource=`let trace=0;
+ class Box{constructor(public n:number){}
+ get value():number{trace=trace+1;return this.n}
+ set value(v:number){trace=trace+1;this.n=~(v+this.n)}}
+ function argument():number{trace=trace+10;return 3.75}
+ function pair(a:number,b:number){return a*10+b}
+ function take(n:number){return n}
+ let box=new Box(2.75);let actual=argument();box.value=actual;
+ let first=take(box.value);let ordered=pair(trace,box.value);
+ box.n=2147483647;box.value=0;let signedMinimum=take(box.value);
+ box.n=2147483648;box.value=0;let signedMaximum=take(box.value);
+ box.n=4294967296;box.value=0;let wrapped=take(box.value);
+ box.n=1e308;box.value=1e308;let infinite=take(box.value);
+ box.n=-2.75;box.value=0;let negative=take(box.value);let done=trace;`;
+const bitwiseNaNSetterSource=`class Box{constructor(public n:number){}
+ get value():number{return this.n}
+ set value(v:number){this.n=~(v*1e308-this.n*1e308)}}
+ function take(n:number){return n}
+ let box=new Box(1e308);box.value=1e308;let nanOperand=take(box.value);
+ box.n=0;box.value=0;let recovered=take(box.value);let done=recovered;`;
 for(const [name,source,expected]of [
+ ['bitwise setter',bitwiseSetterSource,{first:-7,ordered:113,signedMinimum:-2147483648,signedMaximum:2147483647,wrapped:-1,infinite:-1,negative:1,trace:23,done:23}],
+ ['bitwise NaN setter',bitwiseNaNSetterSource,{nanOperand:-1,recovered:-1,done:-1}],
  ['bitwise constructor',bitwiseConstructorSource,{first:-6,ordered:24,signedMinimum:-2147483648,signedMaximum:2147483647,wrapped:-1,infinite:-1,negative:4,trace:9,done:9}],
  ['bitwise NaN constructor',bitwiseNaNConstructorSource,{nanOperand:-1,recovered:-1,done:-1}],
  ['bitwise getter',bitwiseGetterSource,{first:-6,ordered:4,signedMinimum:-2147483648,signedMaximum:2147483647,wrapped:-1,infinite:-1,negative:4,trace:7,done:7}],

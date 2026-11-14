@@ -155,3 +155,18 @@ test('constructor bitwise NOT requires every actual Number argument and a closed
  refused(source.replace('this.n=~(a*2)+b','a=<any>"x";this.n=~(a*2)+b'));
  refused(source.replace('let box=new Box(2,8);','let before=take(box.value);let box=new Box(2,8);'));
 });
+
+
+test('setter bitwise NOT recursively checks actual formals and initialized own fields',()=>{
+ const base=scalarAccessorSource.replace('this.n=v','this.n=~(v+this.n)');
+ for(const expression of ['~this.n','~(v+this.n)','~~(v*2+this.n)','~(v*1e308-this.n*1e308)'])
+  accepted(base.replace('~(v+this.n)',expression));
+ for(const extra of ['box.value=<any>"x";','box.value=<any>true;','box.value=<any>undefined;',
+  'let absent:number;box.value=absent;','box.n=<any>"x";',
+  'let alias=box;','function captured(){box.n=<any>true}','box.value=take(4);'])refused(base+extra);
+ for(const expression of ['~this.value','~take(v)','~external','~(v+<any>"x")',
+  '~(v+<any>true)','~(v+1e999)'])refused(base.replace('~(v+this.n)',expression));
+ refused(base.replace('new Box(2)','new Box(<any>"x")'));
+ refused(base.replace('constructor(public n:number){}','n:number;constructor(n:number){}'));
+ refused(base.replace('this.n=~(v+this.n)','v=2;this.n=~(v+this.n)'));
+});
