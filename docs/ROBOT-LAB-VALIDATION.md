@@ -307,3 +307,15 @@ Cardan proxy at 20° has a varying speed ratio `cos(20°)` through `1/cos(20°)`
 rather than a true CV joint's constant rate. Existing actual differential-car and
 universal-joint suites remain required. No new imported-model steering repair or
 hardware calibration is inferred from these controlled boundaries.
+
+## Functional model sweep (2026-11-14)
+
+The [functional matrix](data/robot-lab-functional-matrix-20261114.json) records a bounded headless run of all 82 checkpoint models using the Scratch VM, Robot Lab extension and Jolt. All 104 motor shafts moved, including two passive Equinox outputs and a separate motor exercise for the intentionally held Sarrus control. The supplied programs completed for 13 models; the other 69 were still running at their recorded time bounds. This checks simulator catalogue resolution and functional motion, not rendered mesh loading, the built GUI, physical-device behavior or precision laws.
+
+With the repository's integrated GUI dependencies installed, run selected models with Node 22:
+
+```sh
+node --import ./scripts/lib/register-gui-scope.mjs scripts/test-robot-lab-functional.mjs --models=cross-ratio --sim-ms=15000 --wall-ms=120000 --out=./functional-results
+```
+
+Omit `--models` to run the checkpoint inventory serially. Use a fresh output directory for each run. Longer program phases may require a larger simulated interval; an inconclusive motor observation is not a pass.
