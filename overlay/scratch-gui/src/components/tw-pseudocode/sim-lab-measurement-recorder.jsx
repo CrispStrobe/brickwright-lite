@@ -45,8 +45,13 @@ export default class SimLabMeasurementRecorder extends React.Component {
         this.state = {snapshot: this.recorder.snapshot(), importStatus: '', windowStart: '', windowDuration: '10'};
         this.importFile = React.createRef();
         this.importRevision = 0;
+        this.importDefinitions = JSON.stringify(props.definitions);
     }
     componentDidUpdate (previous) {
+        const definitions = JSON.stringify(this.props.definitions);
+        if (['session', 'modelKey', 'modelContext'].some(key => previous[key] !== this.props[key]) ||
+            definitions !== this.importDefinitions) this.importRevision++;
+        this.importDefinitions = definitions;
         // A file read belongs to the import permission at selection time. Do not
         // revive it when a control pair, full history or replay is later cleared.
         if ((!previous.pairActive && this.props.pairActive) ||
