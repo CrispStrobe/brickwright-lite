@@ -117,7 +117,30 @@ const bitwiseNaNSetterSource=`class Box{constructor(public n:number){}
  function take(n:number){return n}
  let box=new Box(1e308);box.value=1e308;let nanOperand=take(box.value);
  box.n=0;box.value=0;let recovered=take(box.value);let done=recovered;`;
+const binaryGetterSource=`let trace=0;
+ class Box{constructor(public n:number,public m:number){}
+ get value():number{trace=trace*10+1;return (this.n|this.m)^(this.n&this.m)}}
+ function pair(a:number,b:number){trace=trace*10+2;return a*10+b}
+ function take(n:number){return n}
+ let box=new Box(5.75,3.25);let first=take(box.value);let ordered=pair(trace,box.value);
+ box.n=2147483648;box.m=0;let signed=take(box.value);
+ box.n=-2.75;box.m=3;let negative=take(box.value);
+ box.n=1e308;box.m=1;let huge=take(box.value);
+ let skipped=false&&take(box.value);let done=trace;`;
+const shiftGetterSource=`class Box{constructor(public n:number,public m:number){}
+ get left():number{return this.n<<this.m}
+ get signed():number{return this.n>>this.m}
+ get unsigned():number{return this.n>>>this.m}
+ get nonfinite():number{return (this.n*1e308-this.n*1e308)^(this.m*1e308)}}
+ function take(n:number){return n}
+ let box=new Box(-8.75,33.75);let left=take(box.left);let signed=take(box.signed);let unsigned=take(box.unsigned);
+ box.n=-1;box.m=0;let fullUnsigned=take(box.unsigned);
+ box.n=2147483648;box.m=-1;let negativeLeft=take(box.left);let negativeSigned=take(box.signed);let negativeUnsigned=take(box.unsigned);
+ box.n=5;box.m=64;let wrapLeft=take(box.left);let wrapSigned=take(box.signed);let wrapUnsigned=take(box.unsigned);
+ box.n=1e308;box.m=1e308;let nonfinite=take(box.nonfinite);let hugeLeft=take(box.left);let hugeUnsigned=take(box.unsigned);let done=hugeUnsigned;`;
 for(const [name,source,expected]of [
+ ['binary bitwise getter',binaryGetterSource,{first:6,ordered:16,signed:-2147483648,negative:-3,huge:1,skipped:false,trace:112111,done:112111}],
+ ['binary shift getter',shiftGetterSource,{left:-16,signed:-4,unsigned:2147483644,fullUnsigned:4294967295,negativeLeft:0,negativeSigned:-1,negativeUnsigned:1,wrapLeft:5,wrapSigned:5,wrapUnsigned:5,nonfinite:0,hugeLeft:0,hugeUnsigned:0,done:0}],
  ['bitwise setter',bitwiseSetterSource,{first:-7,ordered:113,signedMinimum:-2147483648,signedMaximum:2147483647,wrapped:-1,infinite:-1,negative:1,trace:23,done:23}],
  ['bitwise NaN setter',bitwiseNaNSetterSource,{nanOperand:-1,recovered:-1,done:-1}],
  ['bitwise constructor',bitwiseConstructorSource,{first:-6,ordered:24,signedMinimum:-2147483648,signedMaximum:2147483647,wrapped:-1,infinite:-1,negative:4,trace:9,done:9}],
