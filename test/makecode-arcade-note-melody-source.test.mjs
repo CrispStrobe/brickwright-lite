@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {legacyNoteMelodySourceSafe,literalLegacyNoteMelody,markLegacyNoteMelodies} from '../overlay/scratch-gui/src/lib/bw-makecode/legacy-note-melody-source.js';
+import {MUSIC_MELODIES} from '../overlay/scratch-gui/src/lib/bw-makecode/music-melodies.js';
 import {parseMakeCodeTs} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-import.js';
 
 test('direct literal melody-editor notes preserve their tempo and remain independent of global volume',()=>{
@@ -76,4 +77,55 @@ test('only original unbound literal calls are marked, without changing source ar
     assert.equal(call.bwPxtLegacyNoteMelody,true);assert.strictEqual(call.args,args);assert.strictEqual(call.callee,callee);
     const rejected=parseMakeCodeTs('let music=1;music.playMelody("C",120)');markLegacyNoteMelodies(rejected,true);
     assert.equal(rejected.body[1].expr.bwPxtLegacyNoteMelody,undefined);
+});
+
+
+test('literal note melodies coexist with exact known singleton zero-argument play calls',()=>{
+    for(const name of MUSIC_MELODIES) {
+        const source=`music.${name}.play();music.playMelody("C5 - D C",120);music.${name}.play(/* no arguments */)`;
+        assert.equal(legacyNoteMelodySourceSafe({'main.ts':source}),true,name);
+        const imported=arcadeToPseudocode(source);
+        assert.deepEqual(imported.unsupported,[],name);
+        assert.match(imported.code,/arcade play note melody/);
+        assert.equal(imported.code.split(`arcade play melody (arcade melody ${name}) mode play`).length-1,2,name);
+        assert.ok(imported.code.indexOf('mode play')<imported.code.indexOf('arcade play note melody'));
+        assert.ok(imported.code.lastIndexOf('mode play')>imported.code.indexOf('arcade play note melody'));
+    }
+});
+
+test('singleton coexistence preserves root, member, alias, optional and reflection vetoes',()=>{
+    const call='music.playMelody("C5 - D C",120);music.baDing.play()';
+    for(const before of [
+        'let music=1;',
+        'function scoped(music:any){music.baDing.play()} ',
+        'music.baDing=function(){};',
+        'music.baDing.play=function(){};',
+        'music.baDing.play.foo=1;',
+        'music.baDing.play++;',
+        'delete music.baDing.play;',
+        'let alias=music.baDing;',
+        'let alias=music.baDing.play;',
+        'music["baDing"].play();',
+        'music.baDing["play"]();',
+        'music?.baDing.play();',
+        'music.baDing?.play();',
+        'music.baDing.play?.();',
+        'Object.defineProperty(music.baDing,"play",{});',
+        'music.baDing.play(12);',
+        'music.baDing.playUntilDone();',
+        'music.baDing.loop();',
+        'music.unknownMelody.play();',
+        'class Opaque{constructor(){music.baDing.play=function(){}}}',
+        'mu\\u0073ic.baDing.play=function(){};'
+    ]) {
+        const source=before+call;
+        assert.equal(legacyNoteMelodySourceSafe({'main.ts':source}),false,before);
+        // Optional/escaped syntax can be outside the parser grammar. Its
+        // original bytes must veto regardless of subsequent parse behavior.
+        if(!before.includes('?.')&&!before.includes('\\u'))assert.doesNotMatch(arcadeToPseudocode(source).code,/arcade play note melody/,before);
+    }
+    const files={'main.ts':call,'hidden.g.ts':'music.baDing.play=function(){}',
+        'pxt.json':JSON.stringify({files:['main.ts','hidden.g.ts']})};
+    assert.equal(legacyNoteMelodySourceSafe(files),false);
+    assert.doesNotMatch(arcadeToPseudocode(files).code,/arcade play note melody/);
 });

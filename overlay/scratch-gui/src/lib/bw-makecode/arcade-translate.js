@@ -1,3 +1,4 @@
+import {MUSIC_MELODIES} from './music-melodies.js';
 import {lowerSourceValueOperatorHelpers} from './source-value-operator-helpers.js';
 import {NUMBER_FORMAT_MEMBERS} from './ordinary-primitive-sdk-number-source.js';
 import {setExternalRoots,externalPath,externalAssetNode,externalAssetText} from './external-references.js';
@@ -46,8 +47,7 @@ const PARTICLE_EFFECTS = new Set(['spray', 'trail', 'fountain', 'rings', 'fire',
 // enum members and the Note frequencies of the pinned enum.
 // PXT effects.ImageEffect instances, also background effects for game over.
 const IMAGE_EFFECTS = new Set(['dissolve', 'melt', 'slash', 'splatter']);
-const MUSIC_MELODIES = new Set(['baDing', 'wawawawaa', 'jumpUp', 'jumpDown', 'powerUp', 'powerDown', 'magicWand', 'siren',
-    'pewPew', 'knock', 'footstep', 'thump', 'smallCrash', 'bigCrash', 'zapped', 'buzzer', 'sonar', 'spooky', 'beamUp']);
+
 // The seven segment extension's enums by member name (sevenseg.ts).
 // The sprite extensions' calls and adjustable fields (darts.ts, corgio.ts).
 // arcade-character-animations: Predicate bits and FacingDirection (= the facing predicates).

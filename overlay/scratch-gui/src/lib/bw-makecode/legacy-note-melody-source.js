@@ -1,3 +1,4 @@
+import {MUSIC_MELODIES} from './music-melodies.js';
 import {tokenize} from './ts-import.js';
 import {inspectGeneratedHelperBindings,GENERATED_HELPER_PROFILES} from './generated-helper-recognition.js';
 
@@ -38,7 +39,11 @@ export function legacyNoteMelodySourceSafe(files) {
                 while(tokens[end+1]?.value==='.'&&tokens[end+2]?.type==='ident'){top+='.'+tokens[end+2].value;end+=2;}
                 const after=tokens[end+1];
                 if(['new','function','class','namespace'].includes(before?.type)||before?.value==='delete')return false;
-                const call=after?.value==='('&&(token.value==='music'&&musicCalls.has(top.slice(6))||
+                // Only a direct zero-argument play of a known SDK singleton may
+                // coexist. Reads, aliases, other methods and writers still veto.
+                const melody=/^music\.([A-Za-z]+)\.play$/.exec(top);
+                const singletonPlay=melody&&MUSIC_MELODIES.has(melody[1])&&after?.value==='('&&tokens[end+2]?.value===')';
+                const call=singletonPlay||after?.value==='('&&(token.value==='music'&&musicCalls.has(top.slice(6))||
                     token.value==='Math'&&mathCalls.has(top.slice(5))||readonlyCalls.has(top));
                 const scalar=/^music\.PlaybackMode\.(?:UntilDone|InBackground|LoopingInBackground)$/.test(top)||
                     /^Math\.(?:E|PI|LN10|LN2|LOG10E|LOG2E|SQRT1_2|SQRT2)$/.test(top);
