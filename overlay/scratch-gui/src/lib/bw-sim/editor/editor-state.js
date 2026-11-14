@@ -266,11 +266,12 @@ export const createEditor = ({model, catalog}) => {
      * A new part appended to `parts` as snap.js placePart (the next free id; a truthy port), then the colour
      * and port the command asks for. Returns the new parts array.
      */
-    const appended = (parts, {part, position, rotation, port}, {color, setPort}) => {
+    const appended = (parts, {part, position, rotation, port}, {color, setPort, pen}) => {
         const ids = new Set(parts.map(p => p.id));
         const fields = {id: nextPartId(parts, ids), part, position, rotation};
         if (port) fields.port = port;
         if (color !== undefined) fields.color = color;
+        if (pen !== undefined) fields.pen = pen;
         if (setPort !== undefined) {
             if (setPort) fields.port = setPort;
             else delete fields.port;
@@ -339,7 +340,7 @@ export const createEditor = ({model, catalog}) => {
                 const port = portsForCopies(current, catalogMap, [orig])[0];
                 // A single clone forms no group (a group needs two); cloneMany handles groups.
                 next = derive(appended(current.parts, {part: orig.part, position: newPos, rotation: orig.rotation, port},
-                    {color: orig.color, setPort: port || null}));
+                    {color: orig.color, setPort: port || null, pen: orig.pen}));
             } else if (cmd.type === 'group') {
                 const {ids, name} = cmd;
                 if (!Array.isArray(ids) || ids.length < 2) throw new Error('group needs at least 2 parts');
@@ -465,7 +466,7 @@ export const createEditor = ({model, catalog}) => {
                     const orig = partsToCopy[i];
                     const port = ports[i];
                     const newPos = [orig.position[0] + off[0], orig.position[1] + off[1], orig.position[2] + off[2]];
-                    parts = appended(parts, {part: orig.part, position: newPos, rotation: orig.rotation, port}, {color: orig.color, setPort: port || null});
+                    parts = appended(parts, {part: orig.part, position: newPos, rotation: orig.rotation, port}, {color: orig.color, setPort: port || null, pen: orig.pen});
                     origToCloneId.set(pid, parts[parts.length - 1].id);
                 });
                 // Clones keep their group structure: a cloned group (two or more members copied) becomes a new group.
