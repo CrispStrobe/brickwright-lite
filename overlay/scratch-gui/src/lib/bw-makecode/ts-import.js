@@ -404,6 +404,16 @@ class Parser {
         return t;
     }
 
+    // `type` starts an alias only in declaration grammar. It remains a
+    // contextual keyword when used as a parameter, variable or field name.
+    isIdentifier (token = this.peek()) {
+        return token.type === 'ident' || token.type === 'type';
+    }
+
+    expectIdentifier () {
+        return this.isIdentifier() ? this.next() : this.expect('ident');
+    }
+
     /** Type annotations carry no runtime meaning here; step over them. */
     /**
      * Skip `: number[]`. Returns true when the type was an array — the
@@ -514,7 +524,8 @@ class Parser {
             // is what its object literals are).
             return this.parseInterface();
         }
-        if (this.at('type')) {
+        if (this.at('type') && this.peek(1).line === this.peek().line && this.isIdentifier(this.peek(1)) &&
+            this.peek(2).type === 'punct' && ['=','<'].includes(this.peek(2).value)) {
             // A type alias: no runtime behaviour.
             this.next();
             this.skipBalanced();
@@ -689,7 +700,7 @@ class Parser {
             const modifiers = [];
             for (;;) {
                 const t = this.peek();
-                const nextIsName = this.peek(1).type === 'ident' || MODIFIERS.has(this.peek(1).value) ||
+                const nextIsName = this.isIdentifier(this.peek(1)) || MODIFIERS.has(this.peek(1).value) ||
                     ['get', 'set', 'constructor', 'static'].includes(this.peek(1).value);
                 if ((t.type === 'public' || t.type === 'private' || t.type === 'static' ||
                     (t.type === 'ident' && MODIFIERS.has(t.value))) && nextIsName) {
@@ -703,7 +714,7 @@ class Parser {
             const t = this.next();
             const member = t.value;
             // `get kind(): number {` / `set kind(x) {`
-            if ((member === 'get' || member === 'set') && this.at('ident') && this.peek(1).type === 'punct' &&
+            if ((member === 'get' || member === 'set') && this.isIdentifier() && this.peek(1).type === 'punct' &&
                 this.peek(1).value === '(') {
                 const prop = this.next().value;
                 const params = this.parseParams();
@@ -792,7 +803,7 @@ class Parser {
         let destructured = false;
         do {
             const pattern = this.at('punct', '{') || this.at('punct', '[') ? this.parseBindingPattern() :
-                {type: 'Identifier', name: this.expect('ident').value};
+                {type: 'Identifier', name: this.expectIdentifier().value};
             destructured ||= pattern.type !== 'Identifier';
             const isArray = this.skipTypeAnnotation();
             const typeName = this.lastType;
@@ -850,7 +861,7 @@ class Parser {
             this.expect('punct', ']');
             return {type: 'ArrayPattern', elements};
         }
-        return {type: 'Identifier', name: this.expect('ident').value};
+        return {type: 'Identifier', name: this.expectIdentifier().value};
     }
 
     parseTypeParameters () {
@@ -904,10 +915,10 @@ class Parser {
             } else {
                 const modifiers = [];
                 while (['public','private','protected','readonly'].includes(this.peek().value) &&
-                    (this.peek(1).type === 'ident' || ['public','private','protected'].includes(this.peek(1).value))) {
+                    (this.isIdentifier(this.peek(1)) || ['public','private','protected'].includes(this.peek(1).value))) {
                     modifiers.push(this.next().value);
                 }
-                const name = this.expect('ident').value;
+                const name = this.expectIdentifier().value;
                 // `input?: Buffer` — an optional parameter: the marker changes
                 // the type, not the name bound in the body; a default is
                 // applied at the top of the body when the argument is undefined.
@@ -945,7 +956,7 @@ class Parser {
 
     parseFunction () {
         this.expect('function');
-        const name = this.at('ident') ? this.next().value : null;
+        const name = this.isIdentifier() ? this.next().value : null;
         const typeParameters = this.parseTypeParameters();
         const params = this.parseParams();
         const paramTypes = this.lastParamTypes;
@@ -1258,7 +1269,7 @@ class Parser {
                 const k = this.next();
                 if (!['ident', 'string', 'number'].includes(k.type) && !KEYWORDS.has(k.type)) return null;
                 if (this.eat('punct', ':')) props.push({key: k.value, value: this.parseExpression()});
-                else if (k.type === 'ident' && (this.at('punct', ',') || this.at('punct', '}'))) {
+                else if (this.isIdentifier(k) && (this.at('punct', ',') || this.at('punct', '}'))) {
                     props.push({key: k.value, value: {type: 'Identifier', name: k.value}});
                 } else return null;
                 if (!this.eat('punct', ',')) break;
@@ -1333,7 +1344,7 @@ class Parser {
             return {type: 'Call', callee, args: this.at('punct', '(') ? this.parseArguments() : [],
                 ...(typeArguments ? {typeArguments} : {}), isNew: true, constructorCall: true};
         }
-        if (t.type === 'ident') {
+        if (this.isIdentifier(t)) {
             this.next();
             // Arrow functions: `sprite => {...}` and `(a, b) => {...}`.
             if (this.at('punct', '=>')) {
