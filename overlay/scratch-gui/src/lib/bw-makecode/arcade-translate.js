@@ -1,3 +1,4 @@
+import {normalizeUnusedNamedCallbacks} from './unused-named-callbacks.js';
 import {highScoreConfiguredSourceSafe,markHighScoreCalls,highScoreIntrinsic} from './high-score-source.js';
 import {consoleLogValueConfiguredSourceSafe,lowerConsoleLogValues} from './lower-console-log-values.js';
 import {bindScoreImageSource,scoreImageBindingView} from './score-owned-image-source.js';
@@ -5457,7 +5458,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     // while the combined parser allocates its generated temporary names once.
     if (selectedSource.entries.length > 1) {
         for (const entry of selectedSource.entries) {
-            try { parseSharedImageSourceBoundary(sharedSourcePreparation,entry); }
+            try { parseSharedImageSourceBoundary(sharedSourcePreparation,entry,true); }
             catch (error) { throw new Error(`${entry.name}: ${error.message}`, {cause: error}); }
         }
     }
@@ -5585,9 +5586,9 @@ export function arcadeToPseudocode (files, opts = {}) {
         if (Array.isArray(node)) return node.map(lowerAnimationAssets);
         return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, lowerAnimationAssets(value)]));
     };
-    const callableParseOptions={parameterDefaults:true,retainParentheses:true,retainWhenUsed:true,retainClassHeritage:true,retainOrdinaryDefaultProvenance:true};
-    const ordinarySource=markHighScoreCalls(markDefaultTextPrompts(markNumberPromptLengths(markLegacyNoteMelodies(lowerAnyButtonRegistrations(parseSharedImageSourceProgram(sharedSourcePreparation,source,opts.procedureConstraintsPrototype===true,opts.procedureConstraintsPrototype!==true),anyButtonSourceSafe,projectInputDiagnostics),legacyMelodySourceSafe),numberPromptSourceSafe),defaultTextPromptSourceSafe),highScoreSourceSafe);
-    const callableSourceParsed=markHighScoreCalls(markDefaultTextPrompts(markNumberPromptLengths(markLegacyNoteMelodies(lowerAnyButtonRegistrations(parseMakeCodeTs(source,{...callableParseOptions,retainCallableMetadata:true}),anyButtonSourceSafe),legacyMelodySourceSafe),numberPromptSourceSafe),defaultTextPromptSourceSafe),highScoreSourceSafe);
+    const callableParseOptions={namedFunctionExpressions:true,parameterDefaults:true,retainParentheses:true,retainWhenUsed:true,retainClassHeritage:true,retainOrdinaryDefaultProvenance:true};
+    const ordinarySource=markHighScoreCalls(markDefaultTextPrompts(markNumberPromptLengths(markLegacyNoteMelodies(lowerAnyButtonRegistrations(normalizeUnusedNamedCallbacks(parseSharedImageSourceProgram(sharedSourcePreparation,source,opts.procedureConstraintsPrototype===true,opts.procedureConstraintsPrototype!==true,true),map,callbackRegistrationSpec,projectInputDiagnostics),anyButtonSourceSafe,projectInputDiagnostics),legacyMelodySourceSafe),numberPromptSourceSafe),defaultTextPromptSourceSafe),highScoreSourceSafe);
+    const callableSourceParsed=markHighScoreCalls(markDefaultTextPrompts(markNumberPromptLengths(markLegacyNoteMelodies(lowerAnyButtonRegistrations(normalizeUnusedNamedCallbacks(parseMakeCodeTs(source,{...callableParseOptions,retainCallableMetadata:true}),map,callbackRegistrationSpec,projectInputDiagnostics),anyButtonSourceSafe),legacyMelodySourceSafe),numberPromptSourceSafe),defaultTextPromptSourceSafe),highScoreSourceSafe);
     const namedEligibility=selectNamedFunctionSourceProof(callableSourceParsed,{ordinaryProgram:ordinarySource,registrationSpec:callbackRegistrationSpec});
     const namedEnabled=namedEligibility.eligible;
     const namedLowering=namedEnabled?lowerNamedFunctionValues(callableSourceParsed):null;

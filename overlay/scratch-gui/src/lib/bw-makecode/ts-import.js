@@ -1320,12 +1320,16 @@ class Parser {
         }
         if (t.type === 'function') {
             this.next();
+            // Other targets retain their existing grammar boundary. Arcade's
+            // caller keeps the local self binding until its callback proof.
+            const selfName = this.namedFunctionExpressions && this.isIdentifier() ? this.next().value : null;
             const params = this.parseParams();
             const paramTypes = this.lastParamTypes;
             this.skipTypeAnnotation();
             const returnType = this.lastType;
             const body = this.parseBlock();
             return {type: 'FunctionExpression', params, paramTypes, returnType,
+                ...(selfName ? {selfName, selfNameDefaults: params.parameterDefaults} : {}),
                 ...(this.retainCallableMetadata ? {functionKind: 'function', parameterDefaults: params.parameterDefaults,
                     parameterDefaultPrologue: this.parameterDefaults} : {}),
                 optionalParams:params.optionalParams || [], body: [...this.defaultStatements(params), ...body]};
@@ -1471,6 +1475,7 @@ function templateString (raw, strict = false) {
 
 export function parseMakeCodeTs (source, opts = {}) {
     const parser = new Parser(tokenize(source));
+    parser.namedFunctionExpressions = Boolean(opts.namedFunctionExpressions);
     parser.parameterDefaults = Boolean(opts.parameterDefaults);
     parser.retainParentheses = Boolean(opts.retainParentheses);
     parser.retainWhenUsed = Boolean(opts.retainWhenUsed);
