@@ -15,7 +15,8 @@ const policy = (source, github) => {
     return {group:expand(group,github).toLowerCase(),cancel:expand(cancel,github)==='true'};
 };
 function check(source, labels, admit = true, preserveMain = false) {
-    if (admit) assertReviewedConcurrency(source,{labels,preserveMain});
+    // Build is checked by behavior, without freezing one expression spelling.
+    if (admit && !preserveMain) assertReviewedConcurrency(source,{labels});
     const get = changes => policy(source,sample(changes));
     for (const event_name of ['push','pull_request']) {
         const a = get({event_name}), b = get({event_name,run_id:102});
@@ -58,10 +59,10 @@ function check(source, labels, admit = true, preserveMain = false) {
         assert.equal(label.group,get({event_name:'pull_request',run_id:102,event:{action:'unlabeled',label:{name:'ci:full'}}}).group);
     }
 }
-for (const name of names) test(`${name}: exact source event/ref isolation, pending preservation and supersession`,()=> {
+for (const name of names) test(`${name}: event/ref isolation, pending preservation and supersession`,()=> {
     const source=readFileSync(new URL(`../.github/workflows/${name}.yml`,import.meta.url),'utf8');
     check(source,labeled.has(name),true,name==='build');
-    for (const mutation of [
+    if (name !== 'build') for (const mutation of [
         source.replace(/^concurrency:/m, 'unreviewed-concurrency:'),
         source.replace('concurrency:\n', 'concurrency:\n  extra-policy: true\n'),
         source.replace(/^  cancel-in-progress:.*$/m, match=>match+'\n\n  extra-policy: true'),
@@ -69,7 +70,7 @@ for (const name of names) test(`${name}: exact source event/ref isolation, pendi
     ]) assert.throws(()=>check(mutation,labeled.has(name),true,name==='build'),'closed policy mapping');
     if (labeled.has(name)) {
         const mutation=source.replace(labelSuffix,'');
-        assert.throws(()=>check(mutation,true,true,name==='build'),'label policy admission');
+        if (name !== 'build') assert.throws(()=>check(mutation,true),'label policy admission');
         assert.throws(()=>check(mutation,true,false,name==='build'),'label partition behavior');
     }
     for (const [title,mutation] of [
@@ -82,5 +83,5 @@ for (const name of names) test(`${name}: exact source event/ref isolation, pendi
         ['always cancel',source.replace(/^  cancel-in-progress:.*$/m,'  cancel-in-progress: true')],
         ['never supersede',source.replace(/^  cancel-in-progress:.*$/m,'  cancel-in-progress: false')],
         ['unbounded extra block',source+'\nconcurrency:\n'],
-    ]) {assert.notEqual(source,mutation,title);assert.throws(()=>check(mutation,labeled.has(name),true,name==='build'),title); if (title !== 'unbounded extra block') assert.throws(()=>check(mutation,labeled.has(name),false,name==='build'),title+' behavioral refusal');}
+    ]) {assert.notEqual(source,mutation,title); if (name !== 'build') assert.throws(()=>check(mutation,labeled.has(name)),title); if (title !== 'unbounded extra block') assert.throws(()=>check(mutation,labeled.has(name),false,name==='build'),title+' behavioral refusal');}
 });

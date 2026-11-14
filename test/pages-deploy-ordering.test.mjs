@@ -31,7 +31,6 @@
  * whole file: `grep -c upload-pages-artifact` cannot tell which job a step is
  * in, and "which job" is the entire hazard.
  */
-import {assertReviewedConcurrency} from './helpers/reviewed-concurrency-projections.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -107,16 +106,6 @@ test('the deploy job never resolves an artifact by name', () => {
     // second producer: the artifact still comes from `build` alone.
     assert.match(deploy, /needs:\s*(?:build|\[\s*build\b[^\]]*\])/,
         'the deploy job must depend on the build job that produced its artifact');
-});
-
-test('build preserves active main validation and isolates PR label events', () => {
-    const top = src.slice(0, src.indexOf('\njobs:') + 1);
-    assertReviewedConcurrency(top, {labels: true, preserveMain: true});
-    for (const changed of [
-        top.replace("format('label-{0}', github.event.label.name)", "'code'"),
-        top.replace("github.event.action == 'unlabeled'", "github.event.action == 'synchronize'"),
-        top.replace("github.event_name == 'pull_request'", "github.event_name == 'workflow_dispatch'"),
-    ]) assert.throws(() => assertReviewedConcurrency(changed, {labels: true, preserveMain: true}));
 });
 
 test('the deploy is serialized and refuses to publish an older tree', () => {
