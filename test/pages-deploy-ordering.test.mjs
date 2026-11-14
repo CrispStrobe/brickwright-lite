@@ -11,8 +11,9 @@
  * 404 chunks.
  *
  * The 2026-08-30 fix separated builds by run and serialized publication. The
- * reviewed 2026-11-12 policy supersedes push/PR builds by workflow and ref,
- * with separate label-event groups. Deployment serialization remains in place. That is
+ * main workflow preserves active validation while coalescing pending pushes;
+ * PRs retain cancellation and separate label-event groups. Publication remains
+ * serialized and guarded against rollback. That is
  * safe for one structural reason: separate RUNS cannot see each other's
  * artifacts. Each run's `github-pages` artifact is scoped to its own
  * GITHUB_RUN_ID and `deploy-pages` resolves it there.
@@ -23,7 +24,7 @@
  *
  *   - exactly one upload of the Pages artifact, in the job that builds it;
  *   - the deploy job never downloads an artifact by name;
- *   - push/PR supersession follows the reviewed policy with label-event isolation;
+ *   - main active work survives pushes; PR supersession retains label-event isolation;
  *   - the deploy carries the one shared group, and an ordering guard.
  *
  * The parsing is deliberately structural rather than a set of greps over the
@@ -108,14 +109,14 @@ test('the deploy job never resolves an artifact by name', () => {
         'the deploy job must depend on the build job that produced its artifact');
 });
 
-test('build supersession uses the reviewed workflow/ref policy and isolates label events', () => {
+test('build preserves active main validation and isolates PR label events', () => {
     const top = src.slice(0, src.indexOf('\njobs:') + 1);
-    assertReviewedConcurrency(top, {labels: true});
+    assertReviewedConcurrency(top, {labels: true, preserveMain: true});
     for (const changed of [
         top.replace("format('label-{0}', github.event.label.name)", "'code'"),
         top.replace("github.event.action == 'unlabeled'", "github.event.action == 'synchronize'"),
         top.replace("github.event_name == 'pull_request'", "github.event_name == 'workflow_dispatch'"),
-    ]) assert.throws(() => assertReviewedConcurrency(changed, {labels: true}));
+    ]) assert.throws(() => assertReviewedConcurrency(changed, {labels: true, preserveMain: true}));
 });
 
 test('the deploy is serialized and refuses to publish an older tree', () => {
