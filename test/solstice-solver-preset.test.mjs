@@ -49,6 +49,10 @@ test('solver preset parses strictly and roundtrips through LDR and MPD',()=>{
   assert.ok(parsed.refusals.some(x=>x.code==='bad-solver-preset'));
   assert.throws(()=>serializeModel(parsed.model),/solver must/);
   assert.throws(()=>compile(parsed.model,catalog,{version:2}),/solver must/);
+  const prepared=prepare(annotation+'\n'+baseline);
+  assert.equal(prepared.mechanism,null,'invalid preset prevents simulation without throwing');
+  assert.ok(prepared.issues.some(x=>x.code==='bad-solver-preset'&&x.severity==='error'));
+  assert.equal(prepared.model.solver,undefined,'display model remains usable in Build');
  }
 });
 
